@@ -1,6 +1,6 @@
 [project]
 name = "kias-dorkonfigurator"
-version = "0.1.0"
+version = "0.3.0"
 description = "Dørkonfigurator for Kvanne Industrier AS (KIAS)"
 requires-python = ">=3.10"
 dependencies = [

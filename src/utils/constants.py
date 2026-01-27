@@ -5,7 +5,7 @@ Alle dimensjoner i millimeter (mm).
 
 # Applikasjonsinfo
 APP_NAME = "KIAS Dørkonfigurator"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.3.0"
 PROJECT_EXTENSION = ".kdf"
 PROJECT_FILTER = f"KIAS Dørfil (*{PROJECT_EXTENSION})"
 

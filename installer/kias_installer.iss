@@ -9,7 +9,7 @@
 ;   iscc installer\kias_installer.iss
 
 #define MyAppName "KIAS Dørkonfigurator"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "Kvanne Industrier AS"
 #define MyAppURL "https://kvanne.no"
 #define MyAppExeName "KIAS Dørkonfigurator.exe"
