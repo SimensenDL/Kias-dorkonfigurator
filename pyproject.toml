@@ -14,3 +14,6 @@ dependencies = [
     "reportlab>=4.0.0",
     "svglib>=1.5.0",
 ]
+
+[tool.uv]
+dev-dependencies = ["pyinstaller>=6.0"]

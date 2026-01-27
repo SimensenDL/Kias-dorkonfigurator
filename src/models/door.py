@@ -7,7 +7,9 @@ from typing import Optional
 from datetime import datetime
 
 from ..utils.constants import (
-    DEFAULT_DIMENSIONS, DEFAULT_COLOR, THRESHOLD_LUFTSPALTE
+    DEFAULT_DIMENSIONS, DEFAULT_COLOR, THRESHOLD_LUFTSPALTE,
+    DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_KARM_TYPES,
+    DOOR_TYPE_BLADE_OVERRIDE
 )
 
 
@@ -22,7 +24,9 @@ class DoorParams:
         door_type: Dørtype (nøkkel fra DOOR_TYPES)
         width: Dørbredde i mm
         height: Dørhøyde i mm
-        thickness: Dørtykkelse i mm
+        thickness: Veggtykkelse i mm
+        blade_type: Dørbladtype (nøkkel fra DOOR_BLADE_TYPES)
+        blade_thickness: Dørbladtykkelse i mm
         color: RAL-farge
         surface_type: Overflatetype
         glass: Om døren har glass
@@ -30,7 +34,7 @@ class DoorParams:
         threshold_type: Terskeltype
         lock_type: Låstype
         swing_direction: Slagretning ('left' eller 'right')
-        fire_rating: Brannklasse (EI30, EI60 etc.)
+        fire_rating: Brannklasse (B30)
         sound_rating: Lydklasse i dB
         insulation_value: U-verdi (W/m²K)
         notes: Fritekst merknader
@@ -47,7 +51,9 @@ class DoorParams:
     floyer: int = 1  # Antall fløyer (1 eller 2)
     width: int = 900
     height: int = 2100
-    thickness: int = 40
+    thickness: int = 100
+    blade_type: str = "SDI_ROCA"  # Dørbladtype (nøkkel fra DOOR_BLADE_TYPES)
+    blade_thickness: int = 40  # Dørbladtykkelse i mm
 
     # Overflate/utseende
     color: str = DEFAULT_COLOR
@@ -80,6 +86,18 @@ class DoorParams:
             self.width = defaults['width']
             self.height = defaults['height']
             self.thickness = defaults['thickness']
+        # Sett standard dørblad – sjekk dørtype-override først, deretter karmtype
+        override_blades = DOOR_TYPE_BLADE_OVERRIDE.get(self.door_type)
+        if override_blades:
+            self.blade_type = override_blades[0]
+            self.blade_thickness = DOOR_BLADE_TYPES[self.blade_type]['thicknesses'][0]
+        else:
+            karm_types = DOOR_KARM_TYPES.get(self.door_type, [])
+            if karm_types:
+                blade_types = KARM_BLADE_TYPES.get(karm_types[0], [])
+                if blade_types:
+                    self.blade_type = blade_types[0]
+                    self.blade_thickness = DOOR_BLADE_TYPES[self.blade_type]['thicknesses'][0]
 
     def effective_luftspalte(self) -> int:
         """Returnerer effektiv luftspalte basert på terskeltype.
@@ -105,6 +123,8 @@ class DoorParams:
             'width': self.width,
             'height': self.height,
             'thickness': self.thickness,
+            'blade_type': self.blade_type,
+            'blade_thickness': self.blade_thickness,
             'color': self.color,
             'surface_type': self.surface_type,
             'glass': self.glass,

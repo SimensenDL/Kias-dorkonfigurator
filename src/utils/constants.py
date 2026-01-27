@@ -11,66 +11,126 @@ PROJECT_FILTER = f"KIAS Dørfil (*{PROJECT_EXTENSION})"
 
 # Dørtyper (intern nøkkel → visningsnavn)
 DOOR_TYPES = {
-    'SDI':  'SDI - Slag/Innerdør',
-    'KD':   'KD - Kjøledør',
-    'PDPC': 'PDPC - Pendel Polykarbonat',
-    'PDPO': 'PDPO - Pendel Opalkvit',
-    'PDI':  'PDI - Pendel Isolert',
-    'SKD':  'SKD - Skyvedør 40/60',
+    'SDI':  'SDI - Innerdør',
+    'KD':   'KD - Kjøleromsdør',
+    'PD':   'PD - Pendeldør',
+    'SK':   'SK - Skyvedør',
     'BD':   'BD - Branndør B30',
-    'BRY':  'BRY - Brakke Ytter',
-    'BRI':  'BRI - Brakke Inner',
-    'FD':   'FD - Fjøs Ytter',
-    'ID':   'ID - Inner m/notspor',
-    'BO':   'BO - Bod m/notspor',
+    'BR':   'BR - Brakkedør',
+    'FD':   'FD - Fjøsdør',
+    'BO':   'BO - Bod-/Garasjedør',
+    'LDI':  'LDI - Lyddør',
+    'RD':   'RD - Røntgendør',
 }
 
-# Standardmål per dørtype (bredde, høyde, tykkelse i mm)
+# Standardmål per dørtype (bredde, høyde, veggtykkelse i mm)
+# Veggtykkelse må samsvare med karmtypens støttede område (se karmtype-dokumentasjon)
 DEFAULT_DIMENSIONS = {
-    'SDI':  {'width': 900, 'height': 2100, 'thickness': 40},
-    'KD':   {'width': 900, 'height': 2100, 'thickness': 80},
-    'PDPC': {'width': 900, 'height': 2100, 'thickness': 50},
-    'PDPO': {'width': 900, 'height': 2100, 'thickness': 50},
-    'PDI':  {'width': 900, 'height': 2100, 'thickness': 50},
-    'SKD':  {'width': 1200, 'height': 2100, 'thickness': 50},
-    'BD':   {'width': 900, 'height': 2100, 'thickness': 60},
-    'BRY':  {'width': 900, 'height': 2100, 'thickness': 40},
-    'BRI':  {'width': 900, 'height': 2100, 'thickness': 40},
-    'FD':   {'width': 1000, 'height': 2100, 'thickness': 50},
-    'ID':   {'width': 900, 'height': 2100, 'thickness': 40},
-    'BO':   {'width': 900, 'height': 2100, 'thickness': 50},
+    'SDI':  {'width': 900, 'height': 2100, 'thickness': 100},   # SD1: 70-110 mm
+    'KD':   {'width': 900, 'height': 2100, 'thickness': 80},    # KD1: 70-110 mm
+    'PD':   {'width': 900, 'height': 2100, 'thickness': 100},   # PD1: 70-110 mm
+    'SK':   {'width': 1200, 'height': 2100, 'thickness': 50},   # SK1: ikke dokumentert
+    'BD':   {'width': 900, 'height': 2100, 'thickness': 100},   # SD1: 70-110 mm
+    'BR':   {'width': 900, 'height': 2100, 'thickness': 40},    # BR1: 40-44 mm
+    'FD':   {'width': 1000, 'height': 2100, 'thickness': 100},  # SD1 antatt: 70-110 mm
+    'BO':   {'width': 900, 'height': 2100, 'thickness': 50},    # BO1: ikke dokumentert
+    'LDI':  {'width': 900, 'height': 2100, 'thickness': 100},   # SD1: 70-110 mm
+    'RD':   {'width': 900, 'height': 2100, 'thickness': 100},   # SD1: 70-110 mm
 }
 
 # Karmtyper per dørtype (hvilke karmtyper som er tilgjengelige)
 DOOR_KARM_TYPES = {
-    'SDI':  ['SD1', 'SD2', 'SD3'],
+    'SDI':  ['SD1', 'SD2', 'SD3/ID1'],
     'KD':   ['KD1', 'KD2', 'KD3'],
-    'PDPC': ['PD1', 'PD2'],
-    'PDPO': ['PD1', 'PD2'],
-    'PDI':  ['PD1', 'PD2'],
-    'SKD':  ['SKD1', 'SKD2'],
+    'PD':   ['PD1', 'PD2'],
+    'SK':   ['SK1'],
     'BD':   ['SD1'],
-    'BRY':  ['BR1'],
-    'BRI':  ['BI1'],
-    'FD':   ['FD1', 'FD2', 'FD3'],
-    'ID':   ['ID1'],
+    'BR':   ['BR1'],
+    'FD':   ['SD1', 'SD2', 'SD3/ID1'],  # Antatt – ikke spesifisert i dokumentasjon
     'BO':   ['BO1'],
+    'LDI':  ['SD1', 'SD2', 'SD3/ID1'],
+    'RD':   ['SD1', 'SD2', 'SD3/ID1'],
 }
 
 # Antall fløyer per dørtype (tillatte verdier)
 DOOR_FLOYER = {
     'SDI':  [1, 2],
     'KD':   [1, 2],
-    'PDPC': [1, 2],
-    'PDPO': [1, 2],
-    'PDI':  [1, 2],
-    'SKD':  [1],
+    'PD':   [1, 2],
+    'SK':   [1],
     'BD':   [1],
-    'BRY':  [1, 2],
-    'BRI':  [1],
+    'BR':   [1, 2],
     'FD':   [1, 2],
-    'ID':   [1],
     'BO':   [1],
+    'LDI':  [1, 2],
+    'RD':   [1, 2],
+}
+
+# Dørbladtyper (nøkkel → navn + tykkelser)
+DOOR_BLADE_TYPES = {
+    'KD_ISOLERT': {
+        'name': 'Isolert kjøleromsdørblad',
+        'thicknesses': [40, 60],
+    },
+    'SDI_ROCA': {
+        'name': 'Innerdørblad m/ROCA',
+        'thicknesses': [40],
+    },
+    'SDI_SNAPIN': {
+        'name': 'Innerdørblad m/Snap-in',
+        'thicknesses': [40],
+    },
+    'SKD_STYRESPOR': {
+        'name': 'Skyvedørblad m/styrespor',
+        'thicknesses': [40],
+    },
+    'PDI_ISOLERT': {
+        'name': 'Isolert pendeldørblad',
+        'thicknesses': [40],
+    },
+    'PDPC_POLY': {
+        'name': 'Pendeldørblad polykarbonat',
+        'thicknesses': [5],
+    },
+    'PDPO_OPAL': {
+        'name': 'Pendeldørblad opalhvit',
+        'thicknesses': [5],
+    },
+    'BD_ROCKWOOL': {
+        'name': 'Branndørblad m/Rockwool',
+        'thicknesses': [40],
+    },
+    'RD_BLY': {
+        'name': 'Røntgendørblad m/blyinnlegg',
+        'thicknesses': [40],
+    },
+    'LDI_LYD': {
+        'name': 'Lyddørblad m/lyddempning',
+        'thicknesses': [40],
+    },
+}
+
+# Kompatible dørbladtyper per karmtype
+KARM_BLADE_TYPES = {
+    'SD1':     ['SDI_ROCA', 'SDI_SNAPIN'],
+    'SD2':     ['SDI_ROCA', 'SDI_SNAPIN'],
+    'SD3/ID1': ['SDI_ROCA', 'SDI_SNAPIN'],
+    'KD1':     ['KD_ISOLERT'],
+    'KD2':     ['KD_ISOLERT'],
+    'KD3':     ['KD_ISOLERT'],
+    'PD1':     ['PDI_ISOLERT', 'PDPC_POLY', 'PDPO_OPAL'],
+    'PD2':     ['PDI_ISOLERT', 'PDPC_POLY', 'PDPO_OPAL'],
+    'SK1':     ['SKD_STYRESPOR'],
+    'BR1':     ['SDI_ROCA', 'SDI_SNAPIN'],
+    'BO1':     ['SDI_ROCA', 'SDI_SNAPIN'],
+}
+
+# Dørtype-spesifikke dørbladtyper (overstyrer karm-basert oppslag)
+# Disse dørtypene har spesialisert dørblad som skiller seg fra standard innerdørblad
+DOOR_TYPE_BLADE_OVERRIDE = {
+    'BD':  ['BD_ROCKWOOL'],   # Branndør: Rockwool (steinull) isolasjon
+    'RD':  ['RD_BLY'],        # Røntgendør: blyinnlegg i dørblad
+    'LDI': ['LDI_LYD'],       # Lyddør: lyddempende materialer
 }
 
 # Dimensjonsgrenser (mm)
@@ -117,11 +177,11 @@ THRESHOLD_LUFTSPALTE = {
     'hc2': 15,
 }
 
-# Brannklasser (for branndør)
-FIRE_RATINGS = ['', 'EI30', 'EI60', 'EI90', 'EI120']
+# Brannklasser (for branndør) - KIAS produserer kun B30
+FIRE_RATINGS = ['', 'B30']
 
-# Lydklasser (dB, for lyddør)
-SOUND_RATINGS = [0, 30, 35, 40, 45, 50]
+# Lydklasser (dB, for lyddør) - KIAS tilbyr Rw30 og Rw32
+SOUND_RATINGS = [0, 30, 32]
 
 # RAL-farger for dører
 RAL_COLORS = {

@@ -15,6 +15,7 @@ from ...utils.constants import (
     SWING_DIRECTIONS, FIRE_RATINGS, SOUND_RATINGS,
     THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE,
     DOOR_KARM_TYPES, DOOR_FLOYER,
+    DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_TYPE_BLADE_OVERRIDE,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS
 )
 from ...models.door import DoorParams
@@ -100,7 +101,7 @@ class DoorForm(QWidget):
         karm_floyer_layout.setContentsMargins(0, 0, 0, 0)
 
         self.karm_combo = QComboBox()
-        self.karm_combo.currentIndexChanged.connect(self._on_changed)
+        self.karm_combo.currentIndexChanged.connect(self._on_karm_changed)
         karm_floyer_layout.addWidget(self.karm_combo, stretch=1)
 
         self.floyer_combo = QComboBox()
@@ -128,11 +129,30 @@ class DoorForm(QWidget):
 
         self.thickness_spin = QSpinBox()
         self.thickness_spin.setRange(MIN_THICKNESS, MAX_THICKNESS)
-        self.thickness_spin.setValue(40)
+        self.thickness_spin.setValue(100)
         self.thickness_spin.setSuffix(" mm")
         self.thickness_spin.setSingleStep(5)
         self.thickness_spin.valueChanged.connect(self._on_changed)
         door_layout.addRow("Veggtykkelse:", self.thickness_spin)
+
+        # Dørblad + tykkelse på samme rad
+        blade_widget = QWidget()
+        blade_layout = QHBoxLayout(blade_widget)
+        blade_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.blade_combo = QComboBox()
+        self.blade_combo.currentIndexChanged.connect(self._on_blade_changed)
+        blade_layout.addWidget(self.blade_combo, stretch=1)
+
+        self.blade_thickness_spin = QSpinBox()
+        self.blade_thickness_spin.setSuffix(" mm")
+        self.blade_thickness_spin.setMinimumWidth(100)
+        self.blade_thickness_spin.setReadOnly(True)
+        self.blade_thickness_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.blade_thickness_spin.valueChanged.connect(self._on_changed)
+        blade_layout.addWidget(self.blade_thickness_spin)
+
+        door_layout.addRow("Dørblad:", blade_widget)
 
         # Terskeltype + luftspalte på samme rad
         threshold_widget = QWidget()
@@ -214,7 +234,7 @@ class DoorForm(QWidget):
 
         self.sound_rating_combo = QComboBox()
         for db in SOUND_RATINGS:
-            self.sound_rating_combo.addItem(f"{db} dB" if db else "(ingen)", db)
+            self.sound_rating_combo.addItem(f"Rw{db} dB" if db else "(ingen)", db)
         self.sound_rating_combo.currentIndexChanged.connect(self._on_changed)
         self.sound_rating_label = QLabel("Lydklasse:")
         special_layout.addRow(self.sound_rating_label, self.sound_rating_combo)
@@ -240,12 +260,20 @@ class DoorForm(QWidget):
 
         layout.addStretch()
 
-        # Fyll karmtype og fløyer for standard dørtype
+        # Fyll karmtype, fløyer og dørbladtykkelse for standard dørtype
         initial_type = self.door_type_combo.currentData()
         for karm in DOOR_KARM_TYPES.get(initial_type, []):
             self.karm_combo.addItem(karm, karm)
         for f in DOOR_FLOYER.get(initial_type, [1]):
             self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+        self._update_blade_for_karm()
+
+        # Sett standardmål fra DEFAULT_DIMENSIONS for initial dørtype
+        initial_defaults = DEFAULT_DIMENSIONS.get(initial_type, {})
+        if initial_defaults:
+            self.width_spin.setValue(initial_defaults['width'])
+            self.height_spin.setValue(initial_defaults['height'])
+            self.thickness_spin.setValue(initial_defaults['thickness'])
 
         # Initial visning av typeavhengige felt
         self._update_type_dependent_fields()
@@ -294,6 +322,67 @@ class DoorForm(QWidget):
 
         self._on_changed()
 
+    def _on_karm_changed(self):
+        """Oppdaterer dørblad-valg basert på valgt karmtype."""
+        if self._block_signals:
+            return
+        self._update_blade_for_karm()
+        self._on_changed()
+
+    def _on_blade_changed(self):
+        """Oppdaterer tykkelse-valg basert på valgt dørblad."""
+        if self._block_signals:
+            return
+        self._update_thickness_for_blade()
+        self._on_changed()
+
+    def _update_blade_for_karm(self):
+        """Fyller dørblad-dropdown basert på dørtype (override) eller valgt karmtype."""
+        door_type = self.door_type_combo.currentData()
+        # Sjekk om dørtypen har spesifikke dørbladtyper
+        blade_keys = DOOR_TYPE_BLADE_OVERRIDE.get(door_type)
+        if blade_keys is None:
+            karm = self.karm_combo.currentData()
+            blade_keys = KARM_BLADE_TYPES.get(karm, [])
+
+        old_blade = self.blade_combo.currentData()
+        self.blade_combo.blockSignals(True)
+        self.blade_combo.clear()
+        for key in blade_keys:
+            info = DOOR_BLADE_TYPES.get(key, {})
+            self.blade_combo.addItem(info.get('name', key), key)
+        # Forsøk å beholde forrige valg
+        idx = self.blade_combo.findData(old_blade)
+        if idx >= 0:
+            self.blade_combo.setCurrentIndex(idx)
+        self.blade_combo.blockSignals(False)
+
+        self._update_thickness_for_blade()
+
+    def _update_thickness_for_blade(self):
+        """Oppdaterer tykkelse-spin basert på valgt dørbladtype.
+        Readonly uten piler når bare 1 valg, redigerbar med piler når flere."""
+        blade_key = self.blade_combo.currentData()
+        info = DOOR_BLADE_TYPES.get(blade_key, {})
+        self._blade_thicknesses = info.get('thicknesses', [40])
+
+        multiple = len(self._blade_thicknesses) > 1
+        self.blade_thickness_spin.blockSignals(True)
+        self.blade_thickness_spin.setRange(
+            min(self._blade_thicknesses), max(self._blade_thicknesses)
+        )
+        self.blade_thickness_spin.setValue(self._blade_thicknesses[0])
+        self.blade_thickness_spin.setSingleStep(
+            self._blade_thicknesses[1] - self._blade_thicknesses[0] if multiple else 1
+        )
+        self.blade_thickness_spin.blockSignals(False)
+
+        self.blade_thickness_spin.setReadOnly(not multiple)
+        self.blade_thickness_spin.setButtonSymbols(
+            QSpinBox.ButtonSymbols.UpDownArrows if multiple
+            else QSpinBox.ButtonSymbols.NoButtons
+        )
+
     def _on_type_changed(self):
         """Håndterer endring av dørtype - setter standardmål, karmtyper og fløyer."""
         if self._block_signals:
@@ -322,6 +411,9 @@ class DoorForm(QWidget):
 
         self._block_signals = False
 
+        # Oppdater dørblad basert på ny karmtype
+        self._update_blade_for_karm()
+
         self._update_type_dependent_fields()
         self.values_changed.emit()
 
@@ -336,7 +428,7 @@ class DoorForm(QWidget):
 
         # Spesielle egenskaper synlighet
         is_fire = door_type == 'BD'
-        is_sound = False  # Ingen dedikert lyddør-type lenger
+        is_sound = door_type == 'LDI'
         is_cold = door_type == 'KD'
 
         self.fire_rating_label.setVisible(is_fire)
@@ -371,6 +463,8 @@ class DoorForm(QWidget):
         door.width = self.width_spin.value()
         door.height = self.height_spin.value()
         door.thickness = self.thickness_spin.value()
+        door.blade_type = self.blade_combo.currentData() or "SDI_ROCA"
+        door.blade_thickness = self.blade_thickness_spin.value()
         door.color = self.color_combo.currentData() or ""
         door.swing_direction = self.hinge_combo.currentData() or "left"
         door.glass = self.glass_check.isChecked()
@@ -417,6 +511,14 @@ class DoorForm(QWidget):
         self.width_spin.setValue(door.width)
         self.height_spin.setValue(door.height)
         self.thickness_spin.setValue(door.thickness)
+
+        # Dørblad og tykkelse
+        self._update_blade_for_karm()
+        idx = self.blade_combo.findData(door.blade_type)
+        if idx >= 0:
+            self.blade_combo.setCurrentIndex(idx)
+        self._update_thickness_for_blade()
+        self.blade_thickness_spin.setValue(door.blade_thickness)
 
         # Farge
         idx = self.color_combo.findData(door.color)

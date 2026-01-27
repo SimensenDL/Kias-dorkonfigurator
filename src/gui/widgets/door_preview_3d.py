@@ -139,7 +139,7 @@ class DoorPreview3D(QWidget):
         w = door.width * s
         h = door.height * s
         frame_depth = door.thickness * s  # Karmdybde = veggtykkelse
-        blade_t = self.DOOR_BLADE_THICKNESS * s  # Dørblad fast 40mm
+        blade_t = door.blade_thickness * s  # Dørbladtykkelse fra parametere
 
         # Bygg scenen i rekkefølge: opake elementer først, transparente sist
         self._add_frame(w, h, frame_depth)
