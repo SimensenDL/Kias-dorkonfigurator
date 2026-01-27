@@ -32,7 +32,7 @@ DEFAULT_DIMENSIONS = {
     'SK':   {'width': 1200, 'height': 2100, 'thickness': 50},   # SK1: ikke dokumentert
     'BD':   {'width': 900, 'height': 2100, 'thickness': 100},   # SD1: 70-110 mm
     'BR':   {'width': 900, 'height': 2100, 'thickness': 40},    # BR1: 40-44 mm
-    'FD':   {'width': 1000, 'height': 2100, 'thickness': 100},  # SD1 antatt: 70-110 mm
+    'FD':   {'width': 1000, 'height': 2100, 'thickness': 100},  # FD1: 77 mm karmdybde
     'BO':   {'width': 900, 'height': 2100, 'thickness': 50},    # BO1: ikke dokumentert
     'LDI':  {'width': 900, 'height': 2100, 'thickness': 100},   # SD1: 70-110 mm
     'RD':   {'width': 900, 'height': 2100, 'thickness': 100},   # SD1: 70-110 mm
@@ -46,7 +46,7 @@ DOOR_KARM_TYPES = {
     'SK':   ['SK1'],
     'BD':   ['SD1'],
     'BR':   ['BR1'],
-    'FD':   ['SD1', 'SD2', 'SD3/ID1'],  # Antatt – ikke spesifisert i dokumentasjon
+    'FD':   ['FD1', 'FDI1', 'FD3'],
     'BO':   ['BO1'],
     'LDI':  ['SD1', 'SD2', 'SD3/ID1'],
     'RD':   ['SD1', 'SD2', 'SD3/ID1'],
@@ -82,7 +82,7 @@ DOOR_BLADE_TYPES = {
     },
     'SKD_STYRESPOR': {
         'name': 'Skyvedørblad m/styrespor',
-        'thicknesses': [40],
+        'thicknesses': [40, 60],
     },
     'PDI_ISOLERT': {
         'name': 'Isolert pendeldørblad',
@@ -98,7 +98,7 @@ DOOR_BLADE_TYPES = {
     },
     'BD_ROCKWOOL': {
         'name': 'Branndørblad m/Rockwool',
-        'thicknesses': [40],
+        'thicknesses': [52],
     },
     'RD_BLY': {
         'name': 'Røntgendørblad m/blyinnlegg',
@@ -107,6 +107,18 @@ DOOR_BLADE_TYPES = {
     'LDI_LYD': {
         'name': 'Lyddørblad m/lyddempning',
         'thicknesses': [40],
+    },
+    'FD_YTTER': {
+        'name': 'Fjøs ytterdørblad',
+        'thicknesses': [60],
+    },
+    'FD_INNER': {
+        'name': 'Fjøs innerdørblad',
+        'thicknesses': [40],
+    },
+    'BO_ISOLERT': {
+        'name': 'Boddørblad isolert',
+        'thicknesses': [60],
     },
 }
 
@@ -122,7 +134,10 @@ KARM_BLADE_TYPES = {
     'PD2':     ['PDI_ISOLERT', 'PDPC_POLY', 'PDPO_OPAL'],
     'SK1':     ['SKD_STYRESPOR'],
     'BR1':     ['SDI_ROCA', 'SDI_SNAPIN'],
-    'BO1':     ['SDI_ROCA', 'SDI_SNAPIN'],
+    'BO1':     ['BO_ISOLERT'],
+    'FD1':     ['FD_YTTER'],
+    'FDI1':    ['FD_INNER'],
+    'FD3':     ['FD_YTTER'],
 }
 
 # Dørtype-spesifikke dørbladtyper (overstyrer karm-basert oppslag)
