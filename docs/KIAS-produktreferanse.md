@@ -601,7 +601,75 @@ Følgende dørtyper/karmer har brutt kuldebro:
 
 ---
 
-## Vedlegg: Produktkoder brukt i ordrelinjer
+## Vedlegg A: Kjente uklarheter i dokumentasjonen
+
+> **Merk:** Disse punktene representerer reelle konflikter eller mangler mellom kildedokumentene.
+> Bør avklares med Kvanne Industrier før de implementeres som faste regler i konfiguratoren.
+
+### Uklarhet 1: Branndør (BD) — karmtype SD1 eller BD1?
+
+| Kilde | Karmtype |
+|---|---|
+| `kvanne-dortyper-dokumentasjon.md` | **SD1** |
+| `Ordrelinjetekster-eksempel.md` (ordrelinje) | **BD1** |
+| `Ordrelinjetekster-eksempel.md` (karmdybde-tabell) | Lister **BD1/BD2** som egne koder |
+
+Dørtype-dokumentet angir at branndør bruker SD1-karm, men ordrelinjene bruker BD1 som karmkode. BD1/BD2 er aldri definert i karmtype-dokumentet. Det er uklart om BD1 er en egen karmtype med brannspesifikke egenskaper, eller bare en SD1 med annen merking.
+
+**Anbefaling for konfigurator:** Inntil avklart, behandle BD1 som en SD1-variant (samme karmdybde 77 mm + 7 mm gerikt).
+
+---
+
+### Uklarhet 2: Udefinerte karmtyper
+
+Følgende karmtyper refereres i kildedokumentene, men har **ingen spesifikasjon** i karmtype-dokumentet:
+
+| Karmtype | Referert fra | Antatt bruksområde |
+|---|---|---|
+| **BD1, BD2** | Ordrelinjer (karmdybde-tabell + branndør-oppføring) | Branndør |
+| **SK1** | Dørtype-dokumentasjon | Skyvedør |
+| **BO1** | Dørtype-dokumentasjon + ordrelinjer | Boddør (115 mm karmdybde) |
+| **YD1** | Ordrelinjer | Ytterdør, badstudør |
+| **FD1** | Ordrelinjer | Fjøs ytterdør |
+| **FDI1** | Ordrelinjer | Fjøs innerdør |
+| **YD3, FD3** | Ordrelinjer (karmdybde-tabell) | Smygkarm ytter/fjøs (84 mm) |
+| **PD3, PD4, PD5** | Dørtype- og dørblad-dokumentasjon | Pendeldør polykarbonat |
+| **IL1** | Ordrelinjer | Inspeksjonsluke |
+| **KL1** | Ordrelinjer | Kjøleluke |
+| **VI1** | Ordrelinjer | Vindu |
+| **VK1** | Ordrelinjer | Vindu kjølerom |
+
+Kun **SD1, SD2, SD3/ID1, KD1, KD2, KD3, PD1, PD2 og BR1** er fullstendig dokumentert med mål, utforinger og egenskaper.
+
+**Anbefaling for konfigurator:** Bruk karmdybder fra ordrelinje-tabellen (seksjon 4) for udefinerte karmtyper. Detaljerte egenskaper (utforingsalternativer, veggtykkelser) er ukjente og bør ikke antas.
+
+---
+
+### Uklarhet 3: Fjøsdør — karmtype mangler i dørtype-dokumentet
+
+| Kilde | Karmtype |
+|---|---|
+| `kvanne-dortyper-dokumentasjon.md` | **"Ikke spesifisert"** |
+| `Ordrelinjetekster-eksempel.md` | **FD1** (ytter), **FDI1** (inner) |
+
+Dørtype-dokumentet angir ingen karmtype for fjøsdør, mens ordrelinjene bruker konkrete koder. FD1 har brutt kuldebro og 77 mm karmdybde (fra ordrelinjer).
+
+---
+
+### Ikke-konflikter (forklaring)
+
+Følgende ble opprinnelig identifisert som mulige konflikter, men er det ikke:
+
+| Observasjon | Forklaring |
+|---|---|
+| BO har ulike hengsler i ulike ordrelinjer (ROCA vs Argenta) | Ordrelinjene er eksempler — begge hengseltyper er gyldige valg for BO |
+| BO har ulik låsekasse i dørtype-dok (LK565) vs ordrelinjer (3065/316L) | Ordrelinjene viser én mulig konfigurasjon — begge låsekasser er tilgjengelige |
+| KD vises med kun 60 mm i ordrelinjer, men dørblad-dok sier 40+60 mm | Ordrelinjeeksempelet viser standard (60 mm) — 40 mm er også tilgjengelig |
+| Q5 har BT=BM (ingen differanse i mål) | Kan være spesifikk konfigurasjon eller annen målkonvensjon |
+
+---
+
+## Vedlegg B: Produktkoder brukt i ordrelinjer
 
 | Kode | Produkt |
 |------|---------|

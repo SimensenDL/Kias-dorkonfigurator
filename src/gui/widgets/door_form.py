@@ -1,11 +1,11 @@
 """
 Parameterskjema for dørkonfigurasjon.
-Viser input-felt for dørtype, mål, farge og tilleggsutstyr.
+Viser input-felt for dørtype, mål, farge, beslag og tilleggsutstyr.
 """
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QComboBox, QSpinBox, QCheckBox, QLineEdit, QLabel, QTextEdit,
-    QStyledItemDelegate, QStyle
+    QStyledItemDelegate, QStyle, QDoubleSpinBox
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QRect
 from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
@@ -13,10 +13,15 @@ from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
 from ...utils.constants import (
     DOOR_TYPES, DEFAULT_DIMENSIONS, RAL_COLORS,
     SWING_DIRECTIONS, FIRE_RATINGS, SOUND_RATINGS,
-    THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE,
-    DOOR_KARM_TYPES, DOOR_FLOYER,
+    THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE, THRESHOLD_HEIGHT,
+    DOOR_KARM_TYPES, DOOR_FLOYER, DOOR_THRESHOLD_TYPES,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_TYPE_BLADE_OVERRIDE,
-    MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS
+    MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
+    HINGE_TYPES, DOOR_HINGE_DEFAULTS, LOCK_CASES, DOOR_LOCK_CASE_DEFAULTS,
+    HANDLE_TYPES, DOOR_HANDLE_DEFAULTS, ESPAGNOLETT_TYPES,
+    DOOR_U_VALUES, BRUTT_KULDEBRO_KARM, BRUTT_KULDEBRO_DORRAMME,
+    DIMENSION_DIFFERENTIALS, LEAD_THICKNESSES,
+    SURFACE_TYPES
 )
 from ...models.door import DoorParams
 
@@ -106,26 +111,41 @@ class DoorForm(QWidget):
 
         self.floyer_combo = QComboBox()
         self.floyer_combo.setMinimumWidth(100)
-        self.floyer_combo.currentIndexChanged.connect(self._on_changed)
+        self.floyer_combo.currentIndexChanged.connect(self._on_floyer_changed)
         karm_floyer_layout.addWidget(self.floyer_combo)
 
         door_layout.addRow("Karmtype:", karm_floyer_widget)
 
         self.width_spin = QSpinBox()
         self.width_spin.setRange(MIN_WIDTH, MAX_WIDTH)
-        self.width_spin.setValue(900)
+        self.width_spin.setValue(1010)
         self.width_spin.setSuffix(" mm")
         self.width_spin.setSingleStep(50)
-        self.width_spin.valueChanged.connect(self._on_changed)
-        door_layout.addRow("Utsparing bredde:", self.width_spin)
+        self.width_spin.valueChanged.connect(self._on_dimension_changed)
+        door_layout.addRow("Utsparing bredde (BM):", self.width_spin)
 
         self.height_spin = QSpinBox()
         self.height_spin.setRange(MIN_HEIGHT, MAX_HEIGHT)
-        self.height_spin.setValue(2100)
+        self.height_spin.setValue(2110)
         self.height_spin.setSuffix(" mm")
         self.height_spin.setSingleStep(50)
-        self.height_spin.valueChanged.connect(self._on_changed)
-        door_layout.addRow("Utsparing høyde:", self.height_spin)
+        self.height_spin.valueChanged.connect(self._on_dimension_changed)
+        door_layout.addRow("Utsparing høyde (HM):", self.height_spin)
+
+        # Transportmål (beregnet, readonly)
+        transport_widget = QWidget()
+        transport_layout = QHBoxLayout(transport_widget)
+        transport_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.transport_width_label = QLabel("— mm")
+        self.transport_height_label = QLabel("— mm")
+        transport_layout.addWidget(QLabel("B:"))
+        transport_layout.addWidget(self.transport_width_label)
+        transport_layout.addWidget(QLabel("  H:"))
+        transport_layout.addWidget(self.transport_height_label)
+        transport_layout.addStretch()
+
+        door_layout.addRow("Transportmål (BT×HT):", transport_widget)
 
         self.thickness_spin = QSpinBox()
         self.thickness_spin.setRange(MIN_THICKNESS, MAX_THICKNESS)
@@ -160,17 +180,12 @@ class DoorForm(QWidget):
         threshold_layout.setContentsMargins(0, 0, 0, 0)
 
         self.threshold_combo = QComboBox()
-        for key, name in THRESHOLD_TYPES.items():
-            self.threshold_combo.addItem(name, key)
-        idx = self.threshold_combo.findData("standard")
-        if idx >= 0:
-            self.threshold_combo.setCurrentIndex(idx)
         self.threshold_combo.currentIndexChanged.connect(self._on_threshold_changed)
         threshold_layout.addWidget(self.threshold_combo, stretch=1)
 
         self.luftspalte_spin = QSpinBox()
-        self.luftspalte_spin.setRange(1, 100)
-        self.luftspalte_spin.setValue(22)
+        self.luftspalte_spin.setRange(0, 100)
+        self.luftspalte_spin.setValue(0)
         self.luftspalte_spin.setSuffix(" mm")
         self.luftspalte_spin.setSingleStep(1)
         self.luftspalte_spin.setReadOnly(True)
@@ -200,6 +215,45 @@ class DoorForm(QWidget):
 
         layout.addWidget(look_group)
 
+        # --- Beslag og lås ---
+        hardware_group = QGroupBox("Beslag og lås")
+        hardware_layout = QFormLayout(hardware_group)
+
+        self.hinge_type_combo = QComboBox()
+        for key, name in HINGE_TYPES.items():
+            self.hinge_type_combo.addItem(name, key)
+        self.hinge_type_combo.currentIndexChanged.connect(self._on_changed)
+        hardware_layout.addRow("Hengseltype:", self.hinge_type_combo)
+
+        self.hinge_count_spin = QSpinBox()
+        self.hinge_count_spin.setRange(0, 6)
+        self.hinge_count_spin.setValue(2)
+        self.hinge_count_spin.setSuffix(" stk")
+        self.hinge_count_spin.valueChanged.connect(self._on_changed)
+        hardware_layout.addRow("Antall hengsler:", self.hinge_count_spin)
+
+        self.lock_case_combo = QComboBox()
+        for key, name in LOCK_CASES.items():
+            self.lock_case_combo.addItem(name, key)
+        self.lock_case_combo.currentIndexChanged.connect(self._on_changed)
+        hardware_layout.addRow("Låsekasse:", self.lock_case_combo)
+
+        self.handle_combo = QComboBox()
+        for key, name in HANDLE_TYPES.items():
+            self.handle_combo.addItem(name, key)
+        self.handle_combo.currentIndexChanged.connect(self._on_changed)
+        hardware_layout.addRow("Vrider/skilt:", self.handle_combo)
+
+        # Espagnolett (kun for 2-fløya)
+        self.espagnolett_combo = QComboBox()
+        for key, name in ESPAGNOLETT_TYPES.items():
+            self.espagnolett_combo.addItem(name, key)
+        self.espagnolett_combo.currentIndexChanged.connect(self._on_changed)
+        self.espagnolett_label = QLabel("Espagnolett:")
+        hardware_layout.addRow(self.espagnolett_label, self.espagnolett_combo)
+
+        layout.addWidget(hardware_group)
+
         # --- Tillegg ---
         extras_group = QGroupBox("Tillegg")
         extras_layout = QFormLayout(extras_group)
@@ -213,11 +267,6 @@ class DoorForm(QWidget):
         self.glass_type_edit.textChanged.connect(self._on_changed)
         self.glass_type_label = QLabel("Glasstype:")
         extras_layout.addRow(self.glass_type_label, self.glass_type_edit)
-
-        self.lock_edit = QLineEdit()
-        self.lock_edit.setPlaceholderText("F.eks. ABLOY")
-        self.lock_edit.textChanged.connect(self._on_changed)
-        extras_layout.addRow("Låstype:", self.lock_edit)
 
         layout.addWidget(extras_group)
 
@@ -239,12 +288,29 @@ class DoorForm(QWidget):
         self.sound_rating_label = QLabel("Lydklasse:")
         special_layout.addRow(self.sound_rating_label, self.sound_rating_combo)
 
-        self.insulation_spin = QSpinBox()
-        self.insulation_spin.setRange(0, 100)
+        # U-verdi (readonly, automatisk fra dørtype)
+        self.insulation_spin = QDoubleSpinBox()
+        self.insulation_spin.setRange(0.0, 10.0)
+        self.insulation_spin.setDecimals(2)
         self.insulation_spin.setSuffix(" W/m²K")
-        self.insulation_spin.valueChanged.connect(self._on_changed)
+        self.insulation_spin.setReadOnly(True)
+        self.insulation_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         self.insulation_label = QLabel("U-verdi:")
         special_layout.addRow(self.insulation_label, self.insulation_spin)
+
+        # Brutt kuldebro indikator (readonly)
+        self.kuldebro_label = QLabel("Brutt kuldebro:")
+        self.kuldebro_value = QLabel("Nei")
+        special_layout.addRow(self.kuldebro_label, self.kuldebro_value)
+
+        # Blyinnlegg for røntgendør
+        self.lead_combo = QComboBox()
+        self.lead_combo.addItem("(ingen)", 0)
+        for mm in LEAD_THICKNESSES:
+            self.lead_combo.addItem(f"{mm} mm", mm)
+        self.lead_combo.currentIndexChanged.connect(self._on_changed)
+        self.lead_label = QLabel("Blyinnlegg:")
+        special_layout.addRow(self.lead_label, self.lead_combo)
 
         layout.addWidget(self.special_group)
 
@@ -267,6 +333,7 @@ class DoorForm(QWidget):
         for f in DOOR_FLOYER.get(initial_type, [1]):
             self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
         self._update_blade_for_karm()
+        self._update_threshold_for_type()
 
         # Sett standardmål fra DEFAULT_DIMENSIONS for initial dørtype
         initial_defaults = DEFAULT_DIMENSIONS.get(initial_type, {})
@@ -275,8 +342,12 @@ class DoorForm(QWidget):
             self.height_spin.setValue(initial_defaults['height'])
             self.thickness_spin.setValue(initial_defaults['thickness'])
 
+        # Sett beslag-standardverdier
+        self._apply_hardware_defaults(initial_type)
+
         # Initial visning av typeavhengige felt
         self._update_type_dependent_fields()
+        self._update_transport_labels()
 
     def _populate_color_combo(self, combo: QComboBox):
         """Fyller en farge-combobox med RAL-farger og fargeruter."""
@@ -296,11 +367,103 @@ class DoorForm(QWidget):
             display_text = f"      {code} - {info['name']}"
             combo.addItem(icon, display_text, code)
 
+    def _apply_hardware_defaults(self, door_type: str):
+        """Setter beslag-standardverdier basert på dørtype."""
+        self._block_signals = True
+
+        # Hengsler
+        hinge_defaults = DOOR_HINGE_DEFAULTS.get(door_type)
+        if hinge_defaults:
+            hinge_key, count_1, count_2 = hinge_defaults
+            if hinge_key:
+                idx = self.hinge_type_combo.findData(hinge_key)
+                if idx >= 0:
+                    self.hinge_type_combo.setCurrentIndex(idx)
+            floyer = self.floyer_combo.currentData() or 1
+            self.hinge_count_spin.setValue(count_1 if floyer == 1 else count_2)
+
+        # Låsekasse
+        lock_default = DOOR_LOCK_CASE_DEFAULTS.get(door_type, '')
+        idx = self.lock_case_combo.findData(lock_default)
+        if idx >= 0:
+            self.lock_case_combo.setCurrentIndex(idx)
+
+        # Vrider/skilt
+        handle_default = DOOR_HANDLE_DEFAULTS.get(door_type, '')
+        idx = self.handle_combo.findData(handle_default)
+        if idx >= 0:
+            self.handle_combo.setCurrentIndex(idx)
+
+        # U-verdi
+        u_value = DOOR_U_VALUES.get(door_type, 0.0)
+        self.insulation_spin.setValue(u_value)
+
+        self._block_signals = False
+
+    def _update_threshold_for_type(self):
+        """Oppdaterer terskel-dropdown med tillatte typer for valgt dørtype."""
+        door_type = self.door_type_combo.currentData()
+        allowed = DOOR_THRESHOLD_TYPES.get(door_type, list(THRESHOLD_TYPES.keys()))
+
+        old_threshold = self.threshold_combo.currentData()
+        self.threshold_combo.blockSignals(True)
+        self.threshold_combo.clear()
+        for key in allowed:
+            name = THRESHOLD_TYPES.get(key, key)
+            self.threshold_combo.addItem(name, key)
+        # Forsøk å beholde forrige valg
+        idx = self.threshold_combo.findData(old_threshold)
+        if idx >= 0:
+            self.threshold_combo.setCurrentIndex(idx)
+        self.threshold_combo.blockSignals(False)
+
+    def _update_transport_labels(self):
+        """Oppdaterer transportmål-etikettene basert på nåværende mål."""
+        door_type = self.door_type_combo.currentData()
+        floyer = self.floyer_combo.currentData() or 1
+        bm = self.width_spin.value()
+        hm = self.height_spin.value()
+
+        diffs = DIMENSION_DIFFERENTIALS.get(door_type, {})
+        diff = diffs.get(floyer)
+        if diff:
+            bt = bm - diff[0]
+            ht = hm - diff[1]
+            self.transport_width_label.setText(f"{bt} mm")
+            self.transport_height_label.setText(f"{ht} mm")
+        else:
+            self.transport_width_label.setText("—")
+            self.transport_height_label.setText("—")
+
     def _on_changed(self):
         """Sender signal når verdier endres."""
         if not self._block_signals:
             self._update_type_dependent_fields()
             self.values_changed.emit()
+
+    def _on_dimension_changed(self):
+        """Håndterer endring av dimensjoner - oppdaterer transportmål."""
+        if not self._block_signals:
+            self._update_transport_labels()
+            self._on_changed()
+
+    def _on_floyer_changed(self):
+        """Håndterer endring av antall fløyer."""
+        if self._block_signals:
+            return
+        self._update_transport_labels()
+
+        # Oppdater espagnolett-synlighet og hengseltall
+        door_type = self.door_type_combo.currentData()
+        floyer = self.floyer_combo.currentData() or 1
+        hinge_defaults = DOOR_HINGE_DEFAULTS.get(door_type)
+        if hinge_defaults:
+            _, count_1, count_2 = hinge_defaults
+            self._block_signals = True
+            self.hinge_count_spin.setValue(count_1 if floyer == 1 else count_2)
+            self._block_signals = False
+
+        self._on_changed()
 
     def _on_threshold_changed(self):
         """Håndterer endring av terskeltype - oppdaterer luftspalte."""
@@ -309,7 +472,7 @@ class DoorForm(QWidget):
 
         threshold_key = self.threshold_combo.currentData()
         is_luftspalte = (threshold_key == 'luftspalte')
-        luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 22)
+        luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 0)
 
         self.luftspalte_spin.setReadOnly(not is_luftspalte)
         self.luftspalte_spin.setButtonSymbols(
@@ -327,6 +490,10 @@ class DoorForm(QWidget):
         if self._block_signals:
             return
         self._update_blade_for_karm()
+
+        # Oppdater brutt kuldebro
+        self._update_kuldebro_indicator()
+
         self._on_changed()
 
     def _on_blade_changed(self):
@@ -383,6 +550,14 @@ class DoorForm(QWidget):
             else QSpinBox.ButtonSymbols.NoButtons
         )
 
+    def _update_kuldebro_indicator(self):
+        """Oppdaterer brutt kuldebro-indikator."""
+        door_type = self.door_type_combo.currentData()
+        karm_type = self.karm_combo.currentData() or ""
+        has_kuldebro = (karm_type in BRUTT_KULDEBRO_KARM or
+                        door_type in BRUTT_KULDEBRO_DORRAMME)
+        self.kuldebro_value.setText("Ja" if has_kuldebro else "Nei")
+
     def _on_type_changed(self):
         """Håndterer endring av dørtype - setter standardmål, karmtyper og fløyer."""
         if self._block_signals:
@@ -414,32 +589,57 @@ class DoorForm(QWidget):
         # Oppdater dørblad basert på ny karmtype
         self._update_blade_for_karm()
 
+        # Oppdater terskeltyper for denne dørtypen
+        self._update_threshold_for_type()
+
+        # Oppdater beslag-standarder
+        self._apply_hardware_defaults(door_type)
+
+        # Oppdater kuldebro
+        self._update_kuldebro_indicator()
+
+        # Oppdater transportmål
+        self._update_transport_labels()
+
         self._update_type_dependent_fields()
         self.values_changed.emit()
 
     def _update_type_dependent_fields(self):
         """Viser/skjuler felt basert på valgt dørtype."""
         door_type = self.door_type_combo.currentData()
+        floyer = self.floyer_combo.currentData() or 1
 
         # Glass-felt synlighet
         has_glass = self.glass_check.isChecked()
         self.glass_type_label.setVisible(has_glass)
         self.glass_type_edit.setVisible(has_glass)
 
+        # Espagnolett synlighet (kun for 2-fløya)
+        is_two_leaf = (floyer == 2)
+        self.espagnolett_label.setVisible(is_two_leaf)
+        self.espagnolett_combo.setVisible(is_two_leaf)
+
         # Spesielle egenskaper synlighet
         is_fire = door_type == 'BD'
         is_sound = door_type == 'LDI'
-        is_cold = door_type == 'KD'
+        is_xray = door_type == 'RD'
+        has_u_value = DOOR_U_VALUES.get(door_type, 0.0) > 0
 
         self.fire_rating_label.setVisible(is_fire)
         self.fire_rating_combo.setVisible(is_fire)
         self.sound_rating_label.setVisible(is_sound)
         self.sound_rating_combo.setVisible(is_sound)
-        self.insulation_label.setVisible(is_cold)
-        self.insulation_spin.setVisible(is_cold)
+        self.insulation_label.setVisible(has_u_value)
+        self.insulation_spin.setVisible(has_u_value)
+        self.lead_label.setVisible(is_xray)
+        self.lead_combo.setVisible(is_xray)
+
+        # Brutt kuldebro vises alltid
+        self._update_kuldebro_indicator()
 
         # Vis/skjul hele spesialgruppen
-        self.special_group.setVisible(is_fire or is_sound or is_cold)
+        show_special = is_fire or is_sound or has_u_value or is_xray or True  # Alltid vis pga kuldebro
+        self.special_group.setVisible(show_special)
 
         # Terskel/luftspalte aktivering
         threshold_key = self.threshold_combo.currentData()
@@ -450,7 +650,7 @@ class DoorForm(QWidget):
             else QSpinBox.ButtonSymbols.NoButtons
         )
         if not is_luftspalte:
-            luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 22)
+            luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 0)
             self.luftspalte_spin.setValue(luftspalte_value)
 
     def update_door(self, door: DoorParams) -> None:
@@ -467,17 +667,28 @@ class DoorForm(QWidget):
         door.blade_thickness = self.blade_thickness_spin.value()
         door.color = self.color_combo.currentData() or ""
         door.swing_direction = self.hinge_combo.currentData() or "left"
+
+        # Beslag
+        door.hinge_type = self.hinge_type_combo.currentData() or ""
+        door.hinge_count = self.hinge_count_spin.value()
+        door.lock_case = self.lock_case_combo.currentData() or ""
+        door.handle_type = self.handle_combo.currentData() or ""
+        door.espagnolett = self.espagnolett_combo.currentData() or "ingen"
+
+        # Tillegg
         door.glass = self.glass_check.isChecked()
         door.glass_type = self.glass_type_edit.text()
-        door.lock_type = self.lock_edit.text()
         door.threshold_type = self.threshold_combo.currentData() or "standard"
         if door.threshold_type == 'luftspalte':
             door.luftspalte = self.luftspalte_spin.value()
         else:
-            door.luftspalte = THRESHOLD_LUFTSPALTE.get(door.threshold_type, 22)
+            door.luftspalte = THRESHOLD_LUFTSPALTE.get(door.threshold_type, 0)
+
+        # Spesielle egenskaper
         door.fire_rating = self.fire_rating_combo.currentData() or ""
         door.sound_rating = self.sound_rating_combo.currentData() or 0
-        door.insulation_value = float(self.insulation_spin.value())
+        door.insulation_value = self.insulation_spin.value()
+        door.lead_thickness = self.lead_combo.currentData() or 0
         door.notes = self.notes_edit.toPlainText()
 
     def load_door(self, door: DoorParams) -> None:
@@ -520,6 +731,14 @@ class DoorForm(QWidget):
         self._update_thickness_for_blade()
         self.blade_thickness_spin.setValue(door.blade_thickness)
 
+        # Terskel
+        self._update_threshold_for_type()
+        idx = self.threshold_combo.findData(door.threshold_type)
+        if idx >= 0:
+            self.threshold_combo.setCurrentIndex(idx)
+        if door.threshold_type == 'luftspalte':
+            self.luftspalte_spin.setValue(door.luftspalte)
+
         # Farge
         idx = self.color_combo.findData(door.color)
         if idx >= 0:
@@ -530,17 +749,24 @@ class DoorForm(QWidget):
         if idx >= 0:
             self.hinge_combo.setCurrentIndex(idx)
 
+        # Beslag
+        idx = self.hinge_type_combo.findData(door.hinge_type)
+        if idx >= 0:
+            self.hinge_type_combo.setCurrentIndex(idx)
+        self.hinge_count_spin.setValue(door.hinge_count)
+        idx = self.lock_case_combo.findData(door.lock_case)
+        if idx >= 0:
+            self.lock_case_combo.setCurrentIndex(idx)
+        idx = self.handle_combo.findData(door.handle_type)
+        if idx >= 0:
+            self.handle_combo.setCurrentIndex(idx)
+        idx = self.espagnolett_combo.findData(door.espagnolett)
+        if idx >= 0:
+            self.espagnolett_combo.setCurrentIndex(idx)
+
         # Tillegg
         self.glass_check.setChecked(door.glass)
         self.glass_type_edit.setText(door.glass_type)
-        self.lock_edit.setText(door.lock_type)
-        # Terskeltype
-        idx = self.threshold_combo.findData(door.threshold_type)
-        if idx >= 0:
-            self.threshold_combo.setCurrentIndex(idx)
-        # Luftspalte (kun relevant for 'luftspalte'-typen)
-        if door.threshold_type == 'luftspalte':
-            self.luftspalte_spin.setValue(door.luftspalte)
 
         # Spesielle
         idx = self.fire_rating_combo.findData(door.fire_rating)
@@ -549,10 +775,15 @@ class DoorForm(QWidget):
         idx = self.sound_rating_combo.findData(door.sound_rating)
         if idx >= 0:
             self.sound_rating_combo.setCurrentIndex(idx)
-        self.insulation_spin.setValue(int(door.insulation_value))
+        self.insulation_spin.setValue(door.insulation_value)
+        idx = self.lead_combo.findData(door.lead_thickness)
+        if idx >= 0:
+            self.lead_combo.setCurrentIndex(idx)
 
         # Merknader
         self.notes_edit.setPlainText(door.notes)
 
         self._block_signals = False
         self._update_type_dependent_fields()
+        self._update_transport_labels()
+        self._update_kuldebro_indicator()

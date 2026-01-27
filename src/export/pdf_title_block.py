@@ -115,9 +115,12 @@ def draw_title_block(c: canvas.Canvas, x: float, y: float,
                      "Tegn. dato:",
                      datetime.now().strftime("%d.%m.%y"), pad)
 
+    bt = door.transport_width()
+    ht = door.transport_height()
+    dim_text = f"BM {door.width}x{door.height} / BT {bt}x{ht}"
     _draw_bottom_box(c, x + box_w, four_box_bottom, box_w, box_h,
-                     "Mål (BxH):",
-                     f"{door.width}x{door.height}", pad)
+                     "Mål (BM/BT):",
+                     dim_text, pad)
 
     scale_text = f"1 : {int(scale)}" if show_scale else "-"
     _draw_bottom_box(c, x + 2 * box_w, four_box_bottom, box_w, box_h,

@@ -9,7 +9,7 @@ from reportlab.lib.colors import black, Color
 from reportlab.pdfgen import canvas
 
 from ..models.door import DoorParams
-from ..utils.constants import DOOR_TYPES
+from ..utils.constants import DOOR_TYPES, HINGE_TYPES, LOCK_CASES, HANDLE_TYPES
 from .pdf_constants import (
     A3_WIDTH, A3_HEIGHT, A3_MARGIN,
     COLOR_DOOR_FILL, COLOR_DOOR_STROKE, COLOR_FRAME_FILL,
@@ -147,20 +147,32 @@ def _draw_door(c: canvas.Canvas, door: DoorParams,
     c.setLineWidth(0.5)
     c.rect(handle_x, handle_y, handle_w, handle_h, fill=1, stroke=1)
 
-    # Hengsler (3 stk)
-    hinge_w = w * 0.02
-    hinge_h = h * 0.02
-    hinge_positions = [0.15, 0.5, 0.85]
+    # Hengsler (antall basert på dørtype)
+    hinge_count = door.hinge_count
+    if hinge_count > 0:
+        hinge_w = w * 0.02
+        hinge_h = h * 0.02
 
-    if door.swing_direction == 'left':
-        hinge_x = x - hinge_w / 2
-    else:
-        hinge_x = x + w - hinge_w / 2
+        # Fordel hengsler jevnt
+        if hinge_count == 1:
+            hinge_positions = [0.5]
+        elif hinge_count == 2:
+            hinge_positions = [0.15, 0.85]
+        elif hinge_count == 3:
+            hinge_positions = [0.15, 0.5, 0.85]
+        else:
+            step = 0.7 / (hinge_count - 1) if hinge_count > 1 else 0
+            hinge_positions = [0.15 + i * step for i in range(hinge_count)]
 
-    c.setFillColor(COLOR_HINGE)
-    for pos in hinge_positions:
-        hinge_y = y + h * pos - hinge_h / 2
-        c.rect(hinge_x, hinge_y, hinge_w, hinge_h, fill=1, stroke=1)
+        if door.swing_direction == 'left':
+            hinge_x = x - hinge_w / 2
+        else:
+            hinge_x = x + w - hinge_w / 2
+
+        c.setFillColor(COLOR_HINGE)
+        for pos in hinge_positions:
+            hinge_y = y + h * pos - hinge_h / 2
+            c.rect(hinge_x, hinge_y, hinge_w, hinge_h, fill=1, stroke=1)
 
 
 def _draw_dimensions(c: canvas.Canvas, door: DoorParams,
