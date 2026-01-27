@@ -7,7 +7,7 @@ from typing import Optional
 from datetime import datetime
 
 from ..utils.constants import (
-    DEFAULT_DIMENSIONS, DEFAULT_COLOR_OUTSIDE, DEFAULT_COLOR_INSIDE
+    DEFAULT_DIMENSIONS, DEFAULT_COLOR, THRESHOLD_LUFTSPALTE
 )
 
 
@@ -23,14 +23,13 @@ class DoorParams:
         width: Dørbredde i mm
         height: Dørhøyde i mm
         thickness: Dørtykkelse i mm
-        color_outside: RAL-farge utside
-        color_inside: RAL-farge innside
+        color: RAL-farge
         surface_type: Overflatetype
         glass: Om døren har glass
         glass_type: Type glass (hvis aktuelt)
         threshold_type: Terskeltype
         lock_type: Låstype
-        hinge_side: Hengsle-side ('left' eller 'right')
+        swing_direction: Slagretning ('left' eller 'right')
         fire_rating: Brannklasse (EI30, EI60 etc.)
         sound_rating: Lydklasse i dB
         insulation_value: U-verdi (W/m²K)
@@ -43,22 +42,24 @@ class DoorParams:
     customer: str = ""
 
     # Dørtype og grunnmål
-    door_type: str = "innerdor"
+    door_type: str = "SDI"
+    karm_type: str = "SD1"
+    floyer: int = 1  # Antall fløyer (1 eller 2)
     width: int = 900
     height: int = 2100
     thickness: int = 40
 
     # Overflate/utseende
-    color_outside: str = DEFAULT_COLOR_OUTSIDE
-    color_inside: str = DEFAULT_COLOR_INSIDE
+    color: str = DEFAULT_COLOR
     surface_type: str = "glatt"
 
     # Tilleggsutstyr
     glass: bool = False
     glass_type: str = ""
-    threshold_type: str = ""
+    threshold_type: str = "standard"
+    luftspalte: int = 22  # Luftspalte i mm, kun redigerbar for terskeltype 'luftspalte'
     lock_type: str = ""
-    hinge_side: str = "left"
+    swing_direction: str = "left"
 
     # Spesielle egenskaper (avhenger av dørtype)
     fire_rating: str = ""
@@ -80,6 +81,15 @@ class DoorParams:
             self.height = defaults['height']
             self.thickness = defaults['thickness']
 
+    def effective_luftspalte(self) -> int:
+        """Returnerer effektiv luftspalte basert på terskeltype.
+        For 'luftspalte'-typen brukes den lagrede verdien,
+        for alle andre typer brukes den faste verdien fra oppslagstabellen.
+        """
+        if self.threshold_type == 'luftspalte':
+            return self.luftspalte
+        return THRESHOLD_LUFTSPALTE.get(self.threshold_type, 22)
+
     def area_m2(self) -> float:
         """Returnerer dørareal i kvadratmeter."""
         return (self.width * self.height) / 1_000_000
@@ -90,17 +100,19 @@ class DoorParams:
             'project_id': self.project_id,
             'customer': self.customer,
             'door_type': self.door_type,
+            'karm_type': self.karm_type,
+            'floyer': self.floyer,
             'width': self.width,
             'height': self.height,
             'thickness': self.thickness,
-            'color_outside': self.color_outside,
-            'color_inside': self.color_inside,
+            'color': self.color,
             'surface_type': self.surface_type,
             'glass': self.glass,
             'glass_type': self.glass_type,
             'threshold_type': self.threshold_type,
+            'luftspalte': self.luftspalte,
             'lock_type': self.lock_type,
-            'hinge_side': self.hinge_side,
+            'swing_direction': self.swing_direction,
             'fire_rating': self.fire_rating,
             'sound_rating': self.sound_rating,
             'insulation_value': self.insulation_value,

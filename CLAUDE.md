@@ -10,19 +10,20 @@ KIAS Dørkonfigurator er en PyQt6 desktop-applikasjon for å konfigurere dører 
 
 ## Kommandoer
 
+**Bruk alltid uv.** Prosjektet bruker [uv](https://docs.astral.sh/uv/) for pakkehåndtering. Avhengigheter defineres i `pyproject.toml`.
+
 ```bash
+# Installer avhengigheter (første gang / etter endringer)
+uv sync
+
 # Kjør applikasjonen
-python main.py
+uv run python main.py
 
-# Installer avhengigheter
-pip install -r requirements.txt
+# Legg til ny avhengighet
+uv add <pakkenavn>
 
-# Opprett virtualenv (første gang)
-python -m venv venv
-venv\Scripts\pip install -r requirements.txt
-
-# Aktiver virtualenv (Windows)
-venv\Scripts\activate
+# Fjern avhengighet
+uv remove <pakkenavn>
 ```
 
 ## Arkitektur
@@ -59,8 +60,12 @@ Dataclass med alle dørparametere: type, mål (mm), farger (RAL), glass, lås, h
 
 ## Avhengigheter
 
+Se `pyproject.toml` for komplett liste. Hovedavhengigheter:
+
 - PyQt6 (GUI)
 - reportlab (PDF-generering)
 - openpyxl (Excel-eksport, planlagt)
 - qt-material (Material Design tema)
 - qtawesome (ikoner)
+- pyqtgraph + PyOpenGL + numpy (3D-visualisering)
+- svglib (SVG-import)

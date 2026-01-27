@@ -13,7 +13,7 @@ PyQt6 desktop-app for å konfigurere KIAS-dører (Kvanne Industrier AS). Brukes 
 
 ---
 
-## Status: Fase 1 FERDIG
+## Status: Fase 1 & 2 FERDIG
 
 ### Implementert filstruktur
 ```
@@ -39,7 +39,8 @@ kias-dørkonfigurator/
 │   │   │   └── theme_manager.py         # Dark/light tema (QSettings: KIASDorkonfigurator)
 │   │   └── widgets/
 │   │       ├── __init__.py
-│   │       └── door_form.py             # Parameterskjema + ColorSwatchDelegate
+│   │       ├── door_form.py             # Parameterskjema + ColorSwatchDelegate
+│   │       └── door_preview_3d.py       # 3D-forhåndsvisning (pyqtgraph/OpenGL)
 │   ├── export/
 │   │   ├── __init__.py
 │   │   ├── pdf_exporter.py              # export_door_pdf() - frontvisning med mål
@@ -101,11 +102,20 @@ Metoder: `to_dict()`, `from_dict()`, `apply_defaults_for_type()`, `area_m2()`
 
 ---
 
-## Fase 2: 3D-visualisering (TODO)
-- Enkel 3D-visning av dør med pyqtgraph/OpenGL
-- Viser dør med valgt farge, glass, beslag
-- Rotérbar visning
-- Erstatter placeholder i "Forhåndsvisning"-tab
+## Status: Fase 2 FERDIG
+
+### Fase 2: 3D-visualisering
+- [x] Interaktiv 3D-visning med pyqtgraph/OpenGL (`src/gui/widgets/door_preview_3d.py`)
+- [x] Dørblad med utside/innside RAL-farge (per-face-farger)
+- [x] Karm (omvendt U-form: venstre stolpe, høyre stolpe, toppstykke)
+- [x] Glasspanel (semi-transparent, vises kun når glass=True)
+- [x] Håndtak (plassert motsatt side av hengsler)
+- [x] 3 hengsler (15%, 50%, 85% av dørhøyden)
+- [x] Rotérbar/zoombar/pannerbar visning med mus
+- [x] Sanntidsoppdatering ved parameterendringer
+- [x] Auto-justert kameraavstand etter dørstørrelse
+- [x] Fallback-tekst hvis pyqtgraph/OpenGL mangler
+- [x] Nye avhengigheter: pyqtgraph, PyOpenGL, numpy
 
 ## Fase 3: Avanserte PDF-tegninger (TODO)
 - Sidevisning og snitt i tillegg til frontvisning

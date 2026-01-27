@@ -112,7 +112,7 @@ def _draw_door(c: canvas.Canvas, door: DoorParams,
            fill=1, stroke=1)
 
     # Dørblad med farge
-    door_color = ral_to_color(door.color_outside)
+    door_color = ral_to_color(door.color)
     c.setFillColor(door_color)
     c.setStrokeColor(COLOR_DOOR_STROKE)
     c.setLineWidth(0.8)
@@ -137,7 +137,7 @@ def _draw_door(c: canvas.Canvas, door: DoorParams,
     # Håndtak
     handle_w = w * 0.04
     handle_h = h * 0.04
-    if door.hinge_side == 'left':
+    if door.swing_direction == 'left':
         handle_x = x + w - w * 0.12
     else:
         handle_x = x + w * 0.08
@@ -152,7 +152,7 @@ def _draw_door(c: canvas.Canvas, door: DoorParams,
     hinge_h = h * 0.02
     hinge_positions = [0.15, 0.5, 0.85]
 
-    if door.hinge_side == 'left':
+    if door.swing_direction == 'left':
         hinge_x = x - hinge_w / 2
     else:
         hinge_x = x + w - hinge_w / 2

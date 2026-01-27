@@ -1,0 +1,16 @@
+[project]
+name = "kias-dorkonfigurator"
+version = "0.1.0"
+description = "Dørkonfigurator for Kvanne Industrier AS (KIAS)"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24.0",
+    "openpyxl>=3.1.0",
+    "pyopengl>=3.1.7",
+    "pyqt6>=6.5.0",
+    "pyqtgraph>=0.13.3",
+    "qt-material>=2.14",
+    "qtawesome>=1.3.0",
+    "reportlab>=4.0.0",
+    "svglib>=1.5.0",
+]

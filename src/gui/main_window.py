@@ -26,6 +26,7 @@ from ..export.pdf_exporter import export_door_pdf
 from ..utils.constants import APP_NAME, APP_VERSION, PROJECT_FILTER, DOOR_TYPES
 
 from .widgets.door_form import DoorForm
+from .widgets.door_preview_3d import DoorPreview3D
 from .styles import ThemeManager, Theme
 
 
@@ -124,15 +125,10 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        # Tab 1: Forhåndsvisning (placeholder)
-        preview_widget = QWidget()
-        preview_layout = QVBoxLayout(preview_widget)
-        self.preview_label = QLabel("Forhåndsvisning kommer her.\n\n"
-                                     "3D-visning av konfigurert dør\n"
-                                     "implementeres i neste fase.")
-        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview_label.setStyleSheet("font-size: 16px; color: #888;")
-        preview_layout.addWidget(self.preview_label)
+        # Tab 1: 3D-forhåndsvisning
+        self.door_preview = DoorPreview3D()
+        self.door_preview.update_door(self.door)
+        preview_widget = self.door_preview
 
         if HAS_ICONS:
             self.tab_widget.addTab(preview_widget,
@@ -255,6 +251,7 @@ class MainWindow(QMainWindow):
         self.door_form.update_door(self.door)
         self.unsaved_changes = True
         self._update_title()
+        self.door_preview.update_door(self.door)
 
     def _update_title(self):
         """Oppdaterer vindustittel."""
@@ -277,6 +274,7 @@ class MainWindow(QMainWindow):
         self.current_file = None
         self.unsaved_changes = False
         self.door_form.load_door(self.door)
+        self.door_preview.update_door(self.door)
         self._update_title()
         self.statusbar.showMessage("Nytt prosjekt opprettet")
 
@@ -296,6 +294,7 @@ class MainWindow(QMainWindow):
                 self.current_file = Path(filepath)
                 self.unsaved_changes = False
                 self.door_form.load_door(self.door)
+                self.door_preview.update_door(self.door)
                 self._update_title()
                 self.statusbar.showMessage(f"Åpnet: {filepath}")
             except Exception as e:
@@ -312,6 +311,7 @@ class MainWindow(QMainWindow):
             self.current_file = Path(filepath)
             self.unsaved_changes = False
             self.door_form.load_door(self.door)
+            self.door_preview.update_door(self.door)
             self._update_title()
             self.statusbar.showMessage(f"Åpnet: {filepath}")
         except Exception as e:

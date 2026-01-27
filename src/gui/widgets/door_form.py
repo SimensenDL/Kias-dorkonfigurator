@@ -8,11 +8,13 @@ from PyQt6.QtWidgets import (
     QStyledItemDelegate, QStyle
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QRect
-from PyQt6.QtGui import QColor, QPen, QIcon
+from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
 
 from ...utils.constants import (
     DOOR_TYPES, DEFAULT_DIMENSIONS, RAL_COLORS,
-    HINGE_SIDES, SURFACE_TYPES, FIRE_RATINGS, SOUND_RATINGS,
+    SWING_DIRECTIONS, FIRE_RATINGS, SOUND_RATINGS,
+    THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE,
+    DOOR_KARM_TYPES, DOOR_FLOYER,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS
 )
 from ...models.door import DoorParams
@@ -73,7 +75,7 @@ class DoorForm(QWidget):
         self.project_id_edit = QLineEdit()
         self.project_id_edit.setPlaceholderText("F.eks. 2025-001")
         self.project_id_edit.textChanged.connect(self._on_changed)
-        project_layout.addRow("Prosjekt-ID:", self.project_id_edit)
+        project_layout.addRow("Dør-ID:", self.project_id_edit)
 
         self.customer_edit = QLineEdit()
         self.customer_edit.setPlaceholderText("Kundenavn")
@@ -92,13 +94,29 @@ class DoorForm(QWidget):
         self.door_type_combo.currentIndexChanged.connect(self._on_type_changed)
         door_layout.addRow("Dørtype:", self.door_type_combo)
 
+        # Karmtype + antall fløyer på samme rad
+        karm_floyer_widget = QWidget()
+        karm_floyer_layout = QHBoxLayout(karm_floyer_widget)
+        karm_floyer_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.karm_combo = QComboBox()
+        self.karm_combo.currentIndexChanged.connect(self._on_changed)
+        karm_floyer_layout.addWidget(self.karm_combo, stretch=1)
+
+        self.floyer_combo = QComboBox()
+        self.floyer_combo.setMinimumWidth(100)
+        self.floyer_combo.currentIndexChanged.connect(self._on_changed)
+        karm_floyer_layout.addWidget(self.floyer_combo)
+
+        door_layout.addRow("Karmtype:", karm_floyer_widget)
+
         self.width_spin = QSpinBox()
         self.width_spin.setRange(MIN_WIDTH, MAX_WIDTH)
         self.width_spin.setValue(900)
         self.width_spin.setSuffix(" mm")
         self.width_spin.setSingleStep(50)
         self.width_spin.valueChanged.connect(self._on_changed)
-        door_layout.addRow("Bredde:", self.width_spin)
+        door_layout.addRow("Utsparing bredde:", self.width_spin)
 
         self.height_spin = QSpinBox()
         self.height_spin.setRange(MIN_HEIGHT, MAX_HEIGHT)
@@ -106,7 +124,7 @@ class DoorForm(QWidget):
         self.height_spin.setSuffix(" mm")
         self.height_spin.setSingleStep(50)
         self.height_spin.valueChanged.connect(self._on_changed)
-        door_layout.addRow("Høyde:", self.height_spin)
+        door_layout.addRow("Utsparing høyde:", self.height_spin)
 
         self.thickness_spin = QSpinBox()
         self.thickness_spin.setRange(MIN_THICKNESS, MAX_THICKNESS)
@@ -114,7 +132,34 @@ class DoorForm(QWidget):
         self.thickness_spin.setSuffix(" mm")
         self.thickness_spin.setSingleStep(5)
         self.thickness_spin.valueChanged.connect(self._on_changed)
-        door_layout.addRow("Tykkelse:", self.thickness_spin)
+        door_layout.addRow("Veggtykkelse:", self.thickness_spin)
+
+        # Terskeltype + luftspalte på samme rad
+        threshold_widget = QWidget()
+        threshold_layout = QHBoxLayout(threshold_widget)
+        threshold_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.threshold_combo = QComboBox()
+        for key, name in THRESHOLD_TYPES.items():
+            self.threshold_combo.addItem(name, key)
+        idx = self.threshold_combo.findData("standard")
+        if idx >= 0:
+            self.threshold_combo.setCurrentIndex(idx)
+        self.threshold_combo.currentIndexChanged.connect(self._on_threshold_changed)
+        threshold_layout.addWidget(self.threshold_combo, stretch=1)
+
+        self.luftspalte_spin = QSpinBox()
+        self.luftspalte_spin.setRange(1, 100)
+        self.luftspalte_spin.setValue(22)
+        self.luftspalte_spin.setSuffix(" mm")
+        self.luftspalte_spin.setSingleStep(1)
+        self.luftspalte_spin.setReadOnly(True)
+        self.luftspalte_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.luftspalte_spin.setMinimumWidth(100)
+        self.luftspalte_spin.valueChanged.connect(self._on_changed)
+        threshold_layout.addWidget(self.luftspalte_spin)
+
+        door_layout.addRow("Terskel:", threshold_widget)
 
         layout.addWidget(door_group)
 
@@ -122,27 +167,16 @@ class DoorForm(QWidget):
         look_group = QGroupBox("Utseende")
         look_layout = QFormLayout(look_group)
 
-        self.color_outside_combo = QComboBox()
-        self._populate_color_combo(self.color_outside_combo)
-        self.color_outside_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Farge utside:", self.color_outside_combo)
-
-        self.color_inside_combo = QComboBox()
-        self._populate_color_combo(self.color_inside_combo)
-        self.color_inside_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Farge innside:", self.color_inside_combo)
-
-        self.surface_combo = QComboBox()
-        for key, name in SURFACE_TYPES.items():
-            self.surface_combo.addItem(name, key)
-        self.surface_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Overflate:", self.surface_combo)
+        self.color_combo = QComboBox()
+        self._populate_color_combo(self.color_combo)
+        self.color_combo.currentIndexChanged.connect(self._on_changed)
+        look_layout.addRow("Farge:", self.color_combo)
 
         self.hinge_combo = QComboBox()
-        for key, name in HINGE_SIDES.items():
+        for key, name in SWING_DIRECTIONS.items():
             self.hinge_combo.addItem(name, key)
         self.hinge_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Hengsle-side:", self.hinge_combo)
+        look_layout.addRow("Slagretning:", self.hinge_combo)
 
         layout.addWidget(look_group)
 
@@ -164,11 +198,6 @@ class DoorForm(QWidget):
         self.lock_edit.setPlaceholderText("F.eks. ABLOY")
         self.lock_edit.textChanged.connect(self._on_changed)
         extras_layout.addRow("Låstype:", self.lock_edit)
-
-        self.threshold_edit = QLineEdit()
-        self.threshold_edit.setPlaceholderText("F.eks. flat, hevet")
-        self.threshold_edit.textChanged.connect(self._on_changed)
-        extras_layout.addRow("Terskel:", self.threshold_edit)
 
         layout.addWidget(extras_group)
 
@@ -211,6 +240,13 @@ class DoorForm(QWidget):
 
         layout.addStretch()
 
+        # Fyll karmtype og fløyer for standard dørtype
+        initial_type = self.door_type_combo.currentData()
+        for karm in DOOR_KARM_TYPES.get(initial_type, []):
+            self.karm_combo.addItem(karm, karm)
+        for f in DOOR_FLOYER.get(initial_type, [1]):
+            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+
         # Initial visning av typeavhengige felt
         self._update_type_dependent_fields()
 
@@ -220,9 +256,17 @@ class DoorForm(QWidget):
         combo.setItemDelegate(delegate)
 
         for code, info in RAL_COLORS.items():
-            # Tekst med padding for fargeruten
+            # Lag fargeikon for visning i lukket combobox
+            pixmap = QPixmap(14, 14)
+            pixmap.fill(QColor(info['hex']))
+            p = QPainter(pixmap)
+            p.setPen(QPen(QColor(80, 80, 80), 1))
+            p.drawRect(0, 0, 13, 13)
+            p.end()
+            icon = QIcon(pixmap)
+
             display_text = f"      {code} - {info['name']}"
-            combo.addItem(display_text, code)
+            combo.addItem(icon, display_text, code)
 
     def _on_changed(self):
         """Sender signal når verdier endres."""
@@ -230,8 +274,28 @@ class DoorForm(QWidget):
             self._update_type_dependent_fields()
             self.values_changed.emit()
 
+    def _on_threshold_changed(self):
+        """Håndterer endring av terskeltype - oppdaterer luftspalte."""
+        if self._block_signals:
+            return
+
+        threshold_key = self.threshold_combo.currentData()
+        is_luftspalte = (threshold_key == 'luftspalte')
+        luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 22)
+
+        self.luftspalte_spin.setReadOnly(not is_luftspalte)
+        self.luftspalte_spin.setButtonSymbols(
+            QSpinBox.ButtonSymbols.UpDownArrows if is_luftspalte
+            else QSpinBox.ButtonSymbols.NoButtons
+        )
+        self._block_signals = True
+        self.luftspalte_spin.setValue(luftspalte_value)
+        self._block_signals = False
+
+        self._on_changed()
+
     def _on_type_changed(self):
-        """Håndterer endring av dørtype - setter standardmål."""
+        """Håndterer endring av dørtype - setter standardmål, karmtyper og fløyer."""
         if self._block_signals:
             return
 
@@ -243,6 +307,19 @@ class DoorForm(QWidget):
             self.width_spin.setValue(defaults['width'])
             self.height_spin.setValue(defaults['height'])
             self.thickness_spin.setValue(defaults['thickness'])
+
+        # Oppdater karmtype-valg
+        self.karm_combo.clear()
+        karm_types = DOOR_KARM_TYPES.get(door_type, [])
+        for karm in karm_types:
+            self.karm_combo.addItem(karm, karm)
+
+        # Oppdater fløyer-valg
+        self.floyer_combo.clear()
+        floyer_options = DOOR_FLOYER.get(door_type, [1])
+        for f in floyer_options:
+            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+
         self._block_signals = False
 
         self._update_type_dependent_fields()
@@ -258,9 +335,9 @@ class DoorForm(QWidget):
         self.glass_type_edit.setVisible(has_glass)
 
         # Spesielle egenskaper synlighet
-        is_fire = door_type == 'branndor'
-        is_sound = door_type == 'lyddor'
-        is_cold = door_type == 'kjoleromsdor'
+        is_fire = door_type == 'BD'
+        is_sound = False  # Ingen dedikert lyddør-type lenger
+        is_cold = door_type == 'KD'
 
         self.fire_rating_label.setVisible(is_fire)
         self.fire_rating_combo.setVisible(is_fire)
@@ -272,22 +349,38 @@ class DoorForm(QWidget):
         # Vis/skjul hele spesialgruppen
         self.special_group.setVisible(is_fire or is_sound or is_cold)
 
+        # Terskel/luftspalte aktivering
+        threshold_key = self.threshold_combo.currentData()
+        is_luftspalte = (threshold_key == 'luftspalte')
+        self.luftspalte_spin.setReadOnly(not is_luftspalte)
+        self.luftspalte_spin.setButtonSymbols(
+            QSpinBox.ButtonSymbols.UpDownArrows if is_luftspalte
+            else QSpinBox.ButtonSymbols.NoButtons
+        )
+        if not is_luftspalte:
+            luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 22)
+            self.luftspalte_spin.setValue(luftspalte_value)
+
     def update_door(self, door: DoorParams) -> None:
         """Oppdaterer DoorParams med verdier fra skjemaet."""
         door.project_id = self.project_id_edit.text()
         door.customer = self.customer_edit.text()
-        door.door_type = self.door_type_combo.currentData() or "innerdor"
+        door.door_type = self.door_type_combo.currentData() or "SDI"
+        door.karm_type = self.karm_combo.currentData() or ""
+        door.floyer = self.floyer_combo.currentData() or 1
         door.width = self.width_spin.value()
         door.height = self.height_spin.value()
         door.thickness = self.thickness_spin.value()
-        door.color_outside = self.color_outside_combo.currentData() or ""
-        door.color_inside = self.color_inside_combo.currentData() or ""
-        door.surface_type = self.surface_combo.currentData() or "glatt"
-        door.hinge_side = self.hinge_combo.currentData() or "left"
+        door.color = self.color_combo.currentData() or ""
+        door.swing_direction = self.hinge_combo.currentData() or "left"
         door.glass = self.glass_check.isChecked()
         door.glass_type = self.glass_type_edit.text()
         door.lock_type = self.lock_edit.text()
-        door.threshold_type = self.threshold_edit.text()
+        door.threshold_type = self.threshold_combo.currentData() or "standard"
+        if door.threshold_type == 'luftspalte':
+            door.luftspalte = self.luftspalte_spin.value()
+        else:
+            door.luftspalte = THRESHOLD_LUFTSPALTE.get(door.threshold_type, 22)
         door.fire_rating = self.fire_rating_combo.currentData() or ""
         door.sound_rating = self.sound_rating_combo.currentData() or 0
         door.insulation_value = float(self.insulation_spin.value())
@@ -305,25 +398,33 @@ class DoorForm(QWidget):
         if idx >= 0:
             self.door_type_combo.setCurrentIndex(idx)
 
+        # Oppdater karmtype- og fløyer-valg for denne dørtypen
+        door_type = door.door_type
+        self.karm_combo.clear()
+        for karm in DOOR_KARM_TYPES.get(door_type, []):
+            self.karm_combo.addItem(karm, karm)
+        idx = self.karm_combo.findData(door.karm_type)
+        if idx >= 0:
+            self.karm_combo.setCurrentIndex(idx)
+
+        self.floyer_combo.clear()
+        for f in DOOR_FLOYER.get(door_type, [1]):
+            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+        idx = self.floyer_combo.findData(door.floyer)
+        if idx >= 0:
+            self.floyer_combo.setCurrentIndex(idx)
+
         self.width_spin.setValue(door.width)
         self.height_spin.setValue(door.height)
         self.thickness_spin.setValue(door.thickness)
 
-        # Farger
-        idx = self.color_outside_combo.findData(door.color_outside)
+        # Farge
+        idx = self.color_combo.findData(door.color)
         if idx >= 0:
-            self.color_outside_combo.setCurrentIndex(idx)
-        idx = self.color_inside_combo.findData(door.color_inside)
-        if idx >= 0:
-            self.color_inside_combo.setCurrentIndex(idx)
+            self.color_combo.setCurrentIndex(idx)
 
-        # Overflate
-        idx = self.surface_combo.findData(door.surface_type)
-        if idx >= 0:
-            self.surface_combo.setCurrentIndex(idx)
-
-        # Hengsle
-        idx = self.hinge_combo.findData(door.hinge_side)
+        # Slagretning
+        idx = self.hinge_combo.findData(door.swing_direction)
         if idx >= 0:
             self.hinge_combo.setCurrentIndex(idx)
 
@@ -331,7 +432,13 @@ class DoorForm(QWidget):
         self.glass_check.setChecked(door.glass)
         self.glass_type_edit.setText(door.glass_type)
         self.lock_edit.setText(door.lock_type)
-        self.threshold_edit.setText(door.threshold_type)
+        # Terskeltype
+        idx = self.threshold_combo.findData(door.threshold_type)
+        if idx >= 0:
+            self.threshold_combo.setCurrentIndex(idx)
+        # Luftspalte (kun relevant for 'luftspalte'-typen)
+        if door.threshold_type == 'luftspalte':
+            self.luftspalte_spin.setValue(door.luftspalte)
 
         # Spesielle
         idx = self.fire_rating_combo.findData(door.fire_rating)
