@@ -447,12 +447,40 @@ MIN_WINDOW_SIZE = 100
 MAX_WINDOW_SIZE = 3000
 MAX_WINDOW_OFFSET = 500
 
-GLASS_TYPES = {
-    'klart': 'Klart glass',
-    'frosted': 'Frosted glass',
-    'laminert': 'Laminert sikkerhetsglass',
-    'herdet': 'Herdet glass',
-    'brann': 'Brannhemmende glass',
+# Vindusprofiler (presets med form, størrelse og plassering)
+WINDOW_PROFILES = {
+    'rektangular': {
+        'name': 'Rektangulær',
+        'shape': 'rect',
+        'width': 600,
+        'height': 600,
+        'pos_x': 0,    # Venstre side (negativ = venstre fra senter)
+        'pos_y': 260,     # Øvre del
+    },
+    'rund': {
+        'name': 'Rund',
+        'shape': 'circle',
+        'width': 570,     # Diameter
+        'height': 400,
+        'pos_x': 0,     # Høyre side
+        'pos_y': 300,     # Øvre del
+    },
+    'avlang_liten': {
+        'name': 'Avlang liten',
+        'shape': 'rounded_rect',
+        'width': 150,
+        'height': 600,
+        'pos_x': 220,    # Venstre side
+        'pos_y': 220,       # Midten vertikalt
+    },
+    'avlang_stor': {
+        'name': 'Avlang stor',
+        'shape': 'rounded_rect',
+        'width': 150,
+        'height': 1700,   # Nesten full høyde (margin 150mm topp+bunn)
+        'pos_x': 0,       # Midt i dørbladet
+        'pos_y': -300,       # Sentrert vertikalt
+    },
 }
 
 # PDF eksportinnstillinger

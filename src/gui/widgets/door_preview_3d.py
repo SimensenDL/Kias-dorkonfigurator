@@ -206,8 +206,9 @@ class DoorPreview3D(QWidget):
         self._mesh_items.append(mesh)
 
     def _add_glass_panel(self, door: DoorParams, w: float, h: float, t: float):
-        """Legger til semi-transparent glasspanel med faktiske mål."""
+        """Legger til semi-transparent glasspanel med faktiske mål og form."""
         s = self.SCALE
+        shape = door.window_shape  # 'rect', 'circle', eller 'rounded_rect'
 
         # Bruk faktiske vindusmål fra modellen
         glass_w = door.window_width * s
@@ -221,14 +222,23 @@ class DoorPreview3D(QWidget):
         center_x = door.window_pos_x * s
         center_z = h * self.GLASS_DEFAULT_Y_RATIO + door.window_pos_y * s
 
-        gx = center_x - glass_w / 2
-        gz = center_z - glass_h / 2
-        gy = -glass_t / 2
-
-        verts, faces = self._make_box(gx, gy, gz, glass_w, glass_t, glass_h)
-
         # Lys blå farge for glass
         glass_color = np.array([0.6, 0.8, 0.95, 0.5])
+
+        if shape == 'circle':
+            # Tegn sylinder (tilnærmet med mange sider)
+            radius = glass_w / 2  # Diameter = bredde
+            verts, faces = self._make_cylinder(
+                center_x, 0, center_z,
+                radius, glass_t
+            )
+        else:
+            # 'rect' og 'rounded_rect' - tegn boks (3D har ikke enkel avrunding)
+            gx = center_x - glass_w / 2
+            gz = center_z - glass_h / 2
+            gy = -glass_t / 2
+            verts, faces = self._make_box(gx, gy, gz, glass_w, glass_t, glass_h)
+
         colors = np.tile(glass_color, (len(faces), 1))
 
         mesh = gl.GLMeshItem(
@@ -307,6 +317,69 @@ class DoorPreview3D(QWidget):
             )
             self._gl_widget.addItem(mesh)
             self._mesh_items.append(mesh)
+
+    @staticmethod
+    def _make_cylinder(cx, cy, cz, radius, depth, segments=24):
+        """
+        Genererer vertices og faces for en sylinder (sirkulært glass).
+
+        Args:
+            cx, cy, cz: Senterposisjon
+            radius: Radius
+            depth: Dybde (tykkelse i Y-retning)
+            segments: Antall segmenter for sirkel-tilnærming
+
+        Returns:
+            vertices: np.array
+            faces: np.array - trekant-indekser
+        """
+        verts = []
+        faces = []
+
+        # Generer punkter for front- og bak-sirkel
+        angles = np.linspace(0, 2 * np.pi, segments, endpoint=False)
+
+        # Front sirkel (y = cy - depth/2)
+        front_y = cy - depth / 2
+        for angle in angles:
+            x = cx + radius * np.cos(angle)
+            z = cz + radius * np.sin(angle)
+            verts.append([x, front_y, z])
+
+        # Bak sirkel (y = cy + depth/2)
+        back_y = cy + depth / 2
+        for angle in angles:
+            x = cx + radius * np.cos(angle)
+            z = cz + radius * np.sin(angle)
+            verts.append([x, back_y, z])
+
+        # Senterpunkter for front og bak
+        front_center = len(verts)
+        verts.append([cx, front_y, cz])
+        back_center = len(verts)
+        verts.append([cx, back_y, cz])
+
+        verts = np.array(verts)
+
+        # Front sirkel (trekanter fra senter)
+        for i in range(segments):
+            next_i = (i + 1) % segments
+            faces.append([front_center, next_i, i])
+
+        # Bak sirkel
+        for i in range(segments):
+            next_i = (i + 1) % segments
+            faces.append([back_center, segments + i, segments + next_i])
+
+        # Sidevegger (rektangler som 2 trekanter)
+        for i in range(segments):
+            next_i = (i + 1) % segments
+            # Trekant 1
+            faces.append([i, next_i, segments + i])
+            # Trekant 2
+            faces.append([next_i, segments + next_i, segments + i])
+
+        return verts, np.array(faces)
 
     @staticmethod
     def _make_box(x, y, z, dx, dy, dz):

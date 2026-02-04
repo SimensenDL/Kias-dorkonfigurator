@@ -21,7 +21,7 @@ from ...utils.constants import (
     HANDLE_TYPES, DOOR_HANDLE_DEFAULTS, ESPAGNOLETT_TYPES,
     DOOR_U_VALUES, BRUTT_KULDEBRO_KARM, BRUTT_KULDEBRO_DORRAMME,
     DIMENSION_DIFFERENTIALS, LEAD_THICKNESSES,
-    SURFACE_TYPES, GLASS_TYPES,
+    SURFACE_TYPES, WINDOW_PROFILES,
     WINDOW_MIN_MARGIN, MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, MAX_WINDOW_OFFSET,
     DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 )
@@ -235,14 +235,13 @@ class DoorForm(QWidget):
         self.window_check.stateChanged.connect(self._on_window_changed)
         window_layout.addRow(self.window_check)
 
-        # Glasstype
-        self.glass_type_combo = QComboBox()
-        self.glass_type_combo.addItem("(velg)", "")
-        for key, name in GLASS_TYPES.items():
-            self.glass_type_combo.addItem(name, key)
-        self.glass_type_combo.currentIndexChanged.connect(self._on_changed)
-        self.glass_type_label = QLabel("Glasstype:")
-        window_layout.addRow(self.glass_type_label, self.glass_type_combo)
+        # Vindusprofil
+        self.window_profile_combo = QComboBox()
+        for key, profile in WINDOW_PROFILES.items():
+            self.window_profile_combo.addItem(profile['name'], key)
+        self.window_profile_combo.currentIndexChanged.connect(self._on_profile_changed)
+        self.window_profile_label = QLabel("Profil:")
+        window_layout.addRow(self.window_profile_label, self.window_profile_combo)
 
         # Utsparing (mm)
         window_layout.addRow(QLabel("Utsparing (mm):"))
@@ -581,6 +580,28 @@ class DoorForm(QWidget):
         self._update_window_visibility()
         self._on_changed()
 
+    def _on_profile_changed(self):
+        """Håndterer endring av vindusprofil - setter alle verdier fra profilen."""
+        if self._block_signals:
+            return
+
+        profile_key = self.window_profile_combo.currentData()
+        profile = WINDOW_PROFILES.get(profile_key, {})
+
+        self._block_signals = True
+        self.window_width_spin.setValue(profile.get('width', 400))
+        self.window_height_spin.setValue(profile.get('height', 400))
+        self.window_x_spin.setValue(profile.get('pos_x', 0))
+        self.window_x_slider.setValue(profile.get('pos_x', 0))
+        self.window_y_spin.setValue(profile.get('pos_y', 0))
+        self.window_y_slider.setValue(profile.get('pos_y', 0))
+        self._block_signals = False
+
+        # Oppdater beregnede mål og validering
+        self._update_window_calculated()
+        self._validate_window_position()
+        self._on_changed()
+
     def _on_window_size_changed(self):
         """Håndterer endring av vindus-størrelse."""
         if self._block_signals:
@@ -632,8 +653,8 @@ class DoorForm(QWidget):
     def _update_window_visibility(self):
         """Viser/skjuler vinduskontroller basert på checkbox."""
         has_window = self.window_check.isChecked()
-        self.glass_type_label.setVisible(has_window)
-        self.glass_type_combo.setVisible(has_window)
+        self.window_profile_label.setVisible(has_window)
+        self.window_profile_combo.setVisible(has_window)
         self.window_width_label.setVisible(has_window)
         self.window_width_spin.setVisible(has_window)
         self.window_height_label.setVisible(has_window)
@@ -907,7 +928,7 @@ class DoorForm(QWidget):
         door.window_height = self.window_height_spin.value()
         door.window_pos_x = self.window_x_spin.value()
         door.window_pos_y = self.window_y_spin.value()
-        door.glass_type = self.glass_type_combo.currentData() or ""
+        door.window_profile = self.window_profile_combo.currentData() or "rektangular"
 
         # Tillegg
         door.threshold_type = self.threshold_combo.currentData() or "standard"
@@ -1003,9 +1024,9 @@ class DoorForm(QWidget):
 
         # Vindu
         self.window_check.setChecked(door.has_window)
-        idx = self.glass_type_combo.findData(door.glass_type)
+        idx = self.window_profile_combo.findData(door.window_profile)
         if idx >= 0:
-            self.glass_type_combo.setCurrentIndex(idx)
+            self.window_profile_combo.setCurrentIndex(idx)
         self.window_width_spin.setValue(door.window_width)
         self.window_height_spin.setValue(door.window_height)
         self.window_x_spin.setValue(door.window_pos_x)

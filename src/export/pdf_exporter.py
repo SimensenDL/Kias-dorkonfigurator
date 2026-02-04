@@ -134,12 +134,34 @@ def _draw_door(c: canvas.Canvas, door: DoorParams,
         c.setFillColor(COLOR_GLASS)
         c.setStrokeColor(COLOR_DOOR_STROKE)
         c.setLineWidth(0.5)
-        c.rect(glass_x, glass_y, glass_w, glass_h, fill=1, stroke=1)
-        # Kryss i glass (markering)
-        c.setStrokeColor(Color(0.6, 0.75, 0.9))
-        c.setLineWidth(0.3)
-        c.line(glass_x, glass_y, glass_x + glass_w, glass_y + glass_h)
-        c.line(glass_x + glass_w, glass_y, glass_x, glass_y + glass_h)
+
+        # Tegn riktig form basert på vindusprofil
+        shape = door.window_shape  # 'rect', 'circle', eller 'rounded_rect'
+
+        if shape == 'circle':
+            # Sirkel - bruk ellipse med samme bredde/høyde
+            c.ellipse(glass_x, glass_y, glass_x + glass_w, glass_y + glass_h, fill=1, stroke=1)
+            # Kryss i glass (markering)
+            c.setStrokeColor(Color(0.6, 0.75, 0.9))
+            c.setLineWidth(0.3)
+            c.line(center_x, glass_y, center_x, glass_y + glass_h)
+            c.line(glass_x, center_y, glass_x + glass_w, center_y)
+        elif shape == 'rounded_rect':
+            # Avrundet rektangel
+            radius = min(glass_w, glass_h) / 2  # Hjørneradius = halve minste side
+            c.roundRect(glass_x, glass_y, glass_w, glass_h, radius, fill=1, stroke=1)
+            # Kryss i glass (markering)
+            c.setStrokeColor(Color(0.6, 0.75, 0.9))
+            c.setLineWidth(0.3)
+            c.line(glass_x, glass_y, glass_x + glass_w, glass_y + glass_h)
+            c.line(glass_x + glass_w, glass_y, glass_x, glass_y + glass_h)
+        else:  # 'rect'
+            c.rect(glass_x, glass_y, glass_w, glass_h, fill=1, stroke=1)
+            # Kryss i glass (markering)
+            c.setStrokeColor(Color(0.6, 0.75, 0.9))
+            c.setLineWidth(0.3)
+            c.line(glass_x, glass_y, glass_x + glass_w, glass_y + glass_h)
+            c.line(glass_x + glass_w, glass_y, glass_x, glass_y + glass_h)
 
     # Håndtak
     handle_w = w * 0.04

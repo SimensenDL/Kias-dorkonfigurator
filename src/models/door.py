@@ -55,7 +55,7 @@ class DoorParams:
     window_height: int = DEFAULT_WINDOW_HEIGHT  # Utsparing høyde mm
     window_pos_x: int = 0         # Horisontal offset fra senter (mm)
     window_pos_y: int = 0         # Vertikal offset fra standard posisjon (mm)
-    glass_type: str = ""          # Glasstype (nøkkel fra GLASS_TYPES)
+    window_profile: str = "rektangular"  # Vindusprofil (nøkkel fra WINDOW_PROFILES)
 
     # Tilleggsutstyr
     threshold_type: str = "ingen"
@@ -161,6 +161,13 @@ class DoorParams:
         return (self.width * self.height) / 1_000_000
 
     @property
+    def window_shape(self) -> str:
+        """Returnerer vindusform basert på valgt profil."""
+        from ..utils.constants import WINDOW_PROFILES
+        profile = WINDOW_PROFILES.get(self.window_profile, {})
+        return profile.get('shape', 'rect')
+
+    @property
     def window_glass_width(self) -> int:
         """Beregner glasmål bredde (utsparing - 36mm)."""
         return max(0, self.window_width - WINDOW_GLASS_DEDUCTION)
@@ -206,7 +213,7 @@ class DoorParams:
             'window_height': self.window_height,
             'window_pos_x': self.window_pos_x,
             'window_pos_y': self.window_pos_y,
-            'glass_type': self.glass_type,
+            'window_profile': self.window_profile,
             'threshold_type': self.threshold_type,
             'luftspalte': self.luftspalte,
             'lock_type': self.lock_type,
@@ -226,6 +233,10 @@ class DoorParams:
         # Bakoverkompatibilitet: map 'glass' til 'has_window' for gamle filer
         if 'glass' in data and 'has_window' not in data:
             data['has_window'] = data.pop('glass')
+
+        # Bakoverkompatibilitet: map 'glass_type' til 'window_profile' for gamle filer
+        if 'glass_type' in data and 'window_profile' not in data:
+            data.pop('glass_type')  # Fjern gammel nøkkel, bruk standard profil
 
         # Filtrer ut ukjente nøkler for fremoverkompatibilitet
         valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
