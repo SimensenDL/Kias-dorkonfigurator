@@ -46,7 +46,7 @@ UTFORING_RANGES = {
 }
 
 # Karmer som støtter utforing (kun type 1)
-KARM_HAS_UTFORING = {'SD1', 'KD1', 'PD1', 'BD1'}
+KARM_HAS_UTFORING = {'SD1', 'KD1', 'YD1', 'PD1', 'BD1'}
 
 # Maks veggtykkelse for karmer med utforing (over dette skjules de)
 UTFORING_MAX_THICKNESS = 300
