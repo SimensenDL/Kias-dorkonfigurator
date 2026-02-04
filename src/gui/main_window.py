@@ -27,6 +27,7 @@ from ..utils.constants import APP_NAME, APP_VERSION, PROJECT_FILTER, DOOR_TYPES
 
 from .widgets.door_form import DoorForm
 from .widgets.door_preview_3d import DoorPreview3D
+from .widgets.production_tab import ProductionTab
 from .styles import ThemeManager, Theme
 
 
@@ -137,21 +138,16 @@ class MainWindow(QMainWindow):
         else:
             self.tab_widget.addTab(preview_widget, "Forhåndsvisning")
 
-        # Tab 2: Detaljer (placeholder)
-        details_widget = QWidget()
-        details_layout = QVBoxLayout(details_widget)
-        self.details_label = QLabel("Komponentliste / kappliste\n"
-                                     "kommer her i en senere fase.")
-        self.details_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.details_label.setStyleSheet("font-size: 16px; color: #888;")
-        details_layout.addWidget(self.details_label)
+        # Tab 2: Produksjon
+        self.production_tab = ProductionTab()
+        self.production_tab.update_door(self.door)
 
         if HAS_ICONS:
-            self.tab_widget.addTab(details_widget,
-                                   qta.icon('fa5s.list-alt', color='#8ab4f8'),
-                                   "Detaljer")
+            self.tab_widget.addTab(self.production_tab,
+                                   qta.icon('fa5s.industry', color='#8ab4f8'),
+                                   "Produksjon")
         else:
-            self.tab_widget.addTab(details_widget, "Detaljer")
+            self.tab_widget.addTab(self.production_tab, "Produksjon")
 
         right_layout.addWidget(self.tab_widget)
 
@@ -252,6 +248,7 @@ class MainWindow(QMainWindow):
         self.unsaved_changes = True
         self._update_title()
         self.door_preview.update_door(self.door)
+        self.production_tab.update_door(self.door)
 
     def _update_title(self):
         """Oppdaterer vindustittel."""
@@ -275,6 +272,7 @@ class MainWindow(QMainWindow):
         self.unsaved_changes = False
         self.door_form.load_door(self.door)
         self.door_preview.update_door(self.door)
+        self.production_tab.update_door(self.door)
         self._update_title()
         self.statusbar.showMessage("Nytt prosjekt opprettet")
 
@@ -295,6 +293,7 @@ class MainWindow(QMainWindow):
                 self.unsaved_changes = False
                 self.door_form.load_door(self.door)
                 self.door_preview.update_door(self.door)
+                self.production_tab.update_door(self.door)
                 self._update_title()
                 self.statusbar.showMessage(f"Åpnet: {filepath}")
             except Exception as e:
@@ -312,6 +311,7 @@ class MainWindow(QMainWindow):
             self.unsaved_changes = False
             self.door_form.load_door(self.door)
             self.door_preview.update_door(self.door)
+            self.production_tab.update_door(self.door)
             self._update_title()
             self.statusbar.showMessage(f"Åpnet: {filepath}")
         except Exception as e:

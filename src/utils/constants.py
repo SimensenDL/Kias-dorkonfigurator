@@ -430,5 +430,88 @@ KARM_SIDESTOLPE_WIDTH = {
 # Type 3 karmer har sentrert dørblad
 KARM_BLADE_FLUSH = {'SD1', 'SD2', 'KD1', 'KD2', 'YD1', 'YD2', 'PD1', 'PD2', 'BD1', 'BD2'}
 
+# --- Produksjons-offsets (beregnet fra karmmål) ---
+# Dørblad = Karm - offset
+# Struktur: {karmtype: {floyer: {'bredde': offset, 'hoyde': offset}}}
+# For 2-fløyet: bredde = (karm - offset) / 2, så offset er totalt fradrag før deling
+DORBLAD_OFFSETS = {
+    # SDI-karmer (innerdør)
+    'SD1': {1: {'bredde': 128, 'hoyde': 85}},
+    'BD1': {1: {'bredde': 128, 'hoyde': 85}},
+    # KD-karmer (kjølerom) - samme for KD1 og KD2
+    'KD1': {1: {'bredde': 168, 'hoyde': 105}},
+    'KD2': {1: {'bredde': 168, 'hoyde': 105}},
+    # TODO: Legg til SD2, YD1, YD2, etc.
+}
+
+# PD-karmer har forskjellige offsets per dørbladtype
+# Struktur: {blade_type: {floyer: {'bredde': offset, 'hoyde': offset}}}
+PD_DORBLAD_OFFSETS = {
+    # PDPC/PDPO (polykarbonat) - samme formler
+    'PDPC_POLY': {
+        1: {'bredde': 300, 'hoyde': 186},
+        2: {'bredde': 454, 'hoyde': 186},
+    },
+    'PDPO_OPAL': {
+        1: {'bredde': 300, 'hoyde': 186},
+        2: {'bredde': 454, 'hoyde': 186},
+    },
+    # PDI (isolert)
+    'PDI_ISOLERT': {
+        1: {'bredde': 205, 'hoyde': 102},
+        2: {'bredde': 256, 'hoyde': 102},
+    },
+}
+
+# Terskel = Karm bredde - offset
+TERSKEL_OFFSETS = {
+    # SDI-karmer
+    'SD1': {1: 160},
+    'BD1': {1: 160},
+    # KD-karmer - samme for KD1 og KD2
+    'KD1': {1: 200},
+    'KD2': {1: 200},
+    # PD-karmer har normalt ikke terskel (pendeldør)
+    # TODO: Legg til flere karmtyper
+}
+
+# Laminat = Dørblad - offset
+# Varierer per karmtype (KD2 har ekstra isolasjonslag)
+LAMINAT_OFFSETS = {
+    'SD1': 8,
+    'BD1': 8,
+    'KD1': 8,
+    'KD2': 48,  # 8 + 40 ekstra for isolasjon
+    # PD bruker ikke laminat på samme måte
+}
+LAMINAT_OFFSET_DEFAULT = 8  # Fallback
+
+# --- PD-spesifikke komponenter (pendeldør) ---
+# Offsets beregnes fra dørbladmål, varierer per dørbladtype
+PD_KOMPONENTER = {
+    # PDPC/PDPO (polykarbonat)
+    'PDPC_POLY': {
+        'sparkeplate_bredde': -37,
+        'ryggforsterkning_hoyde': 99,
+        'ryggforst_overdel': 98,
+        'avviserboyler_lengde': 199,
+        'har_laminat': False,
+    },
+    'PDPO_OPAL': {
+        'sparkeplate_bredde': -37,
+        'ryggforsterkning_hoyde': 99,
+        'ryggforst_overdel': 98,
+        'avviserboyler_lengde': 199,
+        'har_laminat': False,
+    },
+    # PDI (isolert) - har laminat i stedet for ryggforsterkning
+    'PDI_ISOLERT': {
+        'sparkeplate_bredde': -9,
+        'avviserboyler_lengde': 100,
+        'laminat_offset': 8,
+        'har_laminat': True,
+    },
+}
+
 # PDF eksportinnstillinger
 PDF_SCALE = 10  # 1:10 (dører er mindre enn bygninger)
