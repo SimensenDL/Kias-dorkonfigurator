@@ -4,6 +4,7 @@ version = "0.3.0"
 description = "Dørkonfigurator for Kvanne Industrier AS (KIAS)"
 requires-python = ">=3.10"
 dependencies = [
+    "jurigged>=0.6.1",
     "numpy>=1.24.0",
     "openpyxl>=3.1.0",
     "pyopengl>=3.1.7",

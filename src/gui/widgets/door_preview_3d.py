@@ -36,10 +36,8 @@ class DoorPreview3D(QWidget):
     # Dørblad fast tykkelse (mm)
     DOOR_BLADE_THICKNESS = 40
 
-    # Glasspanel-proporsjoner
-    GLASS_WIDTH_RATIO = 0.30
-    GLASS_HEIGHT_RATIO = 0.30
-    GLASS_CENTER_Y_RATIO = 0.65
+    # Glasspanel-standardposisjon (Y-ratio fra bunn)
+    GLASS_DEFAULT_Y_RATIO = 0.65
 
     # Håndtak-dimensjoner (mm)
     HANDLE_WIDTH = 20
@@ -147,8 +145,8 @@ class DoorPreview3D(QWidget):
         self._add_handle(door, w, h, blade_t)
         self._add_hinges(door, w, h, blade_t)
 
-        if door.glass:
-            self._add_glass_panel(w, h, blade_t)
+        if door.has_window:
+            self._add_glass_panel(door, w, h, blade_t)
 
     def _add_frame(self, w: float, h: float, frame_depth: float):
         """Legger til karm (ramme) rundt døren. Karmdybde = veggtykkelse."""
@@ -207,22 +205,30 @@ class DoorPreview3D(QWidget):
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
 
-    def _add_glass_panel(self, w: float, h: float, t: float):
-        """Legger til semi-transparent glasspanel."""
+    def _add_glass_panel(self, door: DoorParams, w: float, h: float, t: float):
+        """Legger til semi-transparent glasspanel med faktiske mål."""
         s = self.SCALE
 
-        glass_w = w * self.GLASS_WIDTH_RATIO
-        glass_h = h * self.GLASS_HEIGHT_RATIO
-        glass_cz = h * self.GLASS_CENTER_Y_RATIO
-        glass_t = 2.0 * s
+        # Bruk faktiske vindusmål fra modellen
+        glass_w = door.window_width * s
+        glass_h = door.window_height * s
 
-        gx = -glass_w / 2
-        gz = glass_cz - glass_h / 2
+        # Glasset må stikke litt ut fra dørbladet for å være synlig
+        glass_t = t + 0.5 * s
+
+        # Standard senterposisjon: midt horisontalt, 65% opp vertikalt
+        # + offset fra brukervalg
+        center_x = door.window_pos_x * s
+        center_z = h * self.GLASS_DEFAULT_Y_RATIO + door.window_pos_y * s
+
+        gx = center_x - glass_w / 2
+        gz = center_z - glass_h / 2
         gy = -glass_t / 2
 
         verts, faces = self._make_box(gx, gy, gz, glass_w, glass_t, glass_h)
 
-        glass_color = np.array([0.7, 0.85, 0.95, 0.45])
+        # Lys blå farge for glass
+        glass_color = np.array([0.6, 0.8, 0.95, 0.5])
         colors = np.tile(glass_color, (len(faces), 1))
 
         mesh = gl.GLMeshItem(
@@ -231,7 +237,7 @@ class DoorPreview3D(QWidget):
             faceColors=colors,
             smooth=False,
             drawEdges=True,
-            edgeColor=(0.5, 0.6, 0.7, 0.8),
+            edgeColor=(0.3, 0.5, 0.7, 1.0),
             glOptions='translucent'
         )
         self._gl_widget.addItem(mesh)

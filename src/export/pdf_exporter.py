@@ -118,12 +118,19 @@ def _draw_door(c: canvas.Canvas, door: DoorParams,
     c.setLineWidth(0.8)
     c.rect(x, y, w, h, fill=1, stroke=1)
 
-    # Glass (hvis aktuelt)
-    if door.glass:
-        glass_w = w * 0.3
-        glass_h = h * 0.3
-        glass_x = x + (w - glass_w) / 2
-        glass_y = y + h * 0.5
+    # Vindu (hvis aktuelt)
+    if door.has_window:
+        # Bruk faktiske vindusmål fra modellen
+        glass_w = mm_to_scaled(door.window_width, scale)
+        glass_h = mm_to_scaled(door.window_height, scale)
+
+        # Senter: midt horisontalt + offset, 65% opp + offset
+        center_x = x + w / 2 + mm_to_scaled(door.window_pos_x, scale)
+        center_y = y + h * 0.65 + mm_to_scaled(door.window_pos_y, scale)
+
+        glass_x = center_x - glass_w / 2
+        glass_y = center_y - glass_h / 2
+
         c.setFillColor(COLOR_GLASS)
         c.setStrokeColor(COLOR_DOOR_STROKE)
         c.setLineWidth(0.5)

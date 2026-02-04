@@ -11,7 +11,9 @@ from ..utils.constants import (
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_KARM_TYPES,
     DOOR_TYPE_BLADE_OVERRIDE, DOOR_U_VALUES, DOOR_HINGE_DEFAULTS,
     DOOR_LOCK_CASE_DEFAULTS, DOOR_HANDLE_DEFAULTS,
-    DIMENSION_DIFFERENTIALS, DOOR_THRESHOLD_TYPES
+    DIMENSION_DIFFERENTIALS, DOOR_THRESHOLD_TYPES,
+    WINDOW_GLASS_DEDUCTION, WINDOW_LIGHT_DEDUCTION,
+    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 )
 
 
@@ -47,9 +49,15 @@ class DoorParams:
     handle_type: str = "vrider_sylinder_oval"  # Vrider/skilt (nøkkel fra HANDLE_TYPES)
     espagnolett: str = "ingen"      # Espagnolett for 2-fløya (nøkkel fra ESPAGNOLETT_TYPES)
 
+    # Vindu
+    has_window: bool = False
+    window_width: int = DEFAULT_WINDOW_WIDTH   # Utsparing bredde mm
+    window_height: int = DEFAULT_WINDOW_HEIGHT  # Utsparing høyde mm
+    window_pos_x: int = 0         # Horisontal offset fra senter (mm)
+    window_pos_y: int = 0         # Vertikal offset fra standard posisjon (mm)
+    glass_type: str = ""          # Glasstype (nøkkel fra GLASS_TYPES)
+
     # Tilleggsutstyr
-    glass: bool = False
-    glass_type: str = ""
     threshold_type: str = "ingen"
     luftspalte: int = 0   # Luftspalte i mm, kun redigerbar for terskeltype 'ingen'
     lock_type: str = ""    # Fritekst, bakoverkompatibilitet (erstattes av lock_case)
@@ -152,6 +160,26 @@ class DoorParams:
         """Returnerer dørareal i kvadratmeter."""
         return (self.width * self.height) / 1_000_000
 
+    @property
+    def window_glass_width(self) -> int:
+        """Beregner glasmål bredde (utsparing - 36mm)."""
+        return max(0, self.window_width - WINDOW_GLASS_DEDUCTION)
+
+    @property
+    def window_glass_height(self) -> int:
+        """Beregner glasmål høyde (utsparing - 36mm)."""
+        return max(0, self.window_height - WINDOW_GLASS_DEDUCTION)
+
+    @property
+    def window_light_width(self) -> int:
+        """Beregner lysåpning bredde (glasmål - 26mm)."""
+        return max(0, self.window_glass_width - WINDOW_LIGHT_DEDUCTION)
+
+    @property
+    def window_light_height(self) -> int:
+        """Beregner lysåpning høyde (glasmål - 26mm)."""
+        return max(0, self.window_glass_height - WINDOW_LIGHT_DEDUCTION)
+
     def to_dict(self) -> dict:
         """Konverterer til dictionary for JSON-serialisering."""
         return {
@@ -173,7 +201,11 @@ class DoorParams:
             'lock_case': self.lock_case,
             'handle_type': self.handle_type,
             'espagnolett': self.espagnolett,
-            'glass': self.glass,
+            'has_window': self.has_window,
+            'window_width': self.window_width,
+            'window_height': self.window_height,
+            'window_pos_x': self.window_pos_x,
+            'window_pos_y': self.window_pos_y,
             'glass_type': self.glass_type,
             'threshold_type': self.threshold_type,
             'luftspalte': self.luftspalte,
@@ -191,6 +223,10 @@ class DoorParams:
     @classmethod
     def from_dict(cls, data: dict) -> 'DoorParams':
         """Oppretter DoorParams fra dictionary."""
+        # Bakoverkompatibilitet: map 'glass' til 'has_window' for gamle filer
+        if 'glass' in data and 'has_window' not in data:
+            data['has_window'] = data.pop('glass')
+
         # Filtrer ut ukjente nøkler for fremoverkompatibilitet
         valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in data.items() if k in valid_keys}

@@ -19,6 +19,9 @@ uv sync
 # Kjør applikasjonen
 uv run python main.py
 
+# Utviklingsmodus med hot-reloading (anbefalt)
+uv run python dev.py
+
 # Legg til ny avhengighet
 uv add <pakkenavn>
 
@@ -69,3 +72,4 @@ Se `pyproject.toml` for komplett liste. Hovedavhengigheter:
 - qtawesome (ikoner)
 - pyqtgraph + PyOpenGL + numpy (3D-visualisering)
 - svglib (SVG-import)
+- jurigged (hot-reloading i utviklingsmodus)

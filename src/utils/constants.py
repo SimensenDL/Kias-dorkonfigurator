@@ -436,5 +436,24 @@ STANDARD_OPENING_SIZES = {
     'RD':   {1: (1010, 2110)},
 }
 
+# --- Vindu-konstanter ---
+WINDOW_MIN_MARGIN = 150           # Min avstand fra kant (mm)
+WINDOW_GLASS_DEDUCTION = 36       # Utsparing → glasmål (18mm hver side)
+WINDOW_LIGHT_DEDUCTION = 26       # Glasmål → lysåpning (13mm hver side)
+
+DEFAULT_WINDOW_WIDTH = 300
+DEFAULT_WINDOW_HEIGHT = 400
+MIN_WINDOW_SIZE = 100
+MAX_WINDOW_SIZE = 3000
+MAX_WINDOW_OFFSET = 500
+
+GLASS_TYPES = {
+    'klart': 'Klart glass',
+    'frosted': 'Frosted glass',
+    'laminert': 'Laminert sikkerhetsglass',
+    'herdet': 'Herdet glass',
+    'brann': 'Brannhemmende glass',
+}
+
 # PDF eksportinnstillinger
 PDF_SCALE = 10  # 1:10 (dører er mindre enn bygninger)
