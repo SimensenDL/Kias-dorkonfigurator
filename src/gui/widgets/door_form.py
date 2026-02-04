@@ -204,8 +204,13 @@ class DoorForm(QWidget):
 
         self.color_combo = QComboBox()
         self._populate_color_combo(self.color_combo)
-        self.color_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Farge:", self.color_combo)
+        self.color_combo.currentIndexChanged.connect(self._on_blade_color_changed)
+        look_layout.addRow("Dørblad farge:", self.color_combo)
+
+        self.karm_color_combo = QComboBox()
+        self._populate_color_combo(self.karm_color_combo)
+        self.karm_color_combo.currentIndexChanged.connect(self._on_changed)
+        look_layout.addRow("Karmfarge:", self.karm_color_combo)
 
         self.hinge_combo = QComboBox()
         for key, name in SWING_DIRECTIONS.items():
@@ -441,6 +446,13 @@ class DoorForm(QWidget):
             self._update_type_dependent_fields()
             self.values_changed.emit()
 
+    def _on_blade_color_changed(self):
+        """Synkroniserer karmfarge med dørblad farge ved endring."""
+        if not self._block_signals:
+            idx = self.color_combo.currentIndex()
+            self.karm_color_combo.setCurrentIndex(idx)
+            self._on_changed()
+
     def _on_dimension_changed(self):
         """Håndterer endring av dimensjoner - oppdaterer transportmål."""
         if not self._block_signals:
@@ -666,6 +678,7 @@ class DoorForm(QWidget):
         door.blade_type = self.blade_combo.currentData() or "SDI_ROCA"
         door.blade_thickness = self.blade_thickness_spin.value()
         door.color = self.color_combo.currentData() or ""
+        door.karm_color = self.karm_color_combo.currentData() or ""
         door.swing_direction = self.hinge_combo.currentData() or "left"
 
         # Beslag
@@ -743,6 +756,11 @@ class DoorForm(QWidget):
         idx = self.color_combo.findData(door.color)
         if idx >= 0:
             self.color_combo.setCurrentIndex(idx)
+
+        # Karmfarge
+        idx = self.karm_color_combo.findData(door.karm_color)
+        if idx >= 0:
+            self.karm_color_combo.setCurrentIndex(idx)
 
         # Slagretning
         idx = self.hinge_combo.findData(door.swing_direction)

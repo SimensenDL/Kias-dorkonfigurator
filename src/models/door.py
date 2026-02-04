@@ -36,7 +36,8 @@ class DoorParams:
     blade_thickness: int = 40  # Dørbladtykkelse i mm
 
     # Overflate/utseende
-    color: str = DEFAULT_COLOR
+    color: str = DEFAULT_COLOR           # Dørblad farge
+    karm_color: str = DEFAULT_COLOR      # Karmfarge
     surface_type: str = "glatt"
 
     # Beslag og lås
@@ -165,6 +166,7 @@ class DoorParams:
             'blade_type': self.blade_type,
             'blade_thickness': self.blade_thickness,
             'color': self.color,
+            'karm_color': self.karm_color,
             'surface_type': self.surface_type,
             'hinge_type': self.hinge_type,
             'hinge_count': self.hinge_count,

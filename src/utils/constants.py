@@ -268,14 +268,12 @@ SOUND_RATINGS = [0, 30, 32]
 # RAL-farger for dører
 RAL_COLORS = {
     'RAL 9010': {'name': 'Renhvit', 'hex': '#F1ECE1', 'rgb': (0.945, 0.925, 0.882)},
-    'RAL 7047': {'name': 'Lysgrå', 'hex': '#C8C8C7', 'rgb': (0.784, 0.784, 0.780)},
-    'RAL 7004': {'name': 'Signalgrå', 'hex': '#9B9B9B', 'rgb': (0.608, 0.608, 0.608)},
-    'RAL 9005': {'name': 'Dyp svart', 'hex': '#0E0E10', 'rgb': (0.055, 0.055, 0.063)},
+    'RAL 5008': {'name': 'Gråblå', 'hex': '#2B3A44', 'rgb': (0.169, 0.227, 0.267)},
     'RAL 7016': {'name': 'Antrasittgrå', 'hex': '#383E42', 'rgb': (0.220, 0.243, 0.259)},
-    'RAL 1018': {'name': 'Sinkgul', 'hex': '#FACA30', 'rgb': (0.980, 0.792, 0.188)},
-    'RAL 6027': {'name': 'Lysgrønn', 'hex': '#7EBAB5', 'rgb': (0.494, 0.729, 0.710)},
-    'RAL 5012': {'name': 'Lysblå', 'hex': '#0089B6', 'rgb': (0.0, 0.537, 0.714)},
-    'RAL 8024': {'name': 'Beigebrun', 'hex': '#795038', 'rgb': (0.475, 0.314, 0.220)},
+    'RAL 7022': {'name': 'Umbragrå', 'hex': '#4C4A44', 'rgb': (0.298, 0.290, 0.267)},
+    'RAL 7047': {'name': 'Lysgrå', 'hex': '#C8C8C7', 'rgb': (0.784, 0.784, 0.780)},
+    'RAL 9005': {'name': 'Dyp svart', 'hex': '#0E0E10', 'rgb': (0.055, 0.055, 0.063)},
+    'RAL 9016': {'name': 'Trafikkhvit', 'hex': '#F1F0EA', 'rgb': (0.945, 0.941, 0.918)},
 }
 
 # Standard fargevalg
