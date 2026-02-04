@@ -11,7 +11,7 @@ from ..utils.constants import (
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_KARM_TYPES,
     DOOR_TYPE_BLADE_OVERRIDE, DOOR_U_VALUES, DOOR_HINGE_DEFAULTS,
     DOOR_LOCK_CASE_DEFAULTS, DOOR_HANDLE_DEFAULTS,
-    DIMENSION_DIFFERENTIALS, DOOR_THRESHOLD_TYPES,
+    DIMENSION_DIFFERENTIALS, KARM_THRESHOLD_TYPES,
     WINDOW_GLASS_DEDUCTION, WINDOW_LIGHT_DEDUCTION,
     DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
 )
@@ -36,6 +36,7 @@ class DoorParams:
     thickness: int = 100  # Veggtykkelse i mm
     blade_type: str = "SDI_ROCA"  # Dørbladtype (nøkkel fra DOOR_BLADE_TYPES)
     blade_thickness: int = 40  # Dørbladtykkelse i mm
+    utforing: str = ""  # Utforing-steg (nøkkel fra UTFORING_RANGES), tom hvis ikke aktuelt
 
     # Overflate/utseende
     color: str = DEFAULT_COLOR           # Dørblad farge
@@ -117,11 +118,11 @@ class DoorParams:
         # Sett U-verdi automatisk
         self.insulation_value = DOOR_U_VALUES.get(self.door_type, 0.0)
 
-        # Sett standard terskeltype
-        allowed_thresholds = DOOR_THRESHOLD_TYPES.get(self.door_type, ['standard'])
+        # Sett standard terskeltype basert på karmtype
+        allowed_thresholds = KARM_THRESHOLD_TYPES.get(self.karm_type, ['ingen'])
         if allowed_thresholds:
             self.threshold_type = allowed_thresholds[0]
-        self.luftspalte = THRESHOLD_LUFTSPALTE.get(self.threshold_type, 0)
+        self.luftspalte = THRESHOLD_LUFTSPALTE.get(self.threshold_type, 22)
 
     def effective_luftspalte(self) -> int:
         """Returnerer effektiv luftspalte basert på terskeltype.
@@ -200,6 +201,7 @@ class DoorParams:
             'thickness': self.thickness,
             'blade_type': self.blade_type,
             'blade_thickness': self.blade_thickness,
+            'utforing': self.utforing,
             'color': self.color,
             'karm_color': self.karm_color,
             'surface_type': self.surface_type,

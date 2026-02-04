@@ -14,16 +14,17 @@ from ...utils.constants import (
     DOOR_TYPES, DEFAULT_DIMENSIONS, RAL_COLORS,
     SWING_DIRECTIONS, FIRE_RATINGS, SOUND_RATINGS,
     THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE, THRESHOLD_HEIGHT,
-    DOOR_KARM_TYPES, DOOR_FLOYER, DOOR_THRESHOLD_TYPES,
+    DOOR_KARM_TYPES, DOOR_FLOYER, KARM_THRESHOLD_TYPES,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_TYPE_BLADE_OVERRIDE,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
     HINGE_TYPES, DOOR_HINGE_DEFAULTS, LOCK_CASES, DOOR_LOCK_CASE_DEFAULTS,
     HANDLE_TYPES, DOOR_HANDLE_DEFAULTS, ESPAGNOLETT_TYPES,
     DOOR_U_VALUES, BRUTT_KULDEBRO_KARM, BRUTT_KULDEBRO_DORRAMME,
-    DIMENSION_DIFFERENTIALS, LEAD_THICKNESSES,
+    DIMENSION_DIFFERENTIALS,
     SURFACE_TYPES, WINDOW_PROFILES,
     WINDOW_MIN_MARGIN, MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, MAX_WINDOW_OFFSET,
-    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
+    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
+    UTFORING_RANGES, KARM_HAS_UTFORING, UTFORING_MAX_THICKNESS
 )
 from ...models.door import DoorParams
 
@@ -154,13 +155,29 @@ class DoorForm(QWidget):
 
         door_layout.addRow("Transportmål (BT×HT):", transport_widget)
 
+        # Veggtykkelse + utforing på samme rad
+        thickness_widget = QWidget()
+        thickness_layout = QHBoxLayout(thickness_widget)
+        thickness_layout.setContentsMargins(0, 0, 0, 0)
+
         self.thickness_spin = QSpinBox()
         self.thickness_spin.setRange(MIN_THICKNESS, MAX_THICKNESS)
         self.thickness_spin.setValue(100)
         self.thickness_spin.setSuffix(" mm")
         self.thickness_spin.setSingleStep(5)
-        self.thickness_spin.valueChanged.connect(self._on_changed)
-        door_layout.addRow("Veggtykkelse:", self.thickness_spin)
+        self.thickness_spin.setMaximumWidth(100)
+        self.thickness_spin.valueChanged.connect(self._on_thickness_changed)
+        thickness_layout.addWidget(self.thickness_spin)
+
+        self.utforing_label = QLabel("Utforing:")
+        thickness_layout.addWidget(self.utforing_label)
+
+        self.utforing_combo = QComboBox()
+        self.utforing_combo.setMinimumWidth(110)
+        self.utforing_combo.currentIndexChanged.connect(self._on_changed)
+        thickness_layout.addWidget(self.utforing_combo, stretch=1)
+
+        door_layout.addRow("Veggtykkelse:", thickness_widget)
 
         # Dørblad + tykkelse på samme rad
         blade_widget = QWidget()
@@ -394,15 +411,6 @@ class DoorForm(QWidget):
         self.kuldebro_value = QLabel("Nei")
         special_layout.addRow(self.kuldebro_label, self.kuldebro_value)
 
-        # Blyinnlegg for røntgendør
-        self.lead_combo = QComboBox()
-        self.lead_combo.addItem("(ingen)", 0)
-        for mm in LEAD_THICKNESSES:
-            self.lead_combo.addItem(f"{mm} mm", mm)
-        self.lead_combo.currentIndexChanged.connect(self._on_changed)
-        self.lead_label = QLabel("Blyinnlegg:")
-        special_layout.addRow(self.lead_label, self.lead_combo)
-
         layout.addWidget(self.special_group)
 
         layout.addStretch()
@@ -414,7 +422,8 @@ class DoorForm(QWidget):
         for f in DOOR_FLOYER.get(initial_type, [1]):
             self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
         self._update_blade_for_karm()
-        self._update_threshold_for_type()
+        self._update_threshold_for_karm()
+        self._update_utforing_options()
 
         # Sett standardmål fra DEFAULT_DIMENSIONS for initial dørtype
         initial_defaults = DEFAULT_DIMENSIONS.get(initial_type, {})
@@ -481,10 +490,10 @@ class DoorForm(QWidget):
 
         self._block_signals = False
 
-    def _update_threshold_for_type(self):
-        """Oppdaterer terskel-dropdown med tillatte typer for valgt dørtype."""
-        door_type = self.door_type_combo.currentData()
-        allowed = DOOR_THRESHOLD_TYPES.get(door_type, list(THRESHOLD_TYPES.keys()))
+    def _update_threshold_for_karm(self):
+        """Oppdaterer terskel-dropdown med tillatte typer for valgt karmtype."""
+        karm_type = self.karm_combo.currentData()
+        allowed = KARM_THRESHOLD_TYPES.get(karm_type, list(THRESHOLD_TYPES.keys()))
 
         old_threshold = self.threshold_combo.currentData()
         self.threshold_combo.blockSignals(True)
@@ -738,11 +747,89 @@ class DoorForm(QWidget):
         if self._block_signals:
             return
         self._update_blade_for_karm()
+        self._update_utforing_options()
+        self._update_threshold_for_karm()
 
         # Oppdater brutt kuldebro
         self._update_kuldebro_indicator()
 
         self._on_changed()
+
+    def _on_thickness_changed(self):
+        """Håndterer veggtykkelse-endring - oppdaterer utforing og karmtype-filter."""
+        if self._block_signals:
+            return
+        self._filter_karm_by_thickness()
+        self._update_utforing_options()
+        self._on_changed()
+
+    def _update_utforing_options(self):
+        """Oppdaterer utforing-dropdown basert på veggtykkelse og karmtype."""
+        karm = self.karm_combo.currentData()
+        thickness = self.thickness_spin.value()
+
+        # Sjekk om karmen støtter utforing
+        if karm not in KARM_HAS_UTFORING:
+            self.utforing_combo.setEnabled(False)
+            self.utforing_combo.setVisible(False)
+            self.utforing_label.setVisible(False)
+            self.utforing_combo.clear()
+            # Utvid veggtykkelse-input når utforing er skjult
+            self.thickness_spin.setMaximumWidth(16777215)  # Default max
+            return
+
+        self.utforing_combo.setEnabled(True)
+        self.utforing_combo.setVisible(True)
+        self.utforing_label.setVisible(True)
+        # Begrens veggtykkelse-input når utforing vises
+        self.thickness_spin.setMaximumWidth(100)
+        old_utforing = self.utforing_combo.currentData()
+        self.utforing_combo.blockSignals(True)
+        self.utforing_combo.clear()
+
+        # Finn passende utforinger og velg beste match
+        best_match = None
+        for key, info in UTFORING_RANGES.items():
+            if info['min'] <= thickness <= info['max']:
+                self.utforing_combo.addItem(info['name'], key)
+                if best_match is None:
+                    best_match = key
+
+        # Forsøk å beholde forrige valg, ellers velg beste match
+        idx = self.utforing_combo.findData(old_utforing)
+        if idx >= 0:
+            self.utforing_combo.setCurrentIndex(idx)
+        elif best_match:
+            idx = self.utforing_combo.findData(best_match)
+            if idx >= 0:
+                self.utforing_combo.setCurrentIndex(idx)
+
+        self.utforing_combo.blockSignals(False)
+
+    def _filter_karm_by_thickness(self):
+        """Filtrerer karmtype-dropdown basert på veggtykkelse."""
+        thickness = self.thickness_spin.value()
+        door_type = self.door_type_combo.currentData()
+
+        old_karm = self.karm_combo.currentData()
+        self.karm_combo.blockSignals(True)
+        self.karm_combo.clear()
+
+        for karm in DOOR_KARM_TYPES.get(door_type, []):
+            # Skjul karmer med utforing hvis tykkelse > 300mm
+            if karm in KARM_HAS_UTFORING and thickness > UTFORING_MAX_THICKNESS:
+                continue
+            self.karm_combo.addItem(karm, karm)
+
+        # Forsøk å beholde forrige valg
+        idx = self.karm_combo.findData(old_karm)
+        if idx >= 0:
+            self.karm_combo.setCurrentIndex(idx)
+
+        self.karm_combo.blockSignals(False)
+
+        # Oppdater dørblad basert på ny karmtype
+        self._update_blade_for_karm()
 
     def _on_blade_changed(self):
         """Oppdaterer tykkelse-valg basert på valgt dørblad."""
@@ -838,7 +925,10 @@ class DoorForm(QWidget):
         self._update_blade_for_karm()
 
         # Oppdater terskeltyper for denne dørtypen
-        self._update_threshold_for_type()
+        self._update_threshold_for_karm()
+
+        # Oppdater utforing-opsjoner
+        self._update_utforing_options()
 
         # Oppdater beslag-standarder
         self._apply_hardware_defaults(door_type)
@@ -867,24 +957,20 @@ class DoorForm(QWidget):
 
         # Spesielle egenskaper synlighet
         is_fire = door_type == 'BD'
-        is_sound = door_type == 'LDI'
-        is_xray = door_type == 'RD'
         has_u_value = DOOR_U_VALUES.get(door_type, 0.0) > 0
 
         self.fire_rating_label.setVisible(is_fire)
         self.fire_rating_combo.setVisible(is_fire)
-        self.sound_rating_label.setVisible(is_sound)
-        self.sound_rating_combo.setVisible(is_sound)
+        self.sound_rating_label.setVisible(False)  # Lyddør fjernet
+        self.sound_rating_combo.setVisible(False)
         self.insulation_label.setVisible(has_u_value)
         self.insulation_spin.setVisible(has_u_value)
-        self.lead_label.setVisible(is_xray)
-        self.lead_combo.setVisible(is_xray)
 
         # Brutt kuldebro vises alltid
         self._update_kuldebro_indicator()
 
         # Vis/skjul hele spesialgruppen
-        show_special = is_fire or is_sound or has_u_value or is_xray or True  # Alltid vis pga kuldebro
+        show_special = is_fire or has_u_value or True  # Alltid vis pga kuldebro
         self.special_group.setVisible(show_special)
 
         # Terskel/luftspalte aktivering
@@ -911,6 +997,7 @@ class DoorForm(QWidget):
         door.thickness = self.thickness_spin.value()
         door.blade_type = self.blade_combo.currentData() or "SDI_ROCA"
         door.blade_thickness = self.blade_thickness_spin.value()
+        door.utforing = self.utforing_combo.currentData() or ""
         door.color = self.color_combo.currentData() or ""
         door.karm_color = self.karm_color_combo.currentData() or ""
         door.swing_direction = self.hinge_combo.currentData() or "left"
@@ -941,7 +1028,6 @@ class DoorForm(QWidget):
         door.fire_rating = self.fire_rating_combo.currentData() or ""
         door.sound_rating = self.sound_rating_combo.currentData() or 0
         door.insulation_value = self.insulation_spin.value()
-        door.lead_thickness = self.lead_combo.currentData() or 0
         door.notes = self.notes_edit.text()
 
     def load_door(self, door: DoorParams) -> None:
@@ -984,8 +1070,14 @@ class DoorForm(QWidget):
         self._update_thickness_for_blade()
         self.blade_thickness_spin.setValue(door.blade_thickness)
 
+        # Utforing
+        self._update_utforing_options()
+        idx = self.utforing_combo.findData(door.utforing)
+        if idx >= 0:
+            self.utforing_combo.setCurrentIndex(idx)
+
         # Terskel
-        self._update_threshold_for_type()
+        self._update_threshold_for_karm()
         idx = self.threshold_combo.findData(door.threshold_type)
         if idx >= 0:
             self.threshold_combo.setCurrentIndex(idx)
@@ -1042,9 +1134,6 @@ class DoorForm(QWidget):
         if idx >= 0:
             self.sound_rating_combo.setCurrentIndex(idx)
         self.insulation_spin.setValue(door.insulation_value)
-        idx = self.lead_combo.findData(door.lead_thickness)
-        if idx >= 0:
-            self.lead_combo.setCurrentIndex(idx)
 
         # Merknader
         self.notes_edit.setText(door.notes)
