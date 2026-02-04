@@ -140,20 +140,23 @@ class DoorForm(QWidget):
         self.height_spin.valueChanged.connect(self._on_dimension_changed)
         door_layout.addRow("Utsparing høyde (HM):", self.height_spin)
 
-        # Transportmål (beregnet, readonly)
+        # Transportmål (beregnet, readonly) - B90°, B180°, H
         transport_widget = QWidget()
         transport_layout = QHBoxLayout(transport_widget)
         transport_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.transport_width_label = QLabel("— mm")
-        self.transport_height_label = QLabel("— mm")
-        transport_layout.addWidget(QLabel("B:"))
-        transport_layout.addWidget(self.transport_width_label)
+        self.transport_width_90_label = QLabel("—")
+        self.transport_width_180_label = QLabel("—")
+        self.transport_height_label = QLabel("—")
+        transport_layout.addWidget(QLabel("B90°:"))
+        transport_layout.addWidget(self.transport_width_90_label)
+        transport_layout.addWidget(QLabel("  B180°:"))
+        transport_layout.addWidget(self.transport_width_180_label)
         transport_layout.addWidget(QLabel("  H:"))
         transport_layout.addWidget(self.transport_height_label)
         transport_layout.addStretch()
 
-        door_layout.addRow("Transportmål (BT×HT):", transport_widget)
+        door_layout.addRow("Transportmål:", transport_widget)
 
         # Veggtykkelse + utforing på samme rad
         thickness_widget = QWidget()
@@ -508,21 +511,35 @@ class DoorForm(QWidget):
         self.threshold_combo.blockSignals(False)
 
     def _update_transport_labels(self):
-        """Oppdaterer transportmål-etikettene basert på nåværende mål."""
-        door_type = self.door_type_combo.currentData()
-        floyer = self.floyer_combo.currentData() or 1
-        bm = self.width_spin.value()
-        hm = self.height_spin.value()
+        """Oppdaterer transportmål-etikettene basert på karmtype og terskeltype."""
+        # Opprett midlertidig DoorParams for å bruke beregningsmetodene
+        temp_door = DoorParams(
+            karm_type=self.karm_combo.currentData() or "",
+            floyer=self.floyer_combo.currentData() or 1,
+            width=self.width_spin.value(),
+            height=self.height_spin.value(),
+            threshold_type=self.threshold_combo.currentData() or "ingen",
+        )
 
-        diffs = DIMENSION_DIFFERENTIALS.get(door_type, {})
-        diff = diffs.get(floyer)
-        if diff:
-            bt = bm - diff[0]
-            ht = hm - diff[1]
-            self.transport_width_label.setText(f"{bt} mm")
+        # Bredde ved 90°
+        bt_90 = temp_door.transport_width_90()
+        if bt_90 is not None:
+            self.transport_width_90_label.setText(f"{bt_90} mm")
+        else:
+            self.transport_width_90_label.setText("—")
+
+        # Bredde ved 180°
+        bt_180 = temp_door.transport_width_180()
+        if bt_180 is not None:
+            self.transport_width_180_label.setText(f"{bt_180} mm")
+        else:
+            self.transport_width_180_label.setText("—")
+
+        # Høyde basert på terskeltype
+        ht = temp_door.transport_height_by_threshold()
+        if ht is not None:
             self.transport_height_label.setText(f"{ht} mm")
         else:
-            self.transport_width_label.setText("—")
             self.transport_height_label.setText("—")
 
     def _on_changed(self):
@@ -563,7 +580,7 @@ class DoorForm(QWidget):
         self._on_changed()
 
     def _on_threshold_changed(self):
-        """Håndterer endring av terskeltype - oppdaterer luftspalte."""
+        """Håndterer endring av terskeltype - oppdaterer luftspalte og transportmål."""
         if self._block_signals:
             return
 
@@ -579,6 +596,9 @@ class DoorForm(QWidget):
         self._block_signals = True
         self.luftspalte_spin.setValue(luftspalte_value)
         self._block_signals = False
+
+        # Oppdater transportmål siden høyde avhenger av terskeltype
+        self._update_transport_labels()
 
         self._on_changed()
 
@@ -752,6 +772,9 @@ class DoorForm(QWidget):
 
         # Oppdater brutt kuldebro
         self._update_kuldebro_indicator()
+
+        # Oppdater transportmål (avhenger av karmtype)
+        self._update_transport_labels()
 
         self._on_changed()
 

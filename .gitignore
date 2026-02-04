@@ -32,3 +32,12 @@ test-export/
 
 # Installer output
 installer/Output/
+
+# Development files
+dev.py
+nul
+spm.md
+yolomode.txt
+
+# Temporary Excel files
+~$*

@@ -115,11 +115,19 @@ def draw_title_block(c: canvas.Canvas, x: float, y: float,
                      "Tegn. dato:",
                      datetime.now().strftime("%d.%m.%y"), pad)
 
-    bt = door.transport_width()
-    ht = door.transport_height()
-    dim_text = f"BM {door.width}x{door.height} / BT {bt}x{ht}"
+    # Bygg transportmål-tekst med 90° og 180° bredde
+    bt_90 = door.transport_width_90()
+    bt_180 = door.transport_width_180()
+    ht = door.transport_height_by_threshold()
+
+    bt_90_str = str(bt_90) if bt_90 is not None else "—"
+    bt_180_str = str(bt_180) if bt_180 is not None else "—"
+    ht_str = str(ht) if ht is not None else "—"
+
+    # Format: BM: 1010×2110 / BT90°: 890 / BT180°: 920 / H: 2060
+    dim_text = f"BM:{door.width}×{door.height} BT90°:{bt_90_str} BT180°:{bt_180_str} H:{ht_str}"
     _draw_bottom_box(c, x + box_w, four_box_bottom, box_w, box_h,
-                     "Mål (BM/BT):",
+                     "Mål:",
                      dim_text, pad)
 
     scale_text = f"1 : {int(scale)}" if show_scale else "-"
