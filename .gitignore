@@ -41,3 +41,6 @@ yolomode.txt
 
 # Temporary Excel files
 ~$*
+
+# Dokumentasjon (lokale arbeidsfiler)
+docs/*.xlsx
