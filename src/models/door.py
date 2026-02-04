@@ -13,7 +13,9 @@ from ..utils.constants import (
     DOOR_LOCK_CASE_DEFAULTS, DOOR_HANDLE_DEFAULTS,
     DIMENSION_DIFFERENTIALS, KARM_THRESHOLD_TYPES,
     WINDOW_GLASS_DEDUCTION, WINDOW_LIGHT_DEDUCTION,
-    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT
+    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
+    TRANSPORT_WIDTH_OFFSETS, TRANSPORT_HEIGHT_OFFSETS,
+    KARM_SIZE_OFFSETS, KARM_SIDESTOLPE_WIDTH, KARM_BLADE_FLUSH
 )
 
 
@@ -150,6 +152,69 @@ class DoorParams:
         if diff:
             return self.height - diff[1]
         return self.height  # Ingen kjent differanse
+
+    def transport_width_90(self) -> Optional[int]:
+        """Transportbredde ved 90° døråpning.
+        Beregnet fra karmtype-spesifikke offset-verdier fra Excel-formlene."""
+        karm_offsets = TRANSPORT_WIDTH_OFFSETS.get(self.karm_type)
+        if not karm_offsets:
+            return None
+        # Bruk 1-fløyet hvis fløyer ikke finnes for denne karmtypen
+        floyer_offsets = karm_offsets.get(self.floyer) or karm_offsets.get(1)
+        if floyer_offsets and floyer_offsets.get('90') is not None:
+            return self.width + floyer_offsets['90']
+        return None
+
+    def transport_width_180(self) -> Optional[int]:
+        """Transportbredde ved 180° døråpning.
+        Beregnet fra karmtype-spesifikke offset-verdier fra Excel-formlene."""
+        karm_offsets = TRANSPORT_WIDTH_OFFSETS.get(self.karm_type)
+        if not karm_offsets:
+            return None
+        floyer_offsets = karm_offsets.get(self.floyer) or karm_offsets.get(1)
+        if floyer_offsets and floyer_offsets.get('180') is not None:
+            return self.width + floyer_offsets['180']
+        return None
+
+    def transport_height_by_threshold(self) -> Optional[int]:
+        """Transporthøyde basert på karmtype og valgt terskeltype.
+        Beregnet fra Excel-formlene.
+
+        Merk: 'ingen' og 'slepelist' har samme beregning.
+        """
+        offsets = TRANSPORT_HEIGHT_OFFSETS.get(self.karm_type)
+        if not offsets:
+            return None
+        offset = offsets.get(self.threshold_type)
+        if offset is not None:
+            return self.height + offset
+        return None
+
+    def karm_width(self) -> int:
+        """Karmbredde = Utsparing + offset."""
+        offsets = KARM_SIZE_OFFSETS.get(self.karm_type, {'width': 0})
+        return self.width + offsets['width']
+
+    def karm_height(self) -> int:
+        """Karmhøyde = Utsparing + offset."""
+        offsets = KARM_SIZE_OFFSETS.get(self.karm_type, {'height': 0})
+        return self.height + offsets['height']
+
+    def blade_width(self) -> int:
+        """Dørbladbredde = transport_width_90 eller fallback."""
+        return self.transport_width_90() or self.transport_width()
+
+    def blade_height(self) -> int:
+        """Dørbladhøyde = transport_height_by_threshold eller fallback."""
+        return self.transport_height_by_threshold() or self.transport_height()
+
+    def sidestolpe_width(self) -> int:
+        """Sidestolpe-bredde for denne karmtypen."""
+        return KARM_SIDESTOLPE_WIDTH.get(self.karm_type, 50)
+
+    def is_blade_flush(self) -> bool:
+        """Returnerer True hvis dørblad skal være flush med framkant."""
+        return self.karm_type in KARM_BLADE_FLUSH
 
     def has_brutt_kuldebro(self) -> bool:
         """Sjekker om døren har brutt kuldebro (karm eller dørramme)."""

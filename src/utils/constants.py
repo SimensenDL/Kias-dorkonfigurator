@@ -355,5 +355,80 @@ WINDOW_PROFILES = {
     },
 }
 
+# --- Transportmål-beregning (karm-basert) ---
+
+# Transportmål-offset basert på karmtype og fløyer (beregnet fra Excel-formler)
+# Transport = Utsparing + offset
+# Struktur: {karmtype: {floyer: {'90': offset, '180': offset}}}
+# Merk: Kun PD har formler for 2-fløyet. Andre karmer bruker 1-fløyet for nå.
+TRANSPORT_WIDTH_OFFSETS = {
+    'SD1':     {1: {'90': -120, '180': -90}},
+    'BD1':     {1: {'90': -120, '180': -90}},
+    'SD2':     {1: {'90': -100, '180': -70}},
+    'BD2':     {1: {'90': -100, '180': -70}},
+    'SD3/ID1': {1: {'90': -143, '180': -108}},
+    'KD1':     {1: {'90': -180, '180': -130}},
+    'YD1':     {1: {'90': -180, '180': -130}},
+    'KD2':     {1: {'90': -160, '180': -110}},
+    'YD2':     {1: {'90': -160, '180': -110}},
+    'KD3':     {1: {'90': -162, '180': -112}},
+    'YD3':     {1: {'90': -162, '180': -112}},
+    'PD1':     {1: {'90': -170, '180': None}, 2: {'90': -220, '180': None}},
+    'PD2':     {1: {'90': -150, '180': None}, 2: {'90': -200, '180': None}},
+}
+
+# Transporthøyde-offset per terskeltype (beregnet fra Excel-formler)
+# Transport = Utsparing + offset
+# 'ingen' og 'slepelist' har samme beregning (luftspalte/slepelist)
+TRANSPORT_HEIGHT_OFFSETS = {
+    'SD1':     {'ingen': -50, 'slepelist': -50, 'anslag_37': -67, 'anslag_kjorbar_25': -55, 'hc20': -50, 'hcid': None},
+    'BD1':     {'ingen': -50, 'slepelist': -50, 'anslag_37': -67, 'anslag_kjorbar_25': -55, 'hc20': -50, 'hcid': None},
+    'SD2':     {'ingen': -20, 'slepelist': -20, 'anslag_37': -57, 'anslag_kjorbar_25': -45, 'hc20': -40, 'hcid': None},
+    'BD2':     {'ingen': -20, 'slepelist': -20, 'anslag_37': -57, 'anslag_kjorbar_25': -45, 'hc20': -40, 'hcid': None},
+    'SD3/ID1': {'ingen': -64, 'slepelist': -64, 'anslag_37': -101, 'anslag_kjorbar_25': -89, 'hc20': -84, 'hcid': -84},
+    'KD1':     {'ingen': -70, 'slepelist': -70, 'anslag_37': -107, 'anslag_kjorbar_25': -95, 'hc20': -90, 'hcid': None},
+    'YD1':     {'ingen': -70, 'slepelist': -70, 'anslag_37': -107, 'anslag_kjorbar_25': -95, 'hc20': -90, 'hcid': None},
+    'KD2':     {'ingen': -60, 'slepelist': -60, 'anslag_37': -97, 'anslag_kjorbar_25': -85, 'hc20': -80, 'hcid': None},
+    'YD2':     {'ingen': -60, 'slepelist': -60, 'anslag_37': -97, 'anslag_kjorbar_25': -85, 'hc20': -80, 'hcid': None},
+    'KD3':     {'ingen': -66, 'slepelist': -66, 'anslag_37': -103, 'anslag_kjorbar_25': -91, 'hc20': -86, 'hcid': None},
+    'YD3':     {'ingen': -66, 'slepelist': -66, 'anslag_37': -103, 'anslag_kjorbar_25': -91, 'hc20': -86, 'hcid': None},
+    'PD1':     {'ingen': -50, 'slepelist': -50, 'anslag_37': None, 'anslag_kjorbar_25': None, 'hc20': None, 'hcid': None},
+    'PD2':     {'ingen': -40, 'slepelist': -40, 'anslag_37': None, 'anslag_kjorbar_25': None, 'hc20': None, 'hcid': None},
+}
+
+# --- Karm-dimensjoner for 3D-visning ---
+
+# Karm-offset: Karmmål = Utsparingsmål + offset
+KARM_SIZE_OFFSETS = {
+    'SD1':     {'width': 70, 'height': 30},
+    'BD1':     {'width': 70, 'height': 30},
+    'SD2':     {'width': 90, 'height': 40},
+    'BD2':     {'width': 90, 'height': 40},
+    'SD3/ID1': {'width': -20, 'height': -20},
+    'KD1':     {'width': 70, 'height': 30},
+    'YD1':     {'width': 70, 'height': 30},
+    'KD2':     {'width': 90, 'height': 40},
+    'YD2':     {'width': 90, 'height': 40},
+    'KD3':     {'width': -20, 'height': -20},
+    'YD3':     {'width': -20, 'height': -20},
+    'PD1':     {'width': 70, 'height': 30},
+    'PD2':     {'width': 90, 'height': 40},
+}
+
+# Sidestolpe-bredde per karmtype (mm)
+KARM_SIDESTOLPE_WIDTH = {
+    'SD1': 80, 'BD1': 80,
+    'SD2': 80, 'BD2': 80,
+    'SD3/ID1': 44,
+    'KD1': 100, 'YD1': 100,
+    'KD2': 100, 'YD2': 100,
+    'KD3': 46, 'YD3': 46,
+    'PD1': 120, 'PD2': 120,
+}
+
+# Karmtyper der dørblad er flush med framkant (type 1 og 2)
+# Type 3 karmer har sentrert dørblad
+KARM_BLADE_FLUSH = {'SD1', 'SD2', 'KD1', 'KD2', 'YD1', 'YD2', 'PD1', 'PD2', 'BD1', 'BD2'}
+
 # PDF eksportinnstillinger
 PDF_SCALE = 10  # 1:10 (dører er mindre enn bygninger)

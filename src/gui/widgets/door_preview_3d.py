@@ -30,8 +30,8 @@ class DoorPreview3D(QWidget):
     # Skaleringsfaktor: konverterer mm til 3D-enheter (1 enhet = 100 mm)
     SCALE = 1.0 / 100.0
 
-    # Karm-dimensjoner (mm)
-    FRAME_WIDTH = 50
+    # Standard sidestolpe-bredde (fallback, mm)
+    DEFAULT_FRAME_WIDTH = 50
 
     # Dørblad fast tykkelse (mm)
     DOOR_BLADE_THICKNESS = 40
@@ -51,6 +51,17 @@ class DoorPreview3D(QWidget):
     HINGE_HEIGHT = 60
     HINGE_DEPTH = 8
     HINGE_POSITIONS = [0.15, 0.50, 0.85]
+
+    # Karmprofil-dimensjoner (mm)
+    KARM_FALS_DEPTH = 15        # Dybde på fals/anslag
+    KARM_FALS_WIDTH = 12        # Bredde på fals (hvor mye den stikker inn)
+    KARM_FRONT_THICKNESS = 20   # Tykkelse på framkant
+    KARM_UTFORING_THICKNESS = 8 # Tykkelse på utforing-"ben"
+
+    # Karmtyper gruppert etter profiltype
+    KARM_TYPE_1 = {'SD1', 'KD1', 'YD1', 'PD1', 'BD1'}  # U-profil med utforing
+    KARM_TYPE_2 = {'SD2', 'KD2', 'YD2', 'PD2', 'BD2'}  # L-profil
+    KARM_TYPE_3 = {'SD3/ID1', 'KD3', 'YD3'}            # Enkel profil, sentrert
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -134,52 +145,238 @@ class DoorPreview3D(QWidget):
         door = self._door
         s = self.SCALE
 
-        w = door.width * s
-        h = door.height * s
+        # Karmmål (beregnet fra utsparing + offset)
+        karm_w = door.karm_width() * s
+        karm_h = door.karm_height() * s
         frame_depth = door.thickness * s  # Karmdybde = veggtykkelse
+
+        # Dørbladmål (transportmål basert på karmtype og terskel)
+        blade_w = door.blade_width() * s
+        blade_h = door.blade_height() * s
         blade_t = door.blade_thickness * s  # Dørbladtykkelse fra parametere
 
-        # Bygg scenen i rekkefølge: opake elementer først, transparente sist
-        self._add_frame(w, h, frame_depth)
-        self._add_door_body(door, w, h, blade_t)
-        self._add_handle(door, w, h, blade_t)
-        self._add_hinges(door, w, h, blade_t)
+        # Sidestolpe-bredde fra karmtype
+        sidestolpe_w = door.sidestolpe_width() * s
+
+        # Luftspalte ved gulv
+        luftspalte = door.effective_luftspalte() * s
+
+        # Dørbladets topp-posisjon (for å beregne toppstykke i karmen)
+        blade_top = luftspalte + blade_h
+
+        # Velg karmprofil basert på karmtype
+        if door.karm_type in self.KARM_TYPE_1:
+            self._add_frame_type1(door, blade_w, blade_h, blade_t, frame_depth, luftspalte)
+        elif door.karm_type in self.KARM_TYPE_2:
+            self._add_frame_type2(door, blade_w, blade_h, blade_t, frame_depth, luftspalte)
+        else:
+            self._add_frame_type3(door, blade_w, blade_h, blade_t, frame_depth, luftspalte)
+
+        self._add_door_body(door, blade_w, blade_h, blade_t, frame_depth, luftspalte)
+        self._add_handle(door, blade_w, blade_h, blade_t, frame_depth, luftspalte)
+        self._add_hinges(door, blade_w, blade_h, blade_t, frame_depth, luftspalte)
 
         if door.has_window:
-            self._add_glass_panel(door, w, h, blade_t)
+            self._add_glass_panel(door, blade_w, blade_h, blade_t, luftspalte)
 
-    def _add_frame(self, w: float, h: float, frame_depth: float):
-        """Legger til karm (ramme) rundt døren. Karmdybde = veggtykkelse."""
+    def _add_frame_type1(self, door: DoorParams, blade_w: float, blade_h: float,
+                          blade_t: float, frame_depth: float, luftspalte: float):
+        """Type 1 karm: U-profil med utforing (SD1, KD1, YD1, PD1, BD1).
+
+        U-profilen har:
+        - Framkant med fals der dørbladet hviler
+        - To "ben" som strekker seg bakover inn i veggen
+        - Utforing som fyller gapet til veggen
+        """
         s = self.SCALE
-        fw = self.FRAME_WIDTH * s
-        fd = frame_depth  # Karmdybde basert på veggtykkelse
+        karm_color = np.array(self._ral_to_rgba(door.karm_color))
 
-        frame_color = np.array([0.45, 0.45, 0.48, 1.0])
+        # Dimensjoner
+        sidestolpe = door.sidestolpe_width() * s
+        front_t = self.KARM_FRONT_THICKNESS * s  # Framkant tykkelse
+        fals_d = self.KARM_FALS_DEPTH * s        # Fals dybde (Y)
+        fals_w = self.KARM_FALS_WIDTH * s        # Fals bredde (hvor mye den stikker inn)
+        utforing_t = self.KARM_UTFORING_THICKNESS * s
 
-        # Karm: venstre stolpe, høyre stolpe, toppstykke
-        parts = [
-            (-w / 2 - fw, -fd / 2, 0, fw, fd, h + fw),
-            (w / 2, -fd / 2, 0, fw, fd, h + fw),
-            (-w / 2 - fw, -fd / 2, h, w + 2 * fw, fd, fw),
-        ]
+        # Høyde (fra gulv til over dørbladet)
+        karm_h = luftspalte + blade_h + 5 * s  # 5mm over dørbladet
 
+        # Dørbladet er flush med framkant
+        # Framkant Y-posisjon: blade_y + blade_t = frame_depth/2
+        blade_y = frame_depth / 2 - blade_t
+        front_y = blade_y + blade_t - front_t  # Framkant starter her
+
+        # U-profilens deler for venstre sidestolpe:
+        # 1. Framkant (vertikal del på forsiden)
+        # 2. Bakre ben (strekker seg inn i veggen)
+        # 3. Fals (innvendig kant der dørbladet hviler)
+
+        parts = []
+
+        for side in ['left', 'right']:
+            if side == 'left':
+                x_outer = -blade_w / 2 - sidestolpe
+                x_inner = -blade_w / 2
+                fals_x = x_inner - fals_w
+            else:
+                x_outer = blade_w / 2
+                x_inner = blade_w / 2 + sidestolpe
+                fals_x = blade_w / 2
+
+            # 1. Framkant (tynn vertikal del på forsiden)
+            parts.append((x_outer, front_y, 0, sidestolpe, front_t, karm_h))
+
+            # 2. Bakre ben / utforing (strekker seg bakover fra framkant)
+            utforing_len = frame_depth - front_t - (frame_depth / 2 - blade_y)
+            if utforing_len > 0:
+                parts.append((x_outer, front_y - utforing_len, 0, utforing_t, utforing_len, karm_h))
+                parts.append((x_inner - utforing_t, front_y - utforing_len, 0, utforing_t, utforing_len, karm_h))
+
+            # 3. Fals/anslag (innvendig kant)
+            parts.append((fals_x, front_y - fals_d, luftspalte, fals_w, fals_d, blade_h + 5 * s))
+
+        # Toppstykke (binder sammen sidestolpene)
+        parts.append((-blade_w / 2 - sidestolpe, front_y, karm_h,
+                      blade_w + 2 * sidestolpe, front_t, sidestolpe / 2))
+
+        # Tegn alle deler
         for (bx, by, bz, dx, dy, dz) in parts:
             verts, faces = self._make_box(bx, by, bz, dx, dy, dz)
-            colors = np.tile(frame_color, (len(faces), 1))
+            colors = np.tile(karm_color, (len(faces), 1))
             mesh = gl.GLMeshItem(
-                vertexes=verts,
-                faces=faces,
-                faceColors=colors,
-                smooth=False,
-                drawEdges=True,
-                edgeColor=(0.25, 0.25, 0.28, 1.0)
+                vertexes=verts, faces=faces, faceColors=colors,
+                smooth=False, drawEdges=True, edgeColor=(0.2, 0.2, 0.22, 1.0)
             )
             self._gl_widget.addItem(mesh)
             self._mesh_items.append(mesh)
 
-    def _add_door_body(self, door: DoorParams, w: float, h: float, t: float):
-        """Legger til dørblad med farge."""
-        verts, faces = self._make_box(-w / 2, -t / 2, 0, w, t, h)
+    def _add_frame_type2(self, door: DoorParams, blade_w: float, blade_h: float,
+                          blade_t: float, frame_depth: float, luftspalte: float):
+        """Type 2 karm: L-profil (SD2, KD2, YD2, PD2, BD2).
+
+        L-profilen har:
+        - Framkant med fals
+        - Ett "ben" som strekker seg bakover (ikke U-form)
+        """
+        s = self.SCALE
+        karm_color = np.array(self._ral_to_rgba(door.karm_color))
+
+        sidestolpe = door.sidestolpe_width() * s
+        front_t = self.KARM_FRONT_THICKNESS * s
+        fals_d = self.KARM_FALS_DEPTH * s
+        fals_w = self.KARM_FALS_WIDTH * s
+
+        karm_h = luftspalte + blade_h + 5 * s
+        blade_y = frame_depth / 2 - blade_t
+        front_y = blade_y + blade_t - front_t
+
+        parts = []
+
+        for side in ['left', 'right']:
+            if side == 'left':
+                x_outer = -blade_w / 2 - sidestolpe
+                fals_x = -blade_w / 2 - fals_w
+            else:
+                x_outer = blade_w / 2
+                fals_x = blade_w / 2
+
+            # 1. Framkant (L-ens vertikale del)
+            parts.append((x_outer, front_y, 0, sidestolpe, front_t, karm_h))
+
+            # 2. L-ens horisontale del (strekker seg bakover)
+            l_depth = frame_depth / 2
+            parts.append((x_outer, front_y - l_depth, 0, sidestolpe, l_depth, front_t * 1.5))
+
+            # 3. Fals/anslag
+            parts.append((fals_x, front_y - fals_d, luftspalte, fals_w, fals_d, blade_h + 5 * s))
+
+        # Toppstykke
+        parts.append((-blade_w / 2 - sidestolpe, front_y, karm_h,
+                      blade_w + 2 * sidestolpe, front_t, sidestolpe / 2))
+
+        for (bx, by, bz, dx, dy, dz) in parts:
+            verts, faces = self._make_box(bx, by, bz, dx, dy, dz)
+            colors = np.tile(karm_color, (len(faces), 1))
+            mesh = gl.GLMeshItem(
+                vertexes=verts, faces=faces, faceColors=colors,
+                smooth=False, drawEdges=True, edgeColor=(0.2, 0.2, 0.22, 1.0)
+            )
+            self._gl_widget.addItem(mesh)
+            self._mesh_items.append(mesh)
+
+    def _add_frame_type3(self, door: DoorParams, blade_w: float, blade_h: float,
+                          blade_t: float, frame_depth: float, luftspalte: float):
+        """Type 3 karm: Enkel profil med sentrert dørblad (SD3/ID1, KD3, YD3).
+
+        Enkel rektangulær profil der dørbladet er sentrert i karmdybden.
+        """
+        s = self.SCALE
+        karm_color = np.array(self._ral_to_rgba(door.karm_color))
+
+        sidestolpe = door.sidestolpe_width() * s
+        fals_d = self.KARM_FALS_DEPTH * s
+        fals_w = self.KARM_FALS_WIDTH * s
+
+        karm_h = luftspalte + blade_h + 5 * s
+
+        # Dørbladet er sentrert, så karmen er også sentrert
+        karm_depth = blade_t + 2 * fals_d  # Litt dypere enn bladet
+
+        parts = []
+
+        for side in ['left', 'right']:
+            if side == 'left':
+                x_outer = -blade_w / 2 - sidestolpe
+                fals_x = -blade_w / 2 - fals_w
+            else:
+                x_outer = blade_w / 2
+                fals_x = blade_w / 2
+
+            # Enkel sidestolpe (rektangulær)
+            parts.append((x_outer, -karm_depth / 2, 0, sidestolpe, karm_depth, karm_h))
+
+            # Fals på begge sider (foran og bak)
+            parts.append((fals_x, -blade_t / 2 - fals_d, luftspalte, fals_w, fals_d, blade_h))
+            parts.append((fals_x, blade_t / 2, luftspalte, fals_w, fals_d, blade_h))
+
+        # Toppstykke
+        parts.append((-blade_w / 2 - sidestolpe, -karm_depth / 2, karm_h,
+                      blade_w + 2 * sidestolpe, karm_depth, sidestolpe / 2))
+
+        for (bx, by, bz, dx, dy, dz) in parts:
+            verts, faces = self._make_box(bx, by, bz, dx, dy, dz)
+            colors = np.tile(karm_color, (len(faces), 1))
+            mesh = gl.GLMeshItem(
+                vertexes=verts, faces=faces, faceColors=colors,
+                smooth=False, drawEdges=True, edgeColor=(0.2, 0.2, 0.22, 1.0)
+            )
+            self._gl_widget.addItem(mesh)
+            self._mesh_items.append(mesh)
+
+    def _add_door_body(self, door: DoorParams, blade_w: float, blade_h: float,
+                        blade_t: float, frame_depth: float, luftspalte: float):
+        """Legger til dørblad med farge og korrekt plassering.
+
+        Args:
+            door: Dørparametere
+            blade_w: Dørbladbredde (skalert)
+            blade_h: Dørbladhøyde (skalert)
+            blade_t: Dørbladtykkelse (skalert)
+            frame_depth: Karmdybde/veggtykkelse (skalert)
+            luftspalte: Luftspalte ved gulv (skalert)
+        """
+        # Y-posisjon basert på karmtype (flush vs sentrert)
+        if door.is_blade_flush():
+            # Flush med framkant av karm
+            blade_y = frame_depth / 2 - blade_t
+        else:
+            # Sentrert i karmen
+            blade_y = -blade_t / 2
+
+        # Z-posisjon: løftet opp med luftspalte
+        blade_z = luftspalte
+
+        verts, faces = self._make_box(-blade_w / 2, blade_y, blade_z, blade_w, blade_t, blade_h)
 
         color = self._ral_to_rgba(door.color)
         color_edge = self._blend_colors(color, color, 0.5)
@@ -205,7 +402,8 @@ class DoorPreview3D(QWidget):
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
 
-    def _add_glass_panel(self, door: DoorParams, w: float, h: float, t: float):
+    def _add_glass_panel(self, door: DoorParams, blade_w: float, blade_h: float,
+                          blade_t: float, luftspalte: float):
         """Legger til semi-transparent glasspanel med faktiske mål og form."""
         s = self.SCALE
         shape = door.window_shape  # 'rect', 'circle', eller 'rounded_rect'
@@ -215,12 +413,12 @@ class DoorPreview3D(QWidget):
         glass_h = door.window_height * s
 
         # Glasset må stikke litt ut fra dørbladet for å være synlig
-        glass_t = t + 0.5 * s
+        glass_t = blade_t + 0.5 * s
 
         # Standard senterposisjon: midt horisontalt, 65% opp vertikalt
-        # + offset fra brukervalg
+        # + offset fra brukervalg, relativ til dørbladets posisjon
         center_x = door.window_pos_x * s
-        center_z = h * self.GLASS_DEFAULT_Y_RATIO + door.window_pos_y * s
+        center_z = luftspalte + blade_h * self.GLASS_DEFAULT_Y_RATIO + door.window_pos_y * s
 
         # Lys blå farge for glass
         glass_color = np.array([0.6, 0.8, 0.95, 0.5])
@@ -253,7 +451,8 @@ class DoorPreview3D(QWidget):
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
 
-    def _add_handle(self, door: DoorParams, w: float, h: float, t: float):
+    def _add_handle(self, door: DoorParams, blade_w: float, blade_h: float,
+                     blade_t: float, frame_depth: float, luftspalte: float):
         """Legger til håndtak på korrekt side (motsatt hengsle-side)."""
         s = self.SCALE
         hw = self.HANDLE_WIDTH * s
@@ -262,12 +461,19 @@ class DoorPreview3D(QWidget):
         margin = self.HANDLE_X_MARGIN * s
 
         if door.swing_direction == 'left':
-            hx = w / 2 - margin - hw
+            hx = blade_w / 2 - margin - hw
         else:
-            hx = -w / 2 + margin
+            hx = -blade_w / 2 + margin
 
-        hy = t / 2
-        hz = h * self.HANDLE_Y_RATIO - hh / 2
+        # Y-posisjon basert på karmtype (flush vs sentrert)
+        if door.is_blade_flush():
+            blade_y = frame_depth / 2 - blade_t
+            hy = blade_y + blade_t  # På forsiden av dørbladet
+        else:
+            hy = blade_t / 2  # Sentrert, håndtak på front
+
+        # Z-posisjon: relativt til dørbladets posisjon (inkludert luftspalte)
+        hz = luftspalte + blade_h * self.HANDLE_Y_RATIO - hh / 2
 
         verts, faces = self._make_box(hx, hy, hz, hw, hd, hh)
 
@@ -285,8 +491,9 @@ class DoorPreview3D(QWidget):
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
 
-    def _add_hinges(self, door: DoorParams, w: float, h: float, t: float):
-        """Legger til 3 hengsler på angitt side."""
+    def _add_hinges(self, door: DoorParams, blade_w: float, blade_h: float,
+                     blade_t: float, frame_depth: float, luftspalte: float):
+        """Legger til hengsler på angitt side."""
         s = self.SCALE
         hw = self.HINGE_WIDTH * s
         hh = self.HINGE_HEIGHT * s
@@ -294,13 +501,26 @@ class DoorPreview3D(QWidget):
 
         hinge_color = np.array([0.25, 0.25, 0.25, 1.0])
 
-        for pos in self.HINGE_POSITIONS:
-            hz = h * pos - hh / 2
+        # Bruk faktisk antall hengsler fra dørparametere
+        hinge_count = door.hinge_count if door.hinge_count > 0 else 3
+
+        # Beregn hengsel-posisjoner basert på antall
+        if hinge_count == 2:
+            positions = [0.20, 0.80]
+        elif hinge_count == 3:
+            positions = [0.15, 0.50, 0.85]
+        else:
+            # For 4+ hengsler: jevnt fordelt
+            positions = [i / (hinge_count + 1) for i in range(1, hinge_count + 1)]
+
+        for pos in positions:
+            # Z-posisjon: relativt til dørbladets posisjon (inkludert luftspalte)
+            hz = luftspalte + blade_h * pos - hh / 2
 
             if door.swing_direction == 'left':
-                hx = -w / 2 - hw
+                hx = -blade_w / 2 - hw
             else:
-                hx = w / 2
+                hx = blade_w / 2
 
             hy = -hd / 2
 
