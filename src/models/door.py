@@ -50,8 +50,8 @@ class DoorParams:
     # Tilleggsutstyr
     glass: bool = False
     glass_type: str = ""
-    threshold_type: str = "standard"
-    luftspalte: int = 0   # Luftspalte i mm, kun redigerbar for terskeltype 'luftspalte'
+    threshold_type: str = "ingen"
+    luftspalte: int = 0   # Luftspalte i mm, kun redigerbar for terskeltype 'ingen'
     lock_type: str = ""    # Fritekst, bakoverkompatibilitet (erstattes av lock_case)
     swing_direction: str = "left"
 
@@ -117,10 +117,10 @@ class DoorParams:
 
     def effective_luftspalte(self) -> int:
         """Returnerer effektiv luftspalte basert på terskeltype.
-        For 'luftspalte'-typen brukes den lagrede verdien,
+        For 'ingen'-typen brukes den lagrede verdien,
         for alle andre typer brukes den faste verdien fra oppslagstabellen.
         """
-        if self.threshold_type == 'luftspalte':
+        if self.threshold_type == 'ingen':
             return self.luftspalte
         return THRESHOLD_LUFTSPALTE.get(self.threshold_type, 22)
 

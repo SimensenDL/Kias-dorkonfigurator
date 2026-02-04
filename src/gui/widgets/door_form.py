@@ -483,7 +483,7 @@ class DoorForm(QWidget):
             return
 
         threshold_key = self.threshold_combo.currentData()
-        is_luftspalte = (threshold_key == 'luftspalte')
+        is_luftspalte = (threshold_key == 'ingen')
         luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 0)
 
         self.luftspalte_spin.setReadOnly(not is_luftspalte)
@@ -655,7 +655,7 @@ class DoorForm(QWidget):
 
         # Terskel/luftspalte aktivering
         threshold_key = self.threshold_combo.currentData()
-        is_luftspalte = (threshold_key == 'luftspalte')
+        is_luftspalte = (threshold_key == 'ingen')
         self.luftspalte_spin.setReadOnly(not is_luftspalte)
         self.luftspalte_spin.setButtonSymbols(
             QSpinBox.ButtonSymbols.UpDownArrows if is_luftspalte
@@ -692,7 +692,7 @@ class DoorForm(QWidget):
         door.glass = self.glass_check.isChecked()
         door.glass_type = self.glass_type_edit.text()
         door.threshold_type = self.threshold_combo.currentData() or "standard"
-        if door.threshold_type == 'luftspalte':
+        if door.threshold_type == 'ingen':
             door.luftspalte = self.luftspalte_spin.value()
         else:
             door.luftspalte = THRESHOLD_LUFTSPALTE.get(door.threshold_type, 0)
@@ -749,7 +749,7 @@ class DoorForm(QWidget):
         idx = self.threshold_combo.findData(door.threshold_type)
         if idx >= 0:
             self.threshold_combo.setCurrentIndex(idx)
-        if door.threshold_type == 'luftspalte':
+        if door.threshold_type == 'ingen':
             self.luftspalte_spin.setValue(door.luftspalte)
 
         # Farge

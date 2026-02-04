@@ -211,52 +211,52 @@ SURFACE_TYPES = {
 
 # Terskeltyper (intern nøkkel → visningsnavn)
 THRESHOLD_TYPES = {
-    'standard': 'Standard terskel (37 mm)',
-    'hc_terskel': 'HC-terskel (20 mm)',
-    'slepelist': 'Slepelist (25,4 mm)',
-    'kjorbar_terskel': 'Kjørbar terskel (25 mm)',
-    'heveterskel': 'Heveterskel (Total Junior)',
-    'luftspalte': 'Luftspalte',
+    'ingen': 'Ingen',
+    'slepelist': 'Slepelist',
+    'anslag_37': 'Anslag 37',
+    'anslag_kjorbar_25': 'Anslag kjørbar 25',
+    'hc20': 'HC20',
+    'hcid': 'HCID',
 }
 
 # Terskelhøyde per type (mm)
 THRESHOLD_HEIGHT = {
-    'standard': 37,
-    'hc_terskel': 20,
-    'slepelist': 25,
-    'kjorbar_terskel': 25,
-    'heveterskel': 0,  # Hev/senk, variabel
-    'luftspalte': 0,
+    'ingen': 0,
+    'slepelist': 0,
+    'anslag_37': 37,
+    'anslag_kjorbar_25': 25,
+    'hc20': 20,
+    'hcid': 0,
 }
 
-# Faste luftspalte-verdier per terskeltype (mm)
-# For 'luftspalte' er verdien redigerbar, standardverdien er her
+# Luftspalte-verdier per terskeltype (mm)
+# For 'ingen' er verdien redigerbar, standardverdien er 22
 THRESHOLD_LUFTSPALTE = {
-    'standard': 0,
-    'hc_terskel': 8,
+    'ingen': 22,           # Valfritt, std. 22
     'slepelist': 22,
-    'kjorbar_terskel': 0,
-    'heveterskel': 0,
-    'luftspalte': 22,
+    'anslag_37': 22,
+    'anslag_kjorbar_25': 13,
+    'hc20': 8,
+    'hcid': 18,
 }
 
 # Tillatte terskeltyper per dørtype
 DOOR_THRESHOLD_TYPES = {
-    'SDI':  ['standard', 'hc_terskel', 'slepelist', 'luftspalte'],
-    'KD':   ['standard', 'hc_terskel', 'kjorbar_terskel', 'slepelist', 'luftspalte'],
+    'SDI':  ['ingen', 'slepelist', 'anslag_37', 'hc20', 'hcid'],
+    'KD':   ['ingen', 'slepelist', 'anslag_37', 'anslag_kjorbar_25', 'hc20', 'hcid'],
     'PD':   ['slepelist'],
-    'SK':   ['kjorbar_terskel', 'standard'],
-    'BD':   ['heveterskel'],
-    'BR':   ['standard'],
-    'FD':   ['kjorbar_terskel'],
-    'FDI':  ['standard', 'luftspalte'],
-    'BO':   ['standard'],
-    'YD':   ['kjorbar_terskel'],
-    'BA':   ['standard'],
-    'AQI':  ['luftspalte', 'hc_terskel'],
-    'AQB':  ['standard'],
-    'LDI':  ['standard', 'hc_terskel', 'slepelist', 'luftspalte'],
-    'RD':   ['standard', 'hc_terskel', 'slepelist', 'luftspalte'],
+    'SK':   ['anslag_kjorbar_25', 'anslag_37'],
+    'BD':   ['anslag_37'],
+    'BR':   ['anslag_37'],
+    'FD':   ['anslag_kjorbar_25'],
+    'FDI':  ['ingen', 'anslag_37'],
+    'BO':   ['anslag_37'],
+    'YD':   ['anslag_kjorbar_25'],
+    'BA':   ['anslag_37'],
+    'AQI':  ['ingen', 'hc20', 'hcid'],
+    'AQB':  ['anslag_37'],
+    'LDI':  ['ingen', 'slepelist', 'anslag_37', 'hc20', 'hcid'],
+    'RD':   ['ingen', 'slepelist', 'anslag_37', 'hc20', 'hcid'],
 }
 
 # Brannklasser (for branndør) - KIAS produserer kun B30
