@@ -100,6 +100,11 @@ DORBLAD_OFFSETS = {}
 for d in DOOR_REGISTRY.values():
     DORBLAD_OFFSETS.update(d.get('dorblad_offsets', {}))
 
+# Karmtyper der luftspalte trekkes fra i dørblad-høyde
+DORBLAD_HOYDE_INKL_LUFTSPALTE = set()
+for d in DOOR_REGISTRY.values():
+    DORBLAD_HOYDE_INKL_LUFTSPALTE.update(d.get('dorblad_hoyde_inkl_luftspalte', set()))
+
 TERSKEL_OFFSETS = {}
 for d in DOOR_REGISTRY.values():
     TERSKEL_OFFSETS.update(d.get('terskel_offsets', {}))

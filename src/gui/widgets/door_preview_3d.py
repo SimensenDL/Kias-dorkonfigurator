@@ -93,7 +93,7 @@ class DoorPreview3D(QWidget):
     # Karmtyper gruppert etter profiltype
     KARM_TYPE_1 = {'SD1', 'KD1', 'YD1', 'PD1', 'BD1'}  # U-profil med utforing
     KARM_TYPE_2 = {'SD2', 'KD2', 'YD2', 'PD2', 'BD2'}  # L-profil
-    KARM_TYPE_3 = {'SD3/ID1', 'KD3', 'YD3'}            # Enkel profil, sentrert
+    KARM_TYPE_3 = {'SD3/ID', 'KD3', 'YD3'}            # Enkel profil, sentrert
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -338,7 +338,7 @@ class DoorPreview3D(QWidget):
 
     def _add_frame_type3(self, door: DoorParams, blade_w: float, blade_h: float,
                           blade_t: float, frame_depth: float, luftspalte: float):
-        """Type 3 karm: Enkel profil med sentrert dørblad (SD3/ID1, KD3, YD3).
+        """Type 3 karm: Enkel profil med sentrert dørblad (SD3/ID, KD3, YD3).
 
         Enkel rektangulær profil der dørbladet er sentrert i karmdybden.
         """
