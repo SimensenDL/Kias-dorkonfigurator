@@ -64,17 +64,6 @@ KARM_HAS_UTFORING = set()
 for d in DOOR_REGISTRY.values():
     KARM_HAS_UTFORING.update(d.get('karm_has_utforing', set()))
 
-# U-verdier per dørtype
-DOOR_U_VALUES = {d['key']: d.get('u_value', 0.0) for d in DOOR_REGISTRY.values()}
-
-# Dørtyper/karmer med brutt kuldebro
-BRUTT_KULDEBRO_KARM = set()
-BRUTT_KULDEBRO_DORRAMME = set()
-for d in DOOR_REGISTRY.values():
-    BRUTT_KULDEBRO_KARM.update(d.get('brutt_kuldebro_karm', set()))
-    if d.get('brutt_kuldebro_dorramme', False):
-        BRUTT_KULDEBRO_DORRAMME.add(d['key'])
-
 # Transportmål-offsets (bredde)
 TRANSPORT_WIDTH_OFFSETS = {}
 for d in DOOR_REGISTRY.values():

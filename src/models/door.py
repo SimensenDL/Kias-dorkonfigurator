@@ -9,7 +9,7 @@ from datetime import datetime
 from ..utils.constants import (
     DEFAULT_DIMENSIONS, DEFAULT_COLOR, THRESHOLD_LUFTSPALTE,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_KARM_TYPES,
-    DOOR_TYPE_BLADE_OVERRIDE, DOOR_U_VALUES,
+    DOOR_TYPE_BLADE_OVERRIDE,
     DIMENSION_DIFFERENTIALS, KARM_THRESHOLD_TYPES,
     WINDOW_GLASS_DEDUCTION, WINDOW_LIGHT_DEDUCTION,
     DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
@@ -69,7 +69,6 @@ class DoorParams:
     # Spesielle egenskaper (avhenger av dørtype)
     fire_rating: str = ""
     sound_rating: int = 0
-    insulation_value: float = 0.0
     lead_thickness: int = 0  # Blyinnlegg-tykkelse i mm (røntgendør)
 
     # Merknader
@@ -103,9 +102,6 @@ class DoorParams:
                 if blade_types:
                     self.blade_type = blade_types[0]
                     self.blade_thickness = DOOR_BLADE_TYPES[self.blade_type]['thicknesses'][0]
-
-        # Sett U-verdi automatisk
-        self.insulation_value = DOOR_U_VALUES.get(self.door_type, 0.0)
 
         # Sett standard terskeltype basert på karmtype
         allowed_thresholds = KARM_THRESHOLD_TYPES.get(self.karm_type, ['ingen'])
@@ -203,12 +199,6 @@ class DoorParams:
         """Returnerer True hvis dørblad skal være flush med framkant."""
         return self.karm_type in KARM_BLADE_FLUSH
 
-    def has_brutt_kuldebro(self) -> bool:
-        """Sjekker om døren har brutt kuldebro (karm eller dørramme)."""
-        from ..utils.constants import BRUTT_KULDEBRO_KARM, BRUTT_KULDEBRO_DORRAMME
-        return (self.karm_type in BRUTT_KULDEBRO_KARM or
-                self.door_type in BRUTT_KULDEBRO_DORRAMME)
-
     def area_m2(self) -> float:
         """Returnerer dørareal i kvadratmeter."""
         return (self.width * self.height) / 1_000_000
@@ -275,7 +265,6 @@ class DoorParams:
             'swing_direction': self.swing_direction,
             'fire_rating': self.fire_rating,
             'sound_rating': self.sound_rating,
-            'insulation_value': self.insulation_value,
             'lead_thickness': self.lead_thickness,
             'notes': self.notes,
             'created_date': self.created_date,

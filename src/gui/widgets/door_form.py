@@ -5,7 +5,7 @@ Viser input-felt for dørtype, mål, farge, beslag og tilleggsutstyr.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QComboBox, QSpinBox, QCheckBox, QLineEdit, QLabel,
-    QStyledItemDelegate, QStyle, QDoubleSpinBox, QSlider
+    QStyledItemDelegate, QStyle, QSlider
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QRect
 from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
@@ -17,7 +17,6 @@ from ...utils.constants import (
     DOOR_KARM_TYPES, DOOR_FLOYER, KARM_THRESHOLD_TYPES,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, KARM_FLOYER, DOOR_TYPE_BLADE_OVERRIDE,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
-    DOOR_U_VALUES,
     WINDOW_PROFILES,
     WINDOW_MIN_MARGIN, MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, MAX_WINDOW_OFFSET,
     DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
@@ -392,13 +391,6 @@ class DoorForm(QWidget):
             self.sound_rating_combo.addItem(f"Rw{db} dB" if db else "(ingen)", db)
         self.sound_rating_combo.currentIndexChanged.connect(self._on_changed)
 
-        self.insulation_spin = QDoubleSpinBox()
-        self.insulation_spin.setRange(0.0, 10.0)
-        self.insulation_spin.setDecimals(2)
-        self.insulation_spin.setSuffix(" W/m²K")
-        self.insulation_spin.setReadOnly(True)
-        self.insulation_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-
         layout.addStretch()
 
         # Fyll karmtype, fløyer og dørbladtykkelse for standard dørtype
@@ -416,9 +408,6 @@ class DoorForm(QWidget):
             self.width_spin.setValue(initial_defaults['width'])
             self.height_spin.setValue(initial_defaults['height'])
             self.thickness_spin.setValue(initial_defaults['thickness'])
-
-        # Sett U-verdi for initial dørtype
-        self.insulation_spin.setValue(DOOR_U_VALUES.get(initial_type, 0.0))
 
         # Initial visning av typeavhengige felt
         self._update_type_dependent_fields()
@@ -891,10 +880,6 @@ class DoorForm(QWidget):
         # Oppdater utforing-opsjoner
         self._update_utforing_options()
 
-        # Oppdater U-verdi
-        u_value = DOOR_U_VALUES.get(door_type, 0.0)
-        self.insulation_spin.setValue(u_value)
-
         # Oppdater transportmål
         self._update_transport_labels()
 
@@ -963,7 +948,6 @@ class DoorForm(QWidget):
         # Spesielle egenskaper
         door.fire_rating = self.fire_rating_combo.currentData() or ""
         door.sound_rating = self.sound_rating_combo.currentData() or 0
-        door.insulation_value = self.insulation_spin.value()
         door.notes = self.notes_edit.text()
 
     def load_door(self, door: DoorParams) -> None:
@@ -1059,7 +1043,6 @@ class DoorForm(QWidget):
         idx = self.sound_rating_combo.findData(door.sound_rating)
         if idx >= 0:
             self.sound_rating_combo.setCurrentIndex(idx)
-        self.insulation_spin.setValue(door.insulation_value)
 
         # Merknader
         self.notes_edit.setText(door.notes)

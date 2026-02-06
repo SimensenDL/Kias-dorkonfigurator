@@ -56,11 +56,6 @@ INNERDOR = {
     # Utforing: kun SD1
     'karm_has_utforing': {'SD1'},
 
-    # U-verdi
-    'u_value': 0.56,
-    'brutt_kuldebro_karm': set(),       # Ingen karmer med brutt kuldebro
-    'brutt_kuldebro_dorramme': False,    # Ikke brutt kuldebro på dørramme
-
     # Transportmål-offsets (fra utsparingsmål)
     # Struktur: {karmtype: {floyer: {'90': offset, '180': offset}}}
     'transport_width_offsets': {

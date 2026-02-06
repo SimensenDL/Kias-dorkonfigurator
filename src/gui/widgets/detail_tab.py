@@ -7,7 +7,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from ...models.door import DoorParams
-from ...utils.constants import BRUTT_KULDEBRO_KARM, BRUTT_KULDEBRO_DORRAMME, DOOR_U_VALUES
 from ...utils.calculations import (
     karm_bredde, karm_hoyde,
     dorblad_bredde, dorblad_hoyde,
@@ -68,24 +67,6 @@ class DetailTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
 
-        # --- Spesielle egenskaper ---
-        special_group = QGroupBox("Spesielle egenskaper")
-        special_layout = self._make_form_layout(special_group)
-
-        self.fire_rating_label = self._make_label("Brannklasse:")
-        self.fire_rating_value = self._make_value()
-        special_layout.addRow(self.fire_rating_label, self.fire_rating_value)
-
-        self.u_value_label = self._make_label("U-verdi:")
-        self.u_value_value = self._make_value()
-        special_layout.addRow(self.u_value_label, self.u_value_value)
-
-        self.kuldebro_label = self._make_label("Brutt kuldebro:")
-        self.kuldebro_value = self._make_value()
-        special_layout.addRow(self.kuldebro_label, self.kuldebro_value)
-
-        layout.addWidget(special_group)
-
         # --- Felles (karm, terskel, dekklist) ---
         self.felles_group = QGroupBox("Felles")
         felles_layout = self._make_form_layout(self.felles_group)
@@ -142,26 +123,6 @@ class DetailTab(QWidget):
     def update_door(self, door: DoorParams):
         """Oppdaterer visningen med verdier fra DoorParams."""
         fmt = self._fmt
-
-        # --- Spesielle egenskaper ---
-
-        # Brannklasse (synlig kun for BD)
-        is_fire = door.door_type == 'BD'
-        self.fire_rating_label.setVisible(is_fire)
-        self.fire_rating_value.setVisible(is_fire)
-        if is_fire:
-            self.fire_rating_value.setText(door.fire_rating or "(ingen)")
-
-        # U-verdi (synlig kun hvis > 0)
-        has_u_value = DOOR_U_VALUES.get(door.door_type, 0.0) > 0
-        self.u_value_label.setVisible(has_u_value)
-        self.u_value_value.setVisible(has_u_value)
-        if has_u_value:
-            self.u_value_value.setText(fmt(f"{door.insulation_value:.2f}", "W/m\u00b2K"))
-
-        # Brutt kuldebro (alltid synlig)
-        has_kuldebro = door.has_brutt_kuldebro()
-        self.kuldebro_value.setText("Ja" if has_kuldebro else "Nei")
 
         # --- Felles utregninger ---
         karm_type = door.karm_type
