@@ -17,8 +17,6 @@ from ...utils.constants import (
     DOOR_KARM_TYPES, DOOR_FLOYER, KARM_THRESHOLD_TYPES,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_TYPE_BLADE_OVERRIDE,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
-    HINGE_TYPES, DOOR_HINGE_DEFAULTS, LOCK_CASES, DOOR_LOCK_CASE_DEFAULTS,
-    HANDLE_TYPES, DOOR_HANDLE_DEFAULTS, ESPAGNOLETT_TYPES,
     DOOR_U_VALUES, BRUTT_KULDEBRO_KARM, BRUTT_KULDEBRO_DORRAMME,
     DIMENSION_DIFFERENTIALS,
     SURFACE_TYPES, WINDOW_PROFILES,
@@ -342,45 +340,6 @@ class DoorForm(QWidget):
 
         layout.addWidget(window_group)
 
-        # --- Beslag og lås ---
-        hardware_group = QGroupBox("Beslag og lås")
-        hardware_layout = QFormLayout(hardware_group)
-
-        self.hinge_type_combo = QComboBox()
-        for key, name in HINGE_TYPES.items():
-            self.hinge_type_combo.addItem(name, key)
-        self.hinge_type_combo.currentIndexChanged.connect(self._on_changed)
-        hardware_layout.addRow("Hengseltype:", self.hinge_type_combo)
-
-        self.hinge_count_spin = QSpinBox()
-        self.hinge_count_spin.setRange(0, 6)
-        self.hinge_count_spin.setValue(2)
-        self.hinge_count_spin.setSuffix(" stk")
-        self.hinge_count_spin.valueChanged.connect(self._on_changed)
-        hardware_layout.addRow("Antall hengsler:", self.hinge_count_spin)
-
-        self.lock_case_combo = QComboBox()
-        for key, name in LOCK_CASES.items():
-            self.lock_case_combo.addItem(name, key)
-        self.lock_case_combo.currentIndexChanged.connect(self._on_changed)
-        hardware_layout.addRow("Låsekasse:", self.lock_case_combo)
-
-        self.handle_combo = QComboBox()
-        for key, name in HANDLE_TYPES.items():
-            self.handle_combo.addItem(name, key)
-        self.handle_combo.currentIndexChanged.connect(self._on_changed)
-        hardware_layout.addRow("Vrider/skilt:", self.handle_combo)
-
-        # Espagnolett (kun for 2-fløya)
-        self.espagnolett_combo = QComboBox()
-        for key, name in ESPAGNOLETT_TYPES.items():
-            self.espagnolett_combo.addItem(name, key)
-        self.espagnolett_combo.currentIndexChanged.connect(self._on_changed)
-        self.espagnolett_label = QLabel("Espagnolett:")
-        hardware_layout.addRow(self.espagnolett_label, self.espagnolett_combo)
-
-        layout.addWidget(hardware_group)
-
         # --- Spesielle egenskaper (avhengig av dørtype) ---
         self.special_group = QGroupBox("Spesielle egenskaper")
         special_layout = QFormLayout(self.special_group)
@@ -435,8 +394,8 @@ class DoorForm(QWidget):
             self.height_spin.setValue(initial_defaults['height'])
             self.thickness_spin.setValue(initial_defaults['thickness'])
 
-        # Sett beslag-standardverdier
-        self._apply_hardware_defaults(initial_type)
+        # Sett U-verdi for initial dørtype
+        self.insulation_spin.setValue(DOOR_U_VALUES.get(initial_type, 0.0))
 
         # Initial visning av typeavhengige felt
         self._update_type_dependent_fields()
@@ -459,39 +418,6 @@ class DoorForm(QWidget):
 
             display_text = f"      {code} - {info['name']}"
             combo.addItem(icon, display_text, code)
-
-    def _apply_hardware_defaults(self, door_type: str):
-        """Setter beslag-standardverdier basert på dørtype."""
-        self._block_signals = True
-
-        # Hengsler
-        hinge_defaults = DOOR_HINGE_DEFAULTS.get(door_type)
-        if hinge_defaults:
-            hinge_key, count_1, count_2 = hinge_defaults
-            if hinge_key:
-                idx = self.hinge_type_combo.findData(hinge_key)
-                if idx >= 0:
-                    self.hinge_type_combo.setCurrentIndex(idx)
-            floyer = self.floyer_combo.currentData() or 1
-            self.hinge_count_spin.setValue(count_1 if floyer == 1 else count_2)
-
-        # Låsekasse
-        lock_default = DOOR_LOCK_CASE_DEFAULTS.get(door_type, '')
-        idx = self.lock_case_combo.findData(lock_default)
-        if idx >= 0:
-            self.lock_case_combo.setCurrentIndex(idx)
-
-        # Vrider/skilt
-        handle_default = DOOR_HANDLE_DEFAULTS.get(door_type, '')
-        idx = self.handle_combo.findData(handle_default)
-        if idx >= 0:
-            self.handle_combo.setCurrentIndex(idx)
-
-        # U-verdi
-        u_value = DOOR_U_VALUES.get(door_type, 0.0)
-        self.insulation_spin.setValue(u_value)
-
-        self._block_signals = False
 
     def _update_threshold_for_karm(self):
         """Oppdaterer terskel-dropdown med tillatte typer for valgt karmtype."""
@@ -566,17 +492,6 @@ class DoorForm(QWidget):
         if self._block_signals:
             return
         self._update_transport_labels()
-
-        # Oppdater espagnolett-synlighet og hengseltall
-        door_type = self.door_type_combo.currentData()
-        floyer = self.floyer_combo.currentData() or 1
-        hinge_defaults = DOOR_HINGE_DEFAULTS.get(door_type)
-        if hinge_defaults:
-            _, count_1, count_2 = hinge_defaults
-            self._block_signals = True
-            self.hinge_count_spin.setValue(count_1 if floyer == 1 else count_2)
-            self._block_signals = False
-
         self._on_changed()
 
     def _on_threshold_changed(self):
@@ -953,8 +868,9 @@ class DoorForm(QWidget):
         # Oppdater utforing-opsjoner
         self._update_utforing_options()
 
-        # Oppdater beslag-standarder
-        self._apply_hardware_defaults(door_type)
+        # Oppdater U-verdi
+        u_value = DOOR_U_VALUES.get(door_type, 0.0)
+        self.insulation_spin.setValue(u_value)
 
         # Oppdater kuldebro
         self._update_kuldebro_indicator()
@@ -972,11 +888,6 @@ class DoorForm(QWidget):
 
         # Vindu-felt synlighet
         self._update_window_visibility()
-
-        # Espagnolett synlighet (kun for 2-fløya)
-        is_two_leaf = (floyer == 2)
-        self.espagnolett_label.setVisible(is_two_leaf)
-        self.espagnolett_combo.setVisible(is_two_leaf)
 
         # Spesielle egenskaper synlighet
         is_fire = door_type == 'BD'
@@ -1024,13 +935,6 @@ class DoorForm(QWidget):
         door.color = self.color_combo.currentData() or ""
         door.karm_color = self.karm_color_combo.currentData() or ""
         door.swing_direction = self.hinge_combo.currentData() or "left"
-
-        # Beslag
-        door.hinge_type = self.hinge_type_combo.currentData() or ""
-        door.hinge_count = self.hinge_count_spin.value()
-        door.lock_case = self.lock_case_combo.currentData() or ""
-        door.handle_type = self.handle_combo.currentData() or ""
-        door.espagnolett = self.espagnolett_combo.currentData() or "ingen"
 
         # Vindu
         door.has_window = self.window_check.isChecked()
@@ -1121,21 +1025,6 @@ class DoorForm(QWidget):
         idx = self.hinge_combo.findData(door.swing_direction)
         if idx >= 0:
             self.hinge_combo.setCurrentIndex(idx)
-
-        # Beslag
-        idx = self.hinge_type_combo.findData(door.hinge_type)
-        if idx >= 0:
-            self.hinge_type_combo.setCurrentIndex(idx)
-        self.hinge_count_spin.setValue(door.hinge_count)
-        idx = self.lock_case_combo.findData(door.lock_case)
-        if idx >= 0:
-            self.lock_case_combo.setCurrentIndex(idx)
-        idx = self.handle_combo.findData(door.handle_type)
-        if idx >= 0:
-            self.handle_combo.setCurrentIndex(idx)
-        idx = self.espagnolett_combo.findData(door.espagnolett)
-        if idx >= 0:
-            self.espagnolett_combo.setCurrentIndex(idx)
 
         # Vindu
         self.window_check.setChecked(door.has_window)

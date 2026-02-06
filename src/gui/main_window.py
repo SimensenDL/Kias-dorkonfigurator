@@ -28,6 +28,7 @@ from ..utils.constants import APP_NAME, APP_VERSION, PROJECT_FILTER, DOOR_TYPES
 from .widgets.door_form import DoorForm
 from .widgets.door_preview_3d import DoorPreview3D
 from .widgets.production_tab import ProductionTab
+from .widgets.production_list_tab import ProductionListTab
 from .styles import ThemeManager, Theme
 
 
@@ -141,6 +142,7 @@ class MainWindow(QMainWindow):
         # Tab 2: Produksjon
         self.production_tab = ProductionTab()
         self.production_tab.update_door(self.door)
+        self.production_tab.door_added.connect(self._on_door_added_to_list)
 
         if HAS_ICONS:
             self.tab_widget.addTab(self.production_tab,
@@ -148,6 +150,17 @@ class MainWindow(QMainWindow):
                                    "Produksjon")
         else:
             self.tab_widget.addTab(self.production_tab, "Produksjon")
+
+        # Tab 3: Produksjonsliste
+        self.production_list_tab = ProductionListTab()
+        self.production_list_tab.list_changed.connect(self._on_production_list_changed)
+
+        if HAS_ICONS:
+            self.tab_widget.addTab(self.production_list_tab,
+                                   qta.icon('fa5s.clipboard-list', color='#8ab4f8'),
+                                   "Kappeliste")
+        else:
+            self.tab_widget.addTab(self.production_list_tab, "Kappeliste")
 
         right_layout.addWidget(self.tab_widget)
 
@@ -249,6 +262,15 @@ class MainWindow(QMainWindow):
         self._update_title()
         self.door_preview.update_door(self.door)
         self.production_tab.update_door(self.door)
+
+    def _on_door_added_to_list(self, door_id: str):
+        """Håndterer når en dør er lagt til i produksjonslisten."""
+        self.production_list_tab.refresh()
+        self.statusbar.showMessage(f"Dør lagt til i produksjonslisten")
+
+    def _on_production_list_changed(self):
+        """Håndterer endringer i produksjonslisten."""
+        self.production_tab.refresh_list_info()
 
     def _update_title(self):
         """Oppdaterer vindustittel."""

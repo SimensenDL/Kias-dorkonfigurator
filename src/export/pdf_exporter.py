@@ -9,7 +9,7 @@ from reportlab.lib.colors import black, Color
 from reportlab.pdfgen import canvas
 
 from ..models.door import DoorParams
-from ..utils.constants import DOOR_TYPES, HINGE_TYPES, LOCK_CASES, HANDLE_TYPES
+from ..utils.constants import DOOR_TYPES
 from .pdf_constants import (
     A3_WIDTH, A3_HEIGHT, A3_MARGIN,
     COLOR_DOOR_FILL, COLOR_DOOR_STROKE, COLOR_FRAME_FILL,

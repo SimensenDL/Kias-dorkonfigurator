@@ -1,30 +1,24 @@
 """
-Produksjons-tab widget – plassholder.
-Bygges ut med produksjonsmål og kappliste senere.
+Kappeliste-tab widget – plassholder.
+Bygges ut med gruppert kappeliste og eksport senere.
 """
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
 
-from ...models.door import DoorParams
 
+class ProductionListTab(QWidget):
+    """Plassholder-widget for kappeliste."""
 
-class ProductionTab(QWidget):
-    """Plassholder-widget for produksjonsmål."""
-
-    door_added = pyqtSignal(str)
+    list_changed = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
-        label = QLabel("Produksjon")
+        label = QLabel("Kappeliste")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("font-size: 18px; color: #888;")
         layout.addWidget(label)
 
-    def update_door(self, door: DoorParams):
+    def refresh(self):
         """Oppdaterer visningen (no-op)."""
-        pass
-
-    def refresh_list_info(self):
-        """Oppdaterer liste-info (no-op)."""
         pass

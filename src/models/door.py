@@ -9,8 +9,7 @@ from datetime import datetime
 from ..utils.constants import (
     DEFAULT_DIMENSIONS, DEFAULT_COLOR, THRESHOLD_LUFTSPALTE,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_KARM_TYPES,
-    DOOR_TYPE_BLADE_OVERRIDE, DOOR_U_VALUES, DOOR_HINGE_DEFAULTS,
-    DOOR_LOCK_CASE_DEFAULTS, DOOR_HANDLE_DEFAULTS,
+    DOOR_TYPE_BLADE_OVERRIDE, DOOR_U_VALUES,
     DIMENSION_DIFFERENTIALS, KARM_THRESHOLD_TYPES,
     WINDOW_GLASS_DEDUCTION, WINDOW_LIGHT_DEDUCTION,
     DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
@@ -103,19 +102,6 @@ class DoorParams:
                 if blade_types:
                     self.blade_type = blade_types[0]
                     self.blade_thickness = DOOR_BLADE_TYPES[self.blade_type]['thicknesses'][0]
-
-        # Sett beslag-standardverdier
-        hinge_defaults = DOOR_HINGE_DEFAULTS.get(self.door_type)
-        if hinge_defaults:
-            hinge_key, count_1, count_2 = hinge_defaults
-            self.hinge_type = hinge_key or ""
-            self.hinge_count = count_1 if self.floyer == 1 else count_2
-
-        self.lock_case = DOOR_LOCK_CASE_DEFAULTS.get(self.door_type, "")
-        self.handle_type = DOOR_HANDLE_DEFAULTS.get(self.door_type, "")
-
-        # Sett espagnolett for 2-fløya
-        self.espagnolett = "roca_sf" if self.floyer == 2 else "ingen"
 
         # Sett U-verdi automatisk
         self.insulation_value = DOOR_U_VALUES.get(self.door_type, 0.0)
