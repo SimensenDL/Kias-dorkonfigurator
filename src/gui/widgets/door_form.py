@@ -122,39 +122,69 @@ class DoorForm(QWidget):
 
         door_layout.addRow("Karmtype:", karm_floyer_widget)
 
+        # Bredde-rad: BM (input) + Karm + B90° + B180°
+        width_widget = QWidget()
+        width_layout = QHBoxLayout(width_widget)
+        width_layout.setContentsMargins(0, 0, 0, 0)
+        width_layout.setSpacing(6)
+
         self.width_spin = QSpinBox()
         self.width_spin.setRange(MIN_WIDTH, MAX_WIDTH)
         self.width_spin.setValue(1010)
         self.width_spin.setSuffix(" mm")
         self.width_spin.setSingleStep(50)
+        self.width_spin.setMaximumWidth(100)
         self.width_spin.valueChanged.connect(self._on_dimension_changed)
-        door_layout.addRow("Utsparing bredde (BM):", self.width_spin)
+        width_layout.addWidget(self.width_spin)
+
+        self.karm_width_label = QLabel("Karm: —")
+        self.karm_width_label.setStyleSheet("color: #ddd;")
+        width_layout.addWidget(self.karm_width_label)
+
+        _sep_w = QLabel("|")
+        _sep_w.setStyleSheet("color: #666;")
+        width_layout.addWidget(_sep_w)
+
+        self.transport_width_90_label = QLabel("BT 90°: —")
+        self.transport_width_90_label.setStyleSheet("color: #ddd;")
+        width_layout.addWidget(self.transport_width_90_label)
+
+        self.transport_width_180_label = QLabel("BT 180°: —")
+        self.transport_width_180_label.setStyleSheet("color: #ddd;")
+        width_layout.addWidget(self.transport_width_180_label)
+
+        width_layout.addStretch()
+        door_layout.addRow("Bredde (BM):", width_widget)
+
+        # Høyde-rad: HM (input) + Karm + H transport
+        height_widget = QWidget()
+        height_layout = QHBoxLayout(height_widget)
+        height_layout.setContentsMargins(0, 0, 0, 0)
+        height_layout.setSpacing(6)
 
         self.height_spin = QSpinBox()
         self.height_spin.setRange(MIN_HEIGHT, MAX_HEIGHT)
         self.height_spin.setValue(2110)
         self.height_spin.setSuffix(" mm")
         self.height_spin.setSingleStep(50)
+        self.height_spin.setMaximumWidth(100)
         self.height_spin.valueChanged.connect(self._on_dimension_changed)
-        door_layout.addRow("Utsparing høyde (HM):", self.height_spin)
+        height_layout.addWidget(self.height_spin)
 
-        # Transportmål (beregnet, readonly) - B90°, B180°, H
-        transport_widget = QWidget()
-        transport_layout = QHBoxLayout(transport_widget)
-        transport_layout.setContentsMargins(0, 0, 0, 0)
+        self.karm_height_label = QLabel("Karm: —")
+        self.karm_height_label.setStyleSheet("color: #ddd;")
+        height_layout.addWidget(self.karm_height_label)
 
-        self.transport_width_90_label = QLabel("—")
-        self.transport_width_180_label = QLabel("—")
-        self.transport_height_label = QLabel("—")
-        transport_layout.addWidget(QLabel("B90°:"))
-        transport_layout.addWidget(self.transport_width_90_label)
-        transport_layout.addWidget(QLabel("  B180°:"))
-        transport_layout.addWidget(self.transport_width_180_label)
-        transport_layout.addWidget(QLabel("  H:"))
-        transport_layout.addWidget(self.transport_height_label)
-        transport_layout.addStretch()
+        _sep_h = QLabel("|")
+        _sep_h.setStyleSheet("color: #666;")
+        height_layout.addWidget(_sep_h)
 
-        door_layout.addRow("Transportmål:", transport_widget)
+        self.transport_height_label = QLabel("HT: —")
+        self.transport_height_label.setStyleSheet("color: #ddd;")
+        height_layout.addWidget(self.transport_height_label)
+
+        height_layout.addStretch()
+        door_layout.addRow("Høyde (HM):", height_widget)
 
         # Veggtykkelse + utforing på samme rad
         thickness_widget = QWidget()
@@ -437,8 +467,7 @@ class DoorForm(QWidget):
         self.threshold_combo.blockSignals(False)
 
     def _update_transport_labels(self):
-        """Oppdaterer transportmål-etikettene basert på karmtype og terskeltype."""
-        # Opprett midlertidig DoorParams for å bruke beregningsmetodene
+        """Oppdaterer karm- og transportmål-etikettene."""
         temp_door = DoorParams(
             karm_type=self.karm_combo.currentData() or "",
             floyer=self.floyer_combo.currentData() or 1,
@@ -447,26 +476,20 @@ class DoorForm(QWidget):
             threshold_type=self.threshold_combo.currentData() or "ingen",
         )
 
-        # Bredde ved 90°
+        # Karmmål
+        self.karm_width_label.setText(f"Karm: {temp_door.karm_width()} mm")
+        self.karm_height_label.setText(f"Karm: {temp_door.karm_height()} mm")
+
+        # Transportbredde 90° og 180°
         bt_90 = temp_door.transport_width_90()
-        if bt_90 is not None:
-            self.transport_width_90_label.setText(f"{bt_90} mm")
-        else:
-            self.transport_width_90_label.setText("—")
+        self.transport_width_90_label.setText(f"BT 90°: {bt_90} mm" if bt_90 is not None else "BT 90°: —")
 
-        # Bredde ved 180°
         bt_180 = temp_door.transport_width_180()
-        if bt_180 is not None:
-            self.transport_width_180_label.setText(f"{bt_180} mm")
-        else:
-            self.transport_width_180_label.setText("—")
+        self.transport_width_180_label.setText(f"BT 180°: {bt_180} mm" if bt_180 is not None else "BT 180°: —")
 
-        # Høyde basert på terskeltype
+        # Transporthøyde
         ht = temp_door.transport_height_by_threshold()
-        if ht is not None:
-            self.transport_height_label.setText(f"{ht} mm")
-        else:
-            self.transport_height_label.setText("—")
+        self.transport_height_label.setText(f"HT: {ht} mm" if ht is not None else "HT: —")
 
     def _on_changed(self):
         """Sender signal når verdier endres."""
