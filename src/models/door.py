@@ -32,6 +32,7 @@ class DoorParams:
     door_type: str = "SDI"
     karm_type: str = "SD1"
     floyer: int = 1  # Antall fløyer (1 eller 2)
+    floyer_split: int = 50  # Prosent av total bredde for fløy 1 (50 = lik oppdeling)
     width: int = 1010    # Utsparingsbredde (BM) i mm
     height: int = 2110   # Utsparingshøyde (HM) i mm
     thickness: int = 100  # Veggtykkelse i mm
@@ -247,6 +248,7 @@ class DoorParams:
             'door_type': self.door_type,
             'karm_type': self.karm_type,
             'floyer': self.floyer,
+            'floyer_split': self.floyer_split,
             'width': self.width,
             'height': self.height,
             'thickness': self.thickness,

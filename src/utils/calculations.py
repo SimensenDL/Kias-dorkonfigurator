@@ -19,6 +19,7 @@ from .constants import (
     TERSKEL_OFFSETS,
     LAMINAT_OFFSETS,
     LAMINAT_OFFSET_DEFAULT,
+    DEKKLIST_2FLOYET_OFFSET,
 )
 
 
@@ -247,6 +248,20 @@ def terskel_lengde(karm_type: str, karm_b: int, floyer: int = 1) -> Optional[int
         return None
 
     return karm_b - offset
+
+
+def dekklist_lengde(karm_h: int) -> int:
+    """Beregn dekklistlengde for 2-fløyet dør.
+
+    Dekklist = karmhøyde - offset (102 mm).
+
+    Args:
+        karm_h: Karmhøyde i mm
+
+    Returns:
+        Dekklistlengde i mm
+    """
+    return karm_h - DEKKLIST_2FLOYET_OFFSET
 
 
 def laminat_mal(karm_type: str, dorblad_b: int, dorblad_h: int,

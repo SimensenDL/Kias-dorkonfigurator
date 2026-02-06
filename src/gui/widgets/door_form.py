@@ -13,13 +13,12 @@ from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
 from ...utils.constants import (
     DOOR_TYPES, DEFAULT_DIMENSIONS, RAL_COLORS,
     SWING_DIRECTIONS, FIRE_RATINGS, SOUND_RATINGS,
-    THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE, THRESHOLD_HEIGHT,
+    THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE,
     DOOR_KARM_TYPES, DOOR_FLOYER, KARM_THRESHOLD_TYPES,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_TYPE_BLADE_OVERRIDE,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
-    DOOR_U_VALUES, BRUTT_KULDEBRO_KARM, BRUTT_KULDEBRO_DORRAMME,
-    DIMENSION_DIFFERENTIALS,
-    SURFACE_TYPES, WINDOW_PROFILES,
+    DOOR_U_VALUES,
+    WINDOW_PROFILES,
     WINDOW_MIN_MARGIN, MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, MAX_WINDOW_OFFSET,
     DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
     UTFORING_RANGES, KARM_HAS_UTFORING, UTFORING_MAX_THICKNESS
@@ -106,7 +105,7 @@ class DoorForm(QWidget):
         self.door_type_combo.currentIndexChanged.connect(self._on_type_changed)
         door_layout.addRow("Dørtype:", self.door_type_combo)
 
-        # Karmtype + antall fløyer på samme rad
+        # Karmtype + antall fløyer + fordeling på samme rad
         karm_floyer_widget = QWidget()
         karm_floyer_layout = QHBoxLayout(karm_floyer_widget)
         karm_floyer_layout.setContentsMargins(0, 0, 0, 0)
@@ -116,9 +115,16 @@ class DoorForm(QWidget):
         karm_floyer_layout.addWidget(self.karm_combo, stretch=1)
 
         self.floyer_combo = QComboBox()
-        self.floyer_combo.setMinimumWidth(100)
         self.floyer_combo.currentIndexChanged.connect(self._on_floyer_changed)
-        karm_floyer_layout.addWidget(self.floyer_combo)
+        karm_floyer_layout.addWidget(self.floyer_combo, stretch=1)
+
+        self.split_spin = QSpinBox()
+        self.split_spin.setRange(30, 70)
+        self.split_spin.setValue(50)
+        self.split_spin.setSuffix(" %")
+        self.split_spin.setSingleStep(5)
+        self.split_spin.valueChanged.connect(self._on_changed)
+        karm_floyer_layout.addWidget(self.split_spin, stretch=1)
 
         door_layout.addRow("Karmtype:", karm_floyer_widget)
 
@@ -244,7 +250,7 @@ class DoorForm(QWidget):
 
         self.luftspalte_spin = QSpinBox()
         self.luftspalte_spin.setRange(0, 100)
-        self.luftspalte_spin.setValue(0)
+        self.luftspalte_spin.setValue(THRESHOLD_LUFTSPALTE.get('ingen', 22))
         self.luftspalte_spin.setSuffix(" mm")
         self.luftspalte_spin.setSingleStep(1)
         self.luftspalte_spin.setReadOnly(True)
@@ -374,40 +380,24 @@ class DoorForm(QWidget):
 
         layout.addWidget(window_group)
 
-        # --- Spesielle egenskaper (avhengig av dørtype) ---
-        self.special_group = QGroupBox("Spesielle egenskaper")
-        special_layout = QFormLayout(self.special_group)
-
+        # --- Skjulte widgets for DoorParams-kompatibilitet ---
+        # Disse brukes av update_door() og load_door() men vises ikke i UI
         self.fire_rating_combo = QComboBox()
         for rating in FIRE_RATINGS:
             self.fire_rating_combo.addItem(rating or "(ingen)", rating)
         self.fire_rating_combo.currentIndexChanged.connect(self._on_changed)
-        self.fire_rating_label = QLabel("Brannklasse:")
-        special_layout.addRow(self.fire_rating_label, self.fire_rating_combo)
 
         self.sound_rating_combo = QComboBox()
         for db in SOUND_RATINGS:
             self.sound_rating_combo.addItem(f"Rw{db} dB" if db else "(ingen)", db)
         self.sound_rating_combo.currentIndexChanged.connect(self._on_changed)
-        self.sound_rating_label = QLabel("Lydklasse:")
-        special_layout.addRow(self.sound_rating_label, self.sound_rating_combo)
 
-        # U-verdi (readonly, automatisk fra dørtype)
         self.insulation_spin = QDoubleSpinBox()
         self.insulation_spin.setRange(0.0, 10.0)
         self.insulation_spin.setDecimals(2)
         self.insulation_spin.setSuffix(" W/m²K")
         self.insulation_spin.setReadOnly(True)
         self.insulation_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-        self.insulation_label = QLabel("U-verdi:")
-        special_layout.addRow(self.insulation_label, self.insulation_spin)
-
-        # Brutt kuldebro indikator (readonly)
-        self.kuldebro_label = QLabel("Brutt kuldebro:")
-        self.kuldebro_value = QLabel("Nei")
-        special_layout.addRow(self.kuldebro_label, self.kuldebro_value)
-
-        layout.addWidget(self.special_group)
 
         layout.addStretch()
 
@@ -518,6 +508,7 @@ class DoorForm(QWidget):
         """Håndterer endring av antall fløyer."""
         if self._block_signals:
             return
+        self._update_split_visibility()
         self._update_transport_labels()
         self._on_changed()
 
@@ -528,7 +519,7 @@ class DoorForm(QWidget):
 
         threshold_key = self.threshold_combo.currentData()
         is_luftspalte = (threshold_key == 'ingen')
-        luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 0)
+        luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 22)
 
         self.luftspalte_spin.setReadOnly(not is_luftspalte)
         self.luftspalte_spin.setButtonSymbols(
@@ -712,9 +703,6 @@ class DoorForm(QWidget):
         self._update_utforing_options()
         self._update_threshold_for_karm()
 
-        # Oppdater brutt kuldebro
-        self._update_kuldebro_indicator()
-
         # Oppdater transportmål (avhenger av karmtype)
         self._update_transport_labels()
 
@@ -850,14 +838,6 @@ class DoorForm(QWidget):
             else QSpinBox.ButtonSymbols.NoButtons
         )
 
-    def _update_kuldebro_indicator(self):
-        """Oppdaterer brutt kuldebro-indikator."""
-        door_type = self.door_type_combo.currentData()
-        karm_type = self.karm_combo.currentData() or ""
-        has_kuldebro = (karm_type in BRUTT_KULDEBRO_KARM or
-                        door_type in BRUTT_KULDEBRO_DORRAMME)
-        self.kuldebro_value.setText("Ja" if has_kuldebro else "Nei")
-
     def _on_type_changed(self):
         """Håndterer endring av dørtype - setter standardmål, karmtyper og fløyer."""
         if self._block_signals:
@@ -899,40 +879,25 @@ class DoorForm(QWidget):
         u_value = DOOR_U_VALUES.get(door_type, 0.0)
         self.insulation_spin.setValue(u_value)
 
-        # Oppdater kuldebro
-        self._update_kuldebro_indicator()
-
         # Oppdater transportmål
         self._update_transport_labels()
 
         self._update_type_dependent_fields()
         self.values_changed.emit()
 
+    def _update_split_visibility(self):
+        """Viser/skjuler fordeling-spinbox basert på antall fløyer."""
+        is_2floyet = (self.floyer_combo.currentData() or 1) == 2
+        self.split_spin.setVisible(is_2floyet)
+
     def _update_type_dependent_fields(self):
         """Viser/skjuler felt basert på valgt dørtype."""
-        door_type = self.door_type_combo.currentData()
-        floyer = self.floyer_combo.currentData() or 1
+
+        # Fordeling-synlighet
+        self._update_split_visibility()
 
         # Vindu-felt synlighet
         self._update_window_visibility()
-
-        # Spesielle egenskaper synlighet
-        is_fire = door_type == 'BD'
-        has_u_value = DOOR_U_VALUES.get(door_type, 0.0) > 0
-
-        self.fire_rating_label.setVisible(is_fire)
-        self.fire_rating_combo.setVisible(is_fire)
-        self.sound_rating_label.setVisible(False)  # Lyddør fjernet
-        self.sound_rating_combo.setVisible(False)
-        self.insulation_label.setVisible(has_u_value)
-        self.insulation_spin.setVisible(has_u_value)
-
-        # Brutt kuldebro vises alltid
-        self._update_kuldebro_indicator()
-
-        # Vis/skjul hele spesialgruppen
-        show_special = is_fire or has_u_value or True  # Alltid vis pga kuldebro
-        self.special_group.setVisible(show_special)
 
         # Terskel/luftspalte aktivering
         threshold_key = self.threshold_combo.currentData()
@@ -943,7 +908,7 @@ class DoorForm(QWidget):
             else QSpinBox.ButtonSymbols.NoButtons
         )
         if not is_luftspalte:
-            luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 0)
+            luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 22)
             self.luftspalte_spin.setValue(luftspalte_value)
 
     def update_door(self, door: DoorParams) -> None:
@@ -953,6 +918,7 @@ class DoorForm(QWidget):
         door.door_type = self.door_type_combo.currentData() or "SDI"
         door.karm_type = self.karm_combo.currentData() or ""
         door.floyer = self.floyer_combo.currentData() or 1
+        door.floyer_split = self.split_spin.value()
         door.width = self.width_spin.value()
         door.height = self.height_spin.value()
         door.thickness = self.thickness_spin.value()
@@ -1011,6 +977,8 @@ class DoorForm(QWidget):
         idx = self.floyer_combo.findData(door.floyer)
         if idx >= 0:
             self.floyer_combo.setCurrentIndex(idx)
+
+        self.split_spin.setValue(door.floyer_split)
 
         self.width_spin.setValue(door.width)
         self.height_spin.setValue(door.height)
@@ -1080,4 +1048,3 @@ class DoorForm(QWidget):
         self._block_signals = False
         self._update_type_dependent_fields()
         self._update_transport_labels()
-        self._update_kuldebro_indicator()

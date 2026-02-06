@@ -178,16 +178,6 @@ THRESHOLD_TYPES = {
     'hcid': 'HCID',
 }
 
-# Terskelhøyde per type (mm)
-THRESHOLD_HEIGHT = {
-    'ingen': 0,
-    'slepelist': 0,
-    'anslag_37': 37,
-    'anslag_kjorbar_25': 25,
-    'hc20': 20,
-    'hcid': 0,
-}
-
 # Luftspalte-verdier per terskeltype (mm)
 THRESHOLD_LUFTSPALTE = {
     'ingen': 22,

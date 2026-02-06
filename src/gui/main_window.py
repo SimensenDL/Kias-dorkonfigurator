@@ -29,6 +29,7 @@ from .widgets.door_form import DoorForm
 from .widgets.door_preview_3d import DoorPreview3D
 from .widgets.production_tab import ProductionTab
 from .widgets.production_list_tab import ProductionListTab
+from .widgets.detail_tab import DetailTab
 from .styles import ThemeManager, Theme
 
 
@@ -162,6 +163,17 @@ class MainWindow(QMainWindow):
         else:
             self.tab_widget.addTab(self.production_list_tab, "Kappeliste")
 
+        # Tab 4: Detaljer
+        self.detail_tab = DetailTab()
+        self.detail_tab.update_door(self.door)
+
+        if HAS_ICONS:
+            self.tab_widget.addTab(self.detail_tab,
+                                   qta.icon('fa5s.info-circle', color='#8ab4f8'),
+                                   "Detaljer")
+        else:
+            self.tab_widget.addTab(self.detail_tab, "Detaljer")
+
         right_layout.addWidget(self.tab_widget)
 
         # Splitter
@@ -262,6 +274,7 @@ class MainWindow(QMainWindow):
         self._update_title()
         self.door_preview.update_door(self.door)
         self.production_tab.update_door(self.door)
+        self.detail_tab.update_door(self.door)
 
     def _on_door_added_to_list(self, door_id: str):
         """Håndterer når en dør er lagt til i produksjonslisten."""
@@ -295,6 +308,7 @@ class MainWindow(QMainWindow):
         self.door_form.load_door(self.door)
         self.door_preview.update_door(self.door)
         self.production_tab.update_door(self.door)
+        self.detail_tab.update_door(self.door)
         self._update_title()
         self.statusbar.showMessage("Nytt prosjekt opprettet")
 
@@ -316,6 +330,7 @@ class MainWindow(QMainWindow):
                 self.door_form.load_door(self.door)
                 self.door_preview.update_door(self.door)
                 self.production_tab.update_door(self.door)
+                self.detail_tab.update_door(self.door)
                 self._update_title()
                 self.statusbar.showMessage(f"Åpnet: {filepath}")
             except Exception as e:
@@ -334,6 +349,7 @@ class MainWindow(QMainWindow):
             self.door_form.load_door(self.door)
             self.door_preview.update_door(self.door)
             self.production_tab.update_door(self.door)
+            self.detail_tab.update_door(self.door)
             self._update_title()
             self.statusbar.showMessage(f"Åpnet: {filepath}")
         except Exception as e:

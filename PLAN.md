@@ -1,151 +1,132 @@
-# KIAS Dørkonfigurator - Prosjektplan
+# Plan: Legg til sammenleggbar "Utregninger"-seksjon i door_form
 
-## Oversikt
-PyQt6 desktop-app for å konfigurere KIAS-dører (Kvanne Industrier AS). Brukes av selgere for å konfigurere dører og generere produksjonsunderlag (PDF-tegninger, kapplister).
+## Mål
 
-**Dørtyper:** Innerdør, Kjøleromsdør, Pendeldør, Branndør, Bod-/Garasjedør, Skyvedør, Lyddør, Fjøsdør, Brakkedør, Røntgendør
+Legge til en sammenleggbar seksjon nederst i door_form som viser beregnede produksjonsmål (dørblad, laminat, terskel). Kun for lesing, oppdateres automatisk når parametere endres.
 
-**Output:** 3D-visualisering, PDF-tegninger med mål, kapplister/komponentlister
+## Implementasjon
 
-**Tech stack:** PyQt6, reportlab (PDF), openpyxl (Excel), qt-material, qtawesome
+### 1. Oppdater imports i door_form.py
 
-**Kjøring:** `python main.py` (med aktivert venv)
+**Fil:** `src/gui/widgets/door_form.py` (linje ~13-26)
 
----
+Legg til import av beregningsfunksjoner:
 
-## Status: Fase 1 & 2 FERDIG
-
-### Implementert filstruktur
-```
-kias-dørkonfigurator/
-├── main.py                              # Inngangspunkt → run_app()
-├── requirements.txt                     # PyQt6, reportlab, openpyxl, qt-material, qtawesome
-├── PLAN.md                              # Denne filen
-├── CLAUDE.md                            # Claude Code prosjektinstruksjoner
-├── .gitignore                           # Git ignore-regler
-├── assets/
-│   └── KIAS-dorer-logo.svg             # KIAS-logo (SVG)
-├── src/
-│   ├── __init__.py
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── door.py                      # DoorParams dataclass
-│   │   └── project.py                   # Save/load .kdf filer (JSON)
-│   ├── gui/
-│   │   ├── __init__.py
-│   │   ├── main_window.py               # MainWindow med menyer, toolbar, tabs
-│   │   ├── styles/
-│   │   │   ├── __init__.py              # Eksporterer ThemeManager, Theme
-│   │   │   └── theme_manager.py         # Dark/light tema (QSettings: KIASDorkonfigurator)
-│   │   └── widgets/
-│   │       ├── __init__.py
-│   │       ├── door_form.py             # Parameterskjema + ColorSwatchDelegate
-│   │       └── door_preview_3d.py       # 3D-forhåndsvisning (pyqtgraph/OpenGL)
-│   ├── export/
-│   │   ├── __init__.py
-│   │   ├── pdf_exporter.py              # export_door_pdf() - frontvisning med mål
-│   │   ├── pdf_utils.py                 # ral_to_color(), mm_to_scaled(), calculate_scale()
-│   │   ├── pdf_constants.py             # Sidestørrelser (A3), firma: KVANNE INDUSTRIER AS
-│   │   └── pdf_title_block.py           # Profesjonelt tittelfelt med prosjektdata
-│   └── utils/
-│       ├── __init__.py
-│       └── constants.py                 # APP_NAME, DOOR_TYPES, RAL_COLORS, standardmål
-```
-
-### Implementerte features
-- **GUI:** MainWindow med splitter (venstre: scrollbart skjema, høyre: tabs)
-- **Menyer:** Fil (Nytt/Åpne/Lagre/Lagre som/Avslutt), Eksporter (PDF), Innstillinger (Tema), Hjelp (Om)
-- **Toolbar:** Nytt, Åpne, Lagre, Eksporter PDF
-- **DoorForm:** Parameterskjema med:
-  - Prosjektinfo (ID, kunde)
-  - Dørtype-dropdown (10 typer) - endrer standardmål automatisk
-  - Mål (bredde/høyde/tykkelse med SpinBox)
-  - Utseende (farge utside/innside med ColorSwatchDelegate fargeruter, overflate, hengsle-side)
-  - Tillegg (glass, glasstype, lås, terskel)
-  - Typeavhengige felt (brannklasse for branndør, lydklasse for lyddør, U-verdi for kjøleromsdør)
-  - Merknader (fritekst)
-- **ColorSwatchDelegate:** Fargede RAL-fargeruter i dropdown (14x14 px swatch)
-- **Prosjektfiler:** .kdf format (JSON), save/load med versjonering
-- **PDF-eksport:** A3 liggende med frontvisning av dør, karm, glass, håndtak, hengsler, mål-linjer, tittelfelt
-- **Tema:** Dark/light mode med qt-material
-- **Unsaved changes tracking:** Stjerne i tittel, bekreftelse ved lukking
-
-### DoorParams dataclass (`src/models/door.py`)
 ```python
-@dataclass
-class DoorParams:
-    project_id: str          # Prosjekt-ID / ordrenummer
-    customer: str            # Kundenavn
-    door_type: str           # Nøkkel fra DOOR_TYPES (10 typer)
-    width: int               # mm (default 900, range 500-3000)
-    height: int              # mm (default 2100, range 1500-3500)
-    thickness: int           # mm (default 40, range 20-200)
-    color_outside: str       # RAL-kode (default RAL 9010)
-    color_inside: str        # RAL-kode
-    surface_type: str        # glatt/struktur/treverk
-    glass: bool              # Har glass
-    glass_type: str          # Glasstype
-    threshold_type: str      # Terskeltype
-    lock_type: str           # Låstype
-    hinge_side: str          # left/right
-    fire_rating: str         # EI30/EI60/EI90/EI120 (branndør)
-    sound_rating: int        # dB (lyddør)
-    insulation_value: float  # U-verdi W/m²K (kjøleromsdør)
-    notes: str               # Fritekst merknader
-    created_date: str        # ISO-format
-    modified_date: str       # ISO-format
+from ...utils.calculations import (
+    karm_bredde, karm_hoyde,
+    dorblad_bredde, dorblad_hoyde,
+    terskel_lengde, laminat_mal
+)
 ```
-Metoder: `to_dict()`, `from_dict()`, `apply_defaults_for_type()`, `area_m2()`
 
-### Signal-arkitektur
-- `DoorForm.values_changed` → `MainWindow._on_params_changed()` → oppdater door + tittel
+### 2. Opprett "Utregninger" QGroupBox
 
----
+**Fil:** `src/gui/widgets/door_form.py` (etter linje ~410, før `layout.addStretch()`)
 
-## Status: Fase 2 FERDIG
+Legg til ny seksjon med:
 
-### Fase 2: 3D-visualisering
-- [x] Interaktiv 3D-visning med pyqtgraph/OpenGL (`src/gui/widgets/door_preview_3d.py`)
-- [x] Dørblad med utside/innside RAL-farge (per-face-farger)
-- [x] Karm (omvendt U-form: venstre stolpe, høyre stolpe, toppstykke)
-- [x] Glasspanel (semi-transparent, vises kun når glass=True)
-- [x] Håndtak (plassert motsatt side av hengsler)
-- [x] 3 hengsler (15%, 50%, 85% av dørhøyden)
-- [x] Rotérbar/zoombar/pannerbar visning med mus
-- [x] Sanntidsoppdatering ved parameterendringer
-- [x] Auto-justert kameraavstand etter dørstørrelse
-- [x] Fallback-tekst hvis pyqtgraph/OpenGL mangler
-- [x] Nye avhengigheter: pyqtgraph, PyOpenGL, numpy
+- `QGroupBox("Utregninger")` med `setCheckable(True)` for sammenlegging
+- Read-only `QLabel` widgets for visning:
+  - Karmmål (bredde × høyde)
+  - Dørbladmål (bredde × høyde)
+  - Laminatmål (bredde × høyde)
+  - Terskellengde
 
-## Fase 3: Avanserte PDF-tegninger (TODO)
-- Sidevisning og snitt i tillegg til frontvisning
-- Detaljtegninger med beslag/hengsler
-- Flere sider i PDF (frontvisning, sidevisning, snitt)
+```python
+# Utregninger (sammenleggbar)
+self.utregninger_group = QGroupBox("Utregninger")
+self.utregninger_group.setCheckable(True)
+self.utregninger_group.setChecked(False)  # Lukket som standard
+utregninger_layout = QFormLayout(self.utregninger_group)
 
-## Fase 4: Produksjonsunderlag (TODO)
-- Kappliste (cut list) per komponent
-- Excel-eksport med stykkliste/BOM
-- Prisberegning
-- Erstatter placeholder i "Detaljer"-tab
+self.calc_karm_label = QLabel("—")
+self.calc_dorblad_label = QLabel("—")
+self.calc_laminat_label = QLabel("—")
+self.calc_terskel_label = QLabel("—")
 
-## Fase 5: Build & distribusjon (TODO)
-- PyInstaller `.spec` fil
-- Inno Setup `.iss` installer
-- `build_installer.bat`
-- Filassosiasjon for `.kdf`-filer
+utregninger_layout.addRow("Karmmål:", self.calc_karm_label)
+utregninger_layout.addRow("Dørbladmål:", self.calc_dorblad_label)
+utregninger_layout.addRow("Laminatmål:", self.calc_laminat_label)
+utregninger_layout.addRow("Terskel:", self.calc_terskel_label)
 
----
+layout.addWidget(self.utregninger_group)
+```
 
-## Klargjort for eget repo
+### 3. Opprett oppdateringsmetode
 
-Følgende er gjort for å forberede flytting til eget prosjekt:
-- [x] `.gitignore` opprettet
-- [x] `CLAUDE.md` opprettet med prosjektinstruksjoner
-- [x] KIAS-logo lagt til i `assets/` (SVG-format)
-- [x] Opprydding: `nul`-fil og `__pycache__`-mapper slettet
-- [x] Logo-sti oppdatert i `pdf_constants.py`
+**Fil:** `src/gui/widgets/door_form.py` (ny metode, f.eks. etter `_update_window_visibility`)
 
-### Gjenstående ved flytting
-1. Opprett eget venv: `python -m venv venv && venv\Scripts\pip install -r requirements.txt`
-2. `git init` og første commit
-3. Vurder å konvertere `KIAS-dorer-logo.svg` til PNG for PDF-eksport (reportlab støtter ikke SVG direkte)
+```python
+def _update_utregninger_display(self):
+    """Oppdaterer beregnede produksjonsmål."""
+    karm_type = self.karm_combo.currentData()
+    blade_type = self.blade_combo.currentData()
+    floyer = self.floyer_combo.currentData() or 1
+
+    # Karmmål
+    karm_b = karm_bredde(karm_type, self.width_spin.value())
+    karm_h = karm_hoyde(karm_type, self.height_spin.value())
+    self.calc_karm_label.setText(f"{karm_b} × {karm_h} mm")
+
+    # Luftspalte (fra terskel)
+    luftspalte = self.luftspalte_spin.value()
+
+    # Dørbladmål
+    db_b = dorblad_bredde(karm_type, karm_b, floyer, blade_type)
+    db_h = dorblad_hoyde(karm_type, karm_h, floyer, blade_type, luftspalte)
+    if db_b and db_h:
+        self.calc_dorblad_label.setText(f"{db_b} × {db_h} mm")
+    else:
+        self.calc_dorblad_label.setText("—")
+
+    # Laminatmål
+    if db_b and db_h:
+        lam_b, lam_h = laminat_mal(karm_type, db_b, db_h, blade_type)
+        self.calc_laminat_label.setText(f"{lam_b} × {lam_h} mm")
+    else:
+        self.calc_laminat_label.setText("—")
+
+    # Terskel
+    terskel = terskel_lengde(karm_type, karm_b, floyer)
+    if terskel:
+        self.calc_terskel_label.setText(f"{terskel} mm")
+    else:
+        self.calc_terskel_label.setText("—")
+```
+
+### 4. Koble til signal-kjeden
+
+**Fil:** `src/gui/widgets/door_form.py`
+
+I `_on_changed()` metoden (rundt linje 498), legg til kall:
+
+```python
+def _on_changed(self):
+    if not self._block_signals:
+        self._update_type_dependent_fields()
+        self._update_utregninger_display()  # <-- Legg til
+        self.values_changed.emit()
+```
+
+### 5. Initial oppdatering
+
+Kall `_update_utregninger_display()` i slutten av `_init_ui()` for å vise initiale verdier.
+
+## Filer som endres
+
+| Fil                            | Endring                                                |
+| ------------------------------ | ------------------------------------------------------ |
+| `src/gui/widgets/door_form.py` | Legg til import, QGroupBox, labels, oppdateringsmetode |
+
+## Verifisering
+
+1. Kjør `uv run python main.py`
+2. Åpne en dør-konfigurasjon
+3. Klikk på "Utregninger" for å utvide seksjonen
+4. Verifiser at verdiene oppdateres når:
+   - Karmtype endres
+   - Mål endres
+   - Bladtype endres (for SD3/ID)
+   - Terskel/luftspalte endres
+5. Test spesielt SD3/ID med begge bladtyper (ROCA/SNAPIN) for å verifisere at luftspalte påvirker høyden
