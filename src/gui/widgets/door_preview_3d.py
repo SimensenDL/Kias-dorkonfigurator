@@ -6,7 +6,8 @@ import numpy as np
 from typing import Optional
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtGui import QMouseEvent
 
 from ...models.door import DoorParams
 from ...utils.constants import RAL_COLORS
@@ -19,12 +20,43 @@ except ImportError:
     HAS_3D = False
 
 
+def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
+    """Lager en kopi av musehendelsen med midtre knapp i stedet for høyre."""
+    return QMouseEvent(
+        event.type(),
+        event.position(),
+        event.globalPosition(),
+        Qt.MouseButton.MiddleButton,
+        (event.buttons() & ~Qt.MouseButton.RightButton) | Qt.MouseButton.MiddleButton,
+        event.modifiers(),
+    )
+
+
+class _PanGLViewWidget(gl.GLViewWidget if HAS_3D else object):
+    """GLViewWidget som også tillater pan med høyre museknapp."""
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            event = _remap_right_to_middle(event)
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.MouseButton.RightButton:
+            event = _remap_right_to_middle(event)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            event = _remap_right_to_middle(event)
+        super().mouseReleaseEvent(event)
+
+
 class DoorPreview3D(QWidget):
     """
     3D-forhåndsvisning av en konfigurert dør.
 
     Viser dør med karm, farge, glass, håndtak og hengsler.
-    Rotérbar visning med mus (venstre: roter, høyre: pan, scroll: zoom).
+    Rotérbar visning med mus (venstre: roter, midtre/høyre: pan, scroll: zoom).
     """
 
     # Skaleringsfaktor: konverterer mm til 3D-enheter (1 enhet = 100 mm)
@@ -87,7 +119,7 @@ class DoorPreview3D(QWidget):
             return
 
         try:
-            self._gl_widget = gl.GLViewWidget()
+            self._gl_widget = _PanGLViewWidget()
             self._gl_widget.setBackgroundColor(50, 50, 55, 255)
             layout.addWidget(self._gl_widget)
 

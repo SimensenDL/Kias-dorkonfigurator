@@ -138,19 +138,23 @@ class DoorForm(QWidget):
         width_layout.addWidget(self.width_spin)
 
         self.karm_width_label = QLabel("Karm: —")
-        self.karm_width_label.setStyleSheet("color: #ddd;")
+        self.karm_width_label.setStyleSheet("color: #448aff;")
         width_layout.addWidget(self.karm_width_label)
 
         _sep_w = QLabel("|")
-        _sep_w.setStyleSheet("color: #666;")
+        _sep_w.setStyleSheet("color: #448aff;")
         width_layout.addWidget(_sep_w)
 
         self.transport_width_90_label = QLabel("BT 90°: —")
-        self.transport_width_90_label.setStyleSheet("color: #ddd;")
+        self.transport_width_90_label.setStyleSheet("color: #448aff;")
         width_layout.addWidget(self.transport_width_90_label)
 
+        _sep_w2 = QLabel("|")
+        _sep_w2.setStyleSheet("color: #448aff;")
+        width_layout.addWidget(_sep_w2)
+
         self.transport_width_180_label = QLabel("BT 180°: —")
-        self.transport_width_180_label.setStyleSheet("color: #ddd;")
+        self.transport_width_180_label.setStyleSheet("color: #448aff;")
         width_layout.addWidget(self.transport_width_180_label)
 
         width_layout.addStretch()
@@ -172,15 +176,15 @@ class DoorForm(QWidget):
         height_layout.addWidget(self.height_spin)
 
         self.karm_height_label = QLabel("Karm: —")
-        self.karm_height_label.setStyleSheet("color: #ddd;")
+        self.karm_height_label.setStyleSheet("color: #448aff;")
         height_layout.addWidget(self.karm_height_label)
 
         _sep_h = QLabel("|")
-        _sep_h.setStyleSheet("color: #666;")
+        _sep_h.setStyleSheet("color: #448aff;")
         height_layout.addWidget(_sep_h)
 
         self.transport_height_label = QLabel("HT: —")
-        self.transport_height_label.setStyleSheet("color: #ddd;")
+        self.transport_height_label.setStyleSheet("color: #448aff;")
         height_layout.addWidget(self.transport_height_label)
 
         height_layout.addStretch()
