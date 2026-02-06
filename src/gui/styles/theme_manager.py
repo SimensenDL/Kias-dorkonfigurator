@@ -60,22 +60,41 @@ class ThemeManager:
         theme_file = _THEME_MAP[self._current_theme.value]
         apply_stylesheet(app, theme=theme_file)
 
-        # Overstyrer qt-material sin svake QGroupBox::title (40% opacity → lesbar)
+        # Overstyrer qt-material for bedre visuelt hierarki
         if self._current_theme == Theme.DARK:
-            title_color = "rgba(255, 255, 255, 0.85)"
+            title_color = "#64B5F6"
             border_color = "#4f5b62"
+            label_color = "rgba(255, 255, 255, 0.50)"
+            value_color = "rgba(255, 255, 255, 0.95)"
         else:
-            title_color = "rgba(0, 0, 0, 0.80)"
+            title_color = "#1565C0"
             border_color = "#c0c0c0"
+            label_color = "rgba(0, 0, 0, 0.55)"
+            value_color = "rgba(0, 0, 0, 0.87)"
 
         custom_css = f"""
             QGroupBox::title {{
                 color: {title_color};
-                font-weight: bold;
+                font-weight: 600;
                 font-size: 13px;
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 4px 12px;
             }}
             QGroupBox {{
                 border: 1px solid {border_color};
+                border-radius: 6px;
+                margin-top: 12px;
+                padding-top: 24px;
+            }}
+            QLabel[class="detail-label"] {{
+                color: {label_color};
+                font-size: 13px;
+            }}
+            QLabel[class="detail-value"] {{
+                color: {value_color};
+                font-weight: bold;
+                font-size: 13px;
             }}
         """
         app.setStyleSheet(app.styleSheet() + custom_css)
