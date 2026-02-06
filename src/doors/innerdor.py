@@ -20,6 +20,13 @@ INNERDOR = {
     # Antall fløyer
     'floyer': [1, 2],
 
+    # Tillatte fløyer per karmtype
+    'karm_floyer': {
+        'SD1':     [1, 2],
+        'SD2':     [1, 2],
+        'SD3/ID': [1],
+    },
+
     # Dørbladtyper
     'blade_types': {
         'SDI_ROCA': {
@@ -34,8 +41,8 @@ INNERDOR = {
 
     # Kompatible dørbladtyper per karmtype
     'karm_blade_types': {
-        'SD1':     ['SDI_ROCA', 'SDI_SNAPIN'],
-        'SD2':     ['SDI_ROCA', 'SDI_SNAPIN'],
+        'SD1':     ['SDI_ROCA'],
+        'SD2':     ['SDI_ROCA'],
         'SD3/ID': ['SDI_ROCA', 'SDI_SNAPIN'],
     },
 

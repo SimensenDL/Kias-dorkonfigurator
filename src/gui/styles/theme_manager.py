@@ -60,6 +60,26 @@ class ThemeManager:
         theme_file = _THEME_MAP[self._current_theme.value]
         apply_stylesheet(app, theme=theme_file)
 
+        # Overstyrer qt-material sin svake QGroupBox::title (40% opacity → lesbar)
+        if self._current_theme == Theme.DARK:
+            title_color = "rgba(255, 255, 255, 0.85)"
+            border_color = "#4f5b62"
+        else:
+            title_color = "rgba(0, 0, 0, 0.80)"
+            border_color = "#c0c0c0"
+
+        custom_css = f"""
+            QGroupBox::title {{
+                color: {title_color};
+                font-weight: bold;
+                font-size: 13px;
+            }}
+            QGroupBox {{
+                border: 1px solid {border_color};
+            }}
+        """
+        app.setStyleSheet(app.styleSheet() + custom_css)
+
     def set_theme(self, theme: Theme, app: Optional[QApplication] = None) -> None:
         """
         Setter og anvender nytt tema.

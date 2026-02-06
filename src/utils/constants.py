@@ -46,6 +46,11 @@ KARM_BLADE_TYPES = {}
 for d in DOOR_REGISTRY.values():
     KARM_BLADE_TYPES.update(d['karm_blade_types'])
 
+# Tillatte fløyer per karmtype
+KARM_FLOYER = {}
+for d in DOOR_REGISTRY.values():
+    KARM_FLOYER.update(d.get('karm_floyer', {}))
+
 # Dørtype-spesifikke dørbladtyper (overstyrer karm-basert oppslag)
 DOOR_TYPE_BLADE_OVERRIDE = {}
 

@@ -15,7 +15,7 @@ from ...utils.constants import (
     SWING_DIRECTIONS, FIRE_RATINGS, SOUND_RATINGS,
     THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE,
     DOOR_KARM_TYPES, DOOR_FLOYER, KARM_THRESHOLD_TYPES,
-    DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_TYPE_BLADE_OVERRIDE,
+    DOOR_BLADE_TYPES, KARM_BLADE_TYPES, KARM_FLOYER, DOOR_TYPE_BLADE_OVERRIDE,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
     DOOR_U_VALUES,
     WINDOW_PROFILES,
@@ -405,8 +405,7 @@ class DoorForm(QWidget):
         initial_type = self.door_type_combo.currentData()
         for karm in DOOR_KARM_TYPES.get(initial_type, []):
             self.karm_combo.addItem(karm, karm)
-        for f in DOOR_FLOYER.get(initial_type, [1]):
-            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+        self._update_floyer_for_karm()
         self._update_blade_for_karm()
         self._update_threshold_for_karm()
         self._update_utforing_options()
@@ -699,6 +698,7 @@ class DoorForm(QWidget):
         """Oppdaterer dørblad-valg basert på valgt karmtype."""
         if self._block_signals:
             return
+        self._update_floyer_for_karm()
         self._update_blade_for_karm()
         self._update_utforing_options()
         self._update_threshold_for_karm()
@@ -781,7 +781,8 @@ class DoorForm(QWidget):
 
         self.karm_combo.blockSignals(False)
 
-        # Oppdater dørblad basert på ny karmtype
+        # Oppdater fløyer og dørblad basert på ny karmtype
+        self._update_floyer_for_karm()
         self._update_blade_for_karm()
 
     def _on_blade_changed(self):
@@ -813,6 +814,24 @@ class DoorForm(QWidget):
         self.blade_combo.blockSignals(False)
 
         self._update_thickness_for_blade()
+
+    def _update_floyer_for_karm(self):
+        """Oppdaterer fløyer-dropdown basert på tillatte fløyer for valgt karmtype."""
+        karm = self.karm_combo.currentData()
+        door_type = self.door_type_combo.currentData()
+        allowed = KARM_FLOYER.get(karm, DOOR_FLOYER.get(door_type, [1]))
+
+        old_floyer = self.floyer_combo.currentData()
+        self.floyer_combo.blockSignals(True)
+        self.floyer_combo.clear()
+        for f in allowed:
+            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+        # Forsøk å beholde forrige valg
+        idx = self.floyer_combo.findData(old_floyer)
+        if idx >= 0:
+            self.floyer_combo.setCurrentIndex(idx)
+        self.floyer_combo.blockSignals(False)
+        self._update_split_visibility()
 
     def _update_thickness_for_blade(self):
         """Oppdaterer tykkelse-spin basert på valgt dørbladtype.
@@ -858,13 +877,10 @@ class DoorForm(QWidget):
         for karm in karm_types:
             self.karm_combo.addItem(karm, karm)
 
-        # Oppdater fløyer-valg
-        self.floyer_combo.clear()
-        floyer_options = DOOR_FLOYER.get(door_type, [1])
-        for f in floyer_options:
-            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
-
         self._block_signals = False
+
+        # Oppdater fløyer basert på karmtype
+        self._update_floyer_for_karm()
 
         # Oppdater dørblad basert på ny karmtype
         self._update_blade_for_karm()
@@ -971,8 +987,11 @@ class DoorForm(QWidget):
         if idx >= 0:
             self.karm_combo.setCurrentIndex(idx)
 
+        # Oppdater fløyer basert på karmtype (filtrert)
+        karm = self.karm_combo.currentData()
+        allowed_floyer = KARM_FLOYER.get(karm, DOOR_FLOYER.get(door_type, [1]))
         self.floyer_combo.clear()
-        for f in DOOR_FLOYER.get(door_type, [1]):
+        for f in allowed_floyer:
             self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
         idx = self.floyer_combo.findData(door.floyer)
         if idx >= 0:
