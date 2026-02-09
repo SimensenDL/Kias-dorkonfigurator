@@ -262,8 +262,8 @@ class DoorForm(QWidget):
 
         layout.addWidget(door_group)
 
-        # --- Utseende ---
-        look_group = QGroupBox("Utseende")
+        # --- Produktdetaljer ---
+        look_group = QGroupBox("Produktdetaljer")
         look_layout = QFormLayout(look_group)
 
         self.color_combo = QComboBox()
@@ -281,6 +281,35 @@ class DoorForm(QWidget):
             self.hinge_combo.addItem(name, key)
         self.hinge_combo.currentIndexChanged.connect(self._on_changed)
         look_layout.addRow("Slagretning:", self.hinge_combo)
+
+        self.laaskasse_combo = QComboBox()
+        laaskasse_typer = [
+            "Ingen",
+            "3065/316L i SF/rustfritt stål",
+            "LK565",
+            "ASSA LK566 i SF/rustfritt stål",
+            "DL112",
+        ]
+        self.laaskasse_combo.addItems(laaskasse_typer)
+        self.laaskasse_combo.setCurrentText("3065/316L i SF/rustfritt stål")
+        self.laaskasse_combo.currentIndexChanged.connect(self._on_changed)
+        look_layout.addRow("Låskasse:", self.laaskasse_combo)
+
+        self.beslag_combo = QComboBox()
+        beslag_typer = [
+            "Ingen",
+            "Vrider 8611/Skilt 8752 for sylinder i rustfritt stål",
+            "Vrider 8611/Blindskilt 8755 i rustfritt stål",
+            "Vrider 8611/Skilt 8659S for sylinder i rustfritt stål",
+            "Vrider 519U/Blindskilt 530A i SF stål",
+            "Vrider 519U/Sylinderskilt oval 530C i SF stål",
+            "Vrider 519U/WC-skilt 530D i SF stål",
+            "Vrider 519U/Sylinderskilt rundt 550C i SF stål",
+        ]
+        self.beslag_combo.addItems(beslag_typer)
+        self.beslag_combo.setCurrentText("Vrider 519U/Sylinderskilt oval 530C i SF stål")
+        self.beslag_combo.currentIndexChanged.connect(self._on_changed)
+        look_layout.addRow("Beslagstype:", self.beslag_combo)
 
         layout.addWidget(look_group)
 
@@ -929,6 +958,8 @@ class DoorForm(QWidget):
         door.color = self.color_combo.currentData() or ""
         door.karm_color = self.karm_color_combo.currentData() or ""
         door.swing_direction = self.hinge_combo.currentData() or "left"
+        door.lock_case = self.laaskasse_combo.currentText()
+        door.handle_type = self.beslag_combo.currentText()
 
         # Vindu
         door.has_window = self.window_check.isChecked()

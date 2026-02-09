@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
 
         # Tab 4: Detaljer
         self.detail_tab = DetailTab()
+        self.door_form.update_door(self.door)
         self.detail_tab.update_door(self.door)
 
         if HAS_ICONS:
@@ -306,6 +307,7 @@ class MainWindow(QMainWindow):
         self.current_file = None
         self.unsaved_changes = False
         self.door_form.load_door(self.door)
+        self.door_form.update_door(self.door)
         self.door_preview.update_door(self.door)
         self.production_tab.update_door(self.door)
         self.detail_tab.update_door(self.door)
@@ -328,6 +330,7 @@ class MainWindow(QMainWindow):
                 self.current_file = Path(filepath)
                 self.unsaved_changes = False
                 self.door_form.load_door(self.door)
+                self.door_form.update_door(self.door)
                 self.door_preview.update_door(self.door)
                 self.production_tab.update_door(self.door)
                 self.detail_tab.update_door(self.door)
@@ -347,6 +350,7 @@ class MainWindow(QMainWindow):
             self.current_file = Path(filepath)
             self.unsaved_changes = False
             self.door_form.load_door(self.door)
+            self.door_form.update_door(self.door)
             self.door_preview.update_door(self.door)
             self.production_tab.update_door(self.door)
             self.detail_tab.update_door(self.door)

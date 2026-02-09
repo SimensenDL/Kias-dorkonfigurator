@@ -124,4 +124,44 @@ INNERDOR = {
 
     # Dekklist for 2-fløyet (lengde = karmhøyde - offset)
     'dekklist_2floyet_offset': 102,
+
+    # Hengsler (styrt av dørbladtype, ikke bruker-dropdown)
+    'hengsler': {
+        'SDI_ROCA': {
+            'navn': 'Hengsler Roca i SF stål',
+            'antall': {1: 2, 2: 4},
+            'tekst': {1: '(2 stk.)', 2: '(2 x 2 stk.)'},
+        },
+        'SDI_SNAPIN': {
+            'navn': 'Hengsler Snap-in 6540 kvit',
+            'antall': {1: 2},
+            'tekst': {1: '2 stk.'},
+        },
+    },
+
+    # Karmbeskrivelse per karmtype (med {farge}-placeholder)
+    'karm_beskrivelse': {
+        'SD1': 'Aluminiumskarm SD1, dybde 77 mm, forberedt for KIAS alu-utforinger, pulverlakkert {farge}',
+        'SD2': 'Aluminiumskarm SD2, dybde 84 mm, pulverlakkert {farge}',
+        'SD3/ID': 'Aluminiumskarm ID1 92 mm m/notspor og dempelist, pulverlakkert {farge}',
+    },
+
+    # Ordretekst-maler med {placeholders}
+    'ordretekst': {
+        'tittel': {1: 'SDI - KIAS INNERDØR 1-FLØYA', 2: 'SDI - KIAS INNERDØR 2-FLØYA'},
+        'linjer': [
+            'Utsparing BM{bm_b} x HM{bm_h}, BT{bt_b} x HT{bt_h} mm',
+            'Slagretning {slagretning}',
+            'GRP dørblad {blad_tykkelse} mm m/kantlist i pulverlakkert aluminium, {farge}',
+            '{karm_beskrivelse}',
+            'Låskasse {laaskasse}',
+            '{beslag}',
+            'KIAS sluttstykke med tett brønn, i SF stål',
+            '{hengsler}',
+        ],
+        'linjer_2floyet': [
+            'Espagnolett Roca i SF stål',
+            'Dekklist i aluminium {karm_farge}',
+        ],
+    },
 }

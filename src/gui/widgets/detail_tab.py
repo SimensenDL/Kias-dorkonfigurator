@@ -2,9 +2,10 @@
 Detaljer-tab widget – viser spesielle egenskaper og utregninger.
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QFormLayout, QGroupBox, QLabel
+    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox, QLabel,
+    QPushButton, QApplication
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 
 from ...models.door import DoorParams
 from ...utils.calculations import (
@@ -13,6 +14,7 @@ from ...utils.calculations import (
     terskel_lengde, laminat_mal,
     dekklist_lengde
 )
+from ...utils.ordretekst import generer_ordretekst
 
 
 class DetailTab(QWidget):
@@ -116,6 +118,33 @@ class DetailTab(QWidget):
 
         layout.addWidget(self.blade2_group)
 
+        # --- Ordretekst ---
+        self.ordretekst_group = QGroupBox("Ordretekst")
+        ordretekst_layout = QVBoxLayout(self.ordretekst_group)
+        ordretekst_layout.setContentsMargins(16, 8, 16, 12)
+
+        # Kopier-knapp øverst til høyre
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        self.kopier_btn = QPushButton("Kopier")
+        self.kopier_btn.setFixedWidth(90)
+        self.kopier_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.kopier_btn.clicked.connect(self._kopier_ordretekst)
+        btn_row.addWidget(self.kopier_btn)
+        ordretekst_layout.addLayout(btn_row)
+
+        self.ordretekst_label = QLabel("—")
+        self.ordretekst_label.setTextFormat(Qt.TextFormat.RichText)
+        self.ordretekst_label.setWordWrap(True)
+        self.ordretekst_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        ordretekst_layout.addWidget(self.ordretekst_label)
+
+        self._ordretekst_ren = ""  # Ren tekst for kopiering
+
+        layout.addWidget(self.ordretekst_group)
+
         layout.addStretch()
 
     # ── Oppdatering ───────────────────────────────────────────────
@@ -202,3 +231,32 @@ class DetailTab(QWidget):
             else:
                 self.val_laminat1_b.setText("—")
                 self.val_laminat1_h.setText("—")
+
+        # --- Ordretekst ---
+        linjer = generer_ordretekst(door)
+        if linjer:
+            tittel = linjer[0]
+            undertittel = linjer[1] if len(linjer) > 1 else ''
+            kropp = linjer[2:]
+            kulepunkter = ''.join(f"<li>{l}</li>" for l in kropp)
+            html = (
+                f"<b>{tittel}</b><br>"
+                f"{undertittel}"
+                f"<ul style='margin-top:4px; margin-bottom:0;'>{kulepunkter}</ul>"
+            )
+            self.ordretekst_label.setText(html)
+            # Lagre ren tekst for kopiering
+            ren_kropp = '\n'.join(f"- {l}" for l in kropp)
+            self._ordretekst_ren = f"{tittel}\n{undertittel}\n{ren_kropp}"
+        else:
+            self.ordretekst_label.setText("—")
+            self._ordretekst_ren = ""
+
+    def _kopier_ordretekst(self):
+        """Kopierer ordreteksten til utklippstavlen."""
+        if not self._ordretekst_ren:
+            return
+        QApplication.clipboard().setText(self._ordretekst_ren)
+        # Visuell tilbakemelding
+        self.kopier_btn.setText("Kopiert!")
+        QTimer.singleShot(1500, lambda: self.kopier_btn.setText("Kopier"))
