@@ -100,8 +100,6 @@ class DetailTab(QWidget):
         blade1_layout.addRow(self._make_label("Laminat B:"), self.val_laminat1_b)
         blade1_layout.addRow(self._make_label("Laminat H:"), self.val_laminat1_h)
 
-        layout.addWidget(self.blade1_group)
-
         # --- Dørblad 2 (kun synlig ved 2-fløyet) ---
         self.blade2_group = QGroupBox("Dørblad 2")
         blade2_layout = self._make_form_layout(self.blade2_group)
@@ -116,7 +114,12 @@ class DetailTab(QWidget):
         blade2_layout.addRow(self._make_label("Laminat B:"), self.val_laminat2_b)
         blade2_layout.addRow(self._make_label("Laminat H:"), self.val_laminat2_h)
 
-        layout.addWidget(self.blade2_group)
+        # Dørblad 1 og 2 side om side
+        blade_row = QHBoxLayout()
+        blade_row.setSpacing(10)
+        blade_row.addWidget(self.blade1_group)
+        blade_row.addWidget(self.blade2_group)
+        layout.addLayout(blade_row)
 
         # --- Ordretekst ---
         self.ordretekst_group = QGroupBox("Ordretekst")
