@@ -76,9 +76,10 @@ class DoorPreview3D(QWidget):
     PLATE_HEIGHT = 170
     PLATE_DEPTH = 5
     PLATE_CORNER_RADIUS = 6
-    # Grep (spak) — sylinder frå nedre del av skilt
+    # Grep (spak) — bue frå skilt + horisontal sylinder
     LEVER_RADIUS = 10
-    LEVER_LENGTH = 110
+    LEVER_BEND_RADIUS = 30                # mm radius på buen frå skilt
+    LEVER_STRAIGHT = 85                   # mm rett del etter buen
     LEVER_Z_OFFSET = -45                  # mm under senter av skilt
 
     # Hengsel-dimensjonar (mm)
@@ -552,7 +553,7 @@ class DoorPreview3D(QWidget):
         hw = self.HINGE_WIDTH
         hh = self.HINGE_HEIGHT
         hd = self.HINGE_DEPTH
-        hinge_color = np.array([0.75, 0.75, 0.73, 1.0])
+        hinge_color = np.array([0.478, 0.478, 0.478, 1.0])
 
         total_hinges = self._get_hinge_count(door)
 
@@ -634,7 +635,7 @@ class DoorPreview3D(QWidget):
     def _add_handle(self, door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s):
         """Skilthandtak på motsett side av hengslene."""
         margin = self.HANDLE_X_MARGIN
-        handle_color = np.array([0.75, 0.75, 0.73, 1.0])
+        handle_color = np.array([0.478, 0.478, 0.478, 1.0])
 
         total_hinges = self._get_hinge_count(door)
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
@@ -671,18 +672,43 @@ class DoorPreview3D(QWidget):
         self._blade_items.append(mesh)
         mesh.setVisible(self._show_blades)
 
-        # Grep (sylinder frå nedre del av skilt)
-        lever_cy = plate_y + self.PLATE_DEPTH + self.LEVER_RADIUS
+        # Grep (bue frå skilt + rett spak)
+        bend_r = self.LEVER_BEND_RADIUS
         lever_cz = plate_cz + self.LEVER_Z_OFFSET
+        lever_y_start = plate_y + self.PLATE_DEPTH
 
+        # Bygg bane: bue (kvartssirkel) + rett strekk
+        path = []
+        bend_segs = 10
         if door.swing_direction == 'left':
-            lever_x = (plate_cx - self.LEVER_LENGTH) * s
+            # Bue frå Y+ retning til X- retning
+            arc_cx = plate_cx - bend_r
+            arc_cy = lever_y_start
+            for i in range(bend_segs + 1):
+                angle = i * (np.pi / 2) / bend_segs
+                px = arc_cx + bend_r * np.cos(angle)
+                py = arc_cy + bend_r * np.sin(angle)
+                path.append((px * s, py * s, lever_cz * s))
+            # Rett del mot venstre
+            end_x = plate_cx - bend_r - self.LEVER_STRAIGHT
+            horiz_y = lever_y_start + bend_r
+            path.append((end_x * s, horiz_y * s, lever_cz * s))
         else:
-            lever_x = plate_cx * s
+            # Bue frå Y+ retning til X+ retning
+            arc_cx = plate_cx + bend_r
+            arc_cy = lever_y_start
+            for i in range(bend_segs + 1):
+                angle = np.pi - i * (np.pi / 2) / bend_segs
+                px = arc_cx + bend_r * np.cos(angle)
+                py = arc_cy + bend_r * np.sin(angle)
+                path.append((px * s, py * s, lever_cz * s))
+            # Rett del mot høgre
+            end_x = plate_cx + bend_r + self.LEVER_STRAIGHT
+            horiz_y = lever_y_start + bend_r
+            path.append((end_x * s, horiz_y * s, lever_cz * s))
 
-        verts, faces = self._make_horizontal_cylinder(
-            lever_x, lever_cy * s, lever_cz * s,
-            self.LEVER_RADIUS * s, self.LEVER_LENGTH * s
+        verts, faces = self._make_swept_tube(
+            path, self.LEVER_RADIUS * s
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(
@@ -876,6 +902,64 @@ class DoorPreview3D(QWidget):
             faces.append([right_c, segments + i, segments + ni])
             faces.append([i, segments + i, ni])
             faces.append([ni, segments + i, segments + ni])
+
+        return verts, np.array(faces)
+
+    @staticmethod
+    def _make_swept_tube(path, radius, segments=12):
+        """Rørform langs ein bane (liste av (x, y, z) punkt)."""
+        n_path = len(path)
+        verts = []
+
+        for i in range(n_path):
+            # Tangentretning
+            if i == 0:
+                tangent = np.array(path[1]) - np.array(path[0])
+            elif i == n_path - 1:
+                tangent = np.array(path[-1]) - np.array(path[-2])
+            else:
+                tangent = np.array(path[i + 1]) - np.array(path[i - 1])
+            tangent = tangent / np.linalg.norm(tangent)
+
+            # Perpendikulær ramme (bruk Z-opp som referanse)
+            up = np.array([0.0, 0.0, 1.0])
+            if abs(np.dot(tangent, up)) > 0.99:
+                up = np.array([0.0, 1.0, 0.0])
+            normal = np.cross(tangent, up)
+            normal = normal / np.linalg.norm(normal)
+            binormal = np.cross(tangent, normal)
+
+            center = np.array(path[i])
+            for j in range(segments):
+                angle = 2 * np.pi * j / segments
+                pt = center + radius * (np.cos(angle) * normal + np.sin(angle) * binormal)
+                verts.append(pt.tolist())
+
+        # Endecap-senter
+        start_c = len(verts)
+        verts.append(list(path[0]))
+        end_c = len(verts)
+        verts.append(list(path[-1]))
+        verts = np.array(verts)
+
+        faces = []
+        # Sideflater
+        for i in range(n_path - 1):
+            for j in range(segments):
+                nj = (j + 1) % segments
+                c = i * segments
+                nx = (i + 1) * segments
+                faces.append([c + j, nx + j, c + nj])
+                faces.append([c + nj, nx + j, nx + nj])
+        # Startcap
+        for j in range(segments):
+            nj = (j + 1) % segments
+            faces.append([start_c, nj, j])
+        # Endecap
+        last = (n_path - 1) * segments
+        for j in range(segments):
+            nj = (j + 1) % segments
+            faces.append([end_c, last + j, last + nj])
 
         return verts, np.array(faces)
 
