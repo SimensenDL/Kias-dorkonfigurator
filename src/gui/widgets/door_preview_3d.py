@@ -23,7 +23,7 @@ except ImportError:
 
 # --- Konstantar ---
 WALL_COLOR = (0.55, 0.55, 0.52, 0.6)
-WALL_MARGIN = 150                        # mm synleg vegg rundt opning
+WALL_MARGIN = 1000                        # mm synleg vegg rundt opning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92}
 LISTVERK_WIDTH = {'SD1': 60, 'SD2': 60, 'SD3/ID': 0}
 LISTVERK_THICKNESS = 5                   # mm
@@ -266,20 +266,26 @@ class DoorPreview3D(QWidget):
             kb - 2 * sidestolpe_w, karm_depth, toppstykke_h
         ))
 
-        # Listverk (tynne strips på veggflata rundt karmen)
+        # Listverk framside (tynne strips på veggflata rundt karmen)
+        wall_back_y = -wall_t / 2
         if listverk_w > 0:
             lt = LISTVERK_THICKNESS
-            # Venstre og høgre
+            # Framside: venstre, høgre, topp
             parts.append((-kb / 2 - listverk_w, front_y, 0, listverk_w, lt, kh))
             parts.append((kb / 2, front_y, 0, listverk_w, lt, kh))
-            # Topp (full breidde inkl. listverk på sidene)
             parts.append((
                 -kb / 2 - listverk_w, front_y, kh,
                 kb + 2 * listverk_w, lt, listverk_w
             ))
+            # Bakside: venstre, høgre, topp (speglar framsida)
+            parts.append((-kb / 2 - listverk_w, wall_back_y - lt, 0, listverk_w, lt, kh))
+            parts.append((kb / 2, wall_back_y - lt, 0, listverk_w, lt, kh))
+            parts.append((
+                -kb / 2 - listverk_w, wall_back_y - lt, kh,
+                kb + 2 * listverk_w, lt, listverk_w
+            ))
 
         # Utforing: viss veggen er tjukkare enn karmdybda
-        wall_back_y = -wall_t / 2
         if back_y > wall_back_y + 1:
             ut_depth = back_y - wall_back_y
             ut_t = UTFORING_THICKNESS
