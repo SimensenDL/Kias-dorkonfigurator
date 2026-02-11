@@ -359,52 +359,56 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_frame_sd2(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD2 L-profil: karm er STØRRE enn opning, framkant + bakre bein."""
+        """SD2: som SD1 men kun list på framside, dybde 77mm + 7mm list = 84mm."""
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
-        front_y = wall_t / 2
-        listverk_w = LISTVERK_WIDTH.get('SD2', 60)
+        list_w = 60   # mm bredde på listen
+        list_t = 7    # mm tykkelse
+        sd2_depth = 77  # mm karmdybde (84 - 7mm list)
 
-        # L-profil dimensjoner (original)
-        l_front_depth = 28
-        l_back_width = 22
-        l_back_depth = karm_depth - l_front_depth
+        # Framside list — utover fra veggflaten
+        front_y = wall_t / 2
 
         parts = []
 
-        # Sidestolper (L-profil: framkant + bakre bein på innsiden)
-        for side in ('left', 'right'):
-            x = -kb / 2 if side == 'left' else kb / 2 - sidestolpe_w
-            # Framkant (full bredde)
-            parts.append((x, front_y - l_front_depth, 0, sidestolpe_w, l_front_depth, kh))
-            # Bakre bein (smalere, på innsiden mot døråpningen)
-            if l_back_depth > 0:
-                if side == 'left':
-                    bein_x = x + sidestolpe_w - l_back_width
-                else:
-                    bein_x = x
-                parts.append((bein_x, front_y - karm_depth, 0, l_back_width, l_back_depth, kh))
-
-        # Toppstykke framkant
+        # List kun på framside
+        parts.append((-kb / 2, front_y, 0, list_w, list_t, kh))
+        parts.append((kb / 2 - list_w, front_y, 0, list_w, list_t, kh))
         parts.append((
-            -kb / 2 + sidestolpe_w, front_y - l_front_depth, kh - toppstykke_h,
-            kb - 2 * sidestolpe_w, l_front_depth, toppstykke_h
+            -kb / 2 + list_w, front_y, kh - list_w,
+            kb - 2 * list_w, list_t, list_w
         ))
-        # Toppstykke bakre bein
-        if l_back_depth > 0:
-            parts.append((
-                -kb / 2 + sidestolpe_w, front_y - karm_depth, kh - l_back_width,
-                kb - 2 * sidestolpe_w, l_back_depth, l_back_width
-            ))
 
-        # Listverk (på veggflaten)
-        if listverk_w > 0:
-            lt = LISTVERK_THICKNESS
-            parts.append((-kb / 2 - listverk_w, front_y, 0, listverk_w, lt, kh))
-            parts.append((kb / 2, front_y, 0, listverk_w, lt, kh))
-            parts.append((
-                -kb / 2 - listverk_w, front_y, kh,
-                kb + 2 * listverk_w, lt, listverk_w
-            ))
+        # Kobling gjennom veggen (5mm tykk, 77mm dyp fra veggfront)
+        kobling_t = 5
+        kobling_y = wall_t / 2 - sd2_depth
+        kobling_d = sd2_depth
+
+        # Venstre side
+        parts.append((-kb / 2 + list_w - kobling_t, kobling_y, 0,
+                       kobling_t, kobling_d, kh - list_w + kobling_t))
+        # Høyre side
+        parts.append((kb / 2 - list_w, kobling_y, 0,
+                       kobling_t, kobling_d, kh - list_w + kobling_t))
+        # Topp
+        parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
+                       kb - 2 * list_w, kobling_d, kobling_t))
+
+        # Anslag — bak dørbladet
+        anslag_w = 20
+        blade_t = door.blade_thickness
+        anslag_d = 30
+        anslag_front_y = wall_t / 2 - blade_t
+        anslag_back_y = anslag_front_y - anslag_d
+
+        # Venstre anslag
+        parts.append((-kb / 2 + list_w, anslag_back_y, 0,
+                       anslag_w, anslag_d, kh - list_w))
+        # Høyre anslag
+        parts.append((kb / 2 - list_w - anslag_w, anslag_back_y, 0,
+                       anslag_w, anslag_d, kh - list_w))
+        # Topp anslag
+        parts.append((-kb / 2 + list_w, anslag_back_y, kh - list_w - anslag_w,
+                       kb - 2 * list_w, anslag_d, anslag_w))
 
         for (bx, by, bz, dx, dy, dz) in parts:
             mesh = self._add_mesh(
