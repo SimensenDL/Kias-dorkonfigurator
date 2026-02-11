@@ -316,14 +316,18 @@ class DoorPreview3D(QWidget):
 
         parts = []
 
-        # Sidestolpar (L-profil: framkant + bakre bein)
+        # Sidestolper (L-profil: framkant + bakre bein på innsiden)
         for side in ('left', 'right'):
             x = -kb / 2 if side == 'left' else kb / 2 - sidestolpe_w
-            # Framkant (full breidde)
+            # Framkant (full bredde)
             parts.append((x, front_y - l_front_depth, 0, sidestolpe_w, l_front_depth, kh))
-            # Bakre bein (smalare, strekker seg bakover)
+            # Bakre bein (smalere, på innsiden mot døråpningen)
             if l_back_depth > 0:
-                parts.append((x, front_y - karm_depth, 0, l_back_width, l_back_depth, kh))
+                if side == 'left':
+                    bein_x = x + sidestolpe_w - l_back_width  # innerkant venstre
+                else:
+                    bein_x = x  # innerkant høyre
+                parts.append((bein_x, front_y - karm_depth, 0, l_back_width, l_back_depth, kh))
 
         # Toppstykke framkant
         parts.append((
