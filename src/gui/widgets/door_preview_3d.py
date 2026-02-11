@@ -332,9 +332,9 @@ class DoorPreview3D(QWidget):
         # Anslag — list bak dørbladet som bladet lukker mot
         anslag_w = 20    # mm, hvor langt inn i åpningen (80mm fra utvendig karm - 60mm list)
         blade_t = door.blade_thickness
-        # Bak bladet, 30mm dybde i Y (aluminiumprofil)
-        anslag_d = 30
-        anslag_front_y = wall_t / 2 - blade_t
+        # Bak bladet, 44mm dybde i Y (84mm karm - 40mm dørblad)
+        anslag_d = 44
+        anslag_front_y = wall_t / 2 + list_t - blade_t
         anslag_back_y = anslag_front_y - anslag_d
 
         # Venstre anslag
@@ -397,7 +397,7 @@ class DoorPreview3D(QWidget):
         anslag_w = 20
         blade_t = door.blade_thickness
         anslag_d = 30
-        anslag_front_y = wall_t / 2 - blade_t
+        anslag_front_y = wall_t / 2 + list_t - blade_t
         anslag_back_y = anslag_front_y - anslag_d
 
         # Venstre anslag
@@ -484,9 +484,9 @@ class DoorPreview3D(QWidget):
         """Dørblad med produksjonsmål fra calculations.py."""
         blade_color = np.array(self._ral_to_rgba(door.color))
 
-        # Y-posisjon
+        # Y-posisjon (flush med listverk)
         if is_flush:
-            blade_y = wall_t / 2 - blade_t_mm
+            blade_y = wall_t / 2 + LISTVERK_THICKNESS - blade_t_mm
         else:
             blade_y = -blade_t_mm / 2
 
@@ -548,9 +548,9 @@ class DoorPreview3D(QWidget):
 
         total_hinges = self._get_hinge_count(door)
 
-        # Y-posisjon: sentrert på bladdjupna
+        # Y-posisjon: sentrert på bladdjupna (flush med listverk)
         if is_flush:
-            hy = wall_t / 2 - blade_t_mm / 2 - hd / 2
+            hy = wall_t / 2 + LISTVERK_THICKNESS - blade_t_mm / 2 - hd / 2
         else:
             hy = -hd / 2
 
@@ -634,7 +634,7 @@ class DoorPreview3D(QWidget):
             hx = bcx - b_w / 2 + margin
 
         if is_flush:
-            hy = wall_t / 2
+            hy = wall_t / 2 + LISTVERK_THICKNESS
         else:
             hy = blade_t_mm / 2
 
