@@ -84,7 +84,11 @@ class DoorPreview3D(QWidget):
         self._door: Optional[DoorParams] = None
         self._mesh_items: list = []
         self._wall_items: list = []
-        self._show_wall = True
+        self._frame_items: list = []
+        self._blade_items: list = []
+        self._show_wall = False
+        self._show_frame = True
+        self._show_blades = True
         self._gl_widget = None
         self._init_ui()
 
@@ -105,15 +109,23 @@ class DoorPreview3D(QWidget):
             return
 
         try:
-            # Toolbar med vegg-toggle
+            # Toolbar med toggle-knapper
             toolbar = QHBoxLayout()
             toolbar.setContentsMargins(4, 4, 4, 0)
-            self._wall_btn = QPushButton("Vegg")
-            self._wall_btn.setCheckable(True)
-            self._wall_btn.setChecked(True)
-            self._wall_btn.setFixedWidth(70)
-            self._wall_btn.toggled.connect(self._on_wall_toggled)
-            toolbar.addWidget(self._wall_btn)
+
+            for name, checked, handler in [
+                ("Vegg", False, self._on_wall_toggled),
+                ("Karm", True, self._on_frame_toggled),
+                ("Dørblad", True, self._on_blade_toggled),
+            ]:
+                btn = QPushButton(name)
+                btn.setCheckable(True)
+                btn.setChecked(checked)
+                btn.setMinimumWidth(80)
+                btn.toggled.connect(handler)
+                toolbar.addWidget(btn)
+                setattr(self, f'_{name.lower()}_btn', btn)
+
             toolbar.addStretch()
             layout.addLayout(toolbar)
 
@@ -139,9 +151,21 @@ class DoorPreview3D(QWidget):
             layout.addWidget(label)
 
     def _on_wall_toggled(self, checked: bool):
-        """Vis/skjul vegg utan full scene-rebuild."""
+        """Vis/skjul vegg."""
         self._show_wall = checked
         for item in self._wall_items:
+            item.setVisible(checked)
+
+    def _on_frame_toggled(self, checked: bool):
+        """Vis/skjul karm."""
+        self._show_frame = checked
+        for item in self._frame_items:
+            item.setVisible(checked)
+
+    def _on_blade_toggled(self, checked: bool):
+        """Vis/skjul dørblad."""
+        self._show_blades = checked
+        for item in self._blade_items:
             item.setVisible(checked)
 
     def _setup_camera(self):
@@ -165,6 +189,8 @@ class DoorPreview3D(QWidget):
             self._gl_widget.removeItem(item)
         self._mesh_items.clear()
         self._wall_items.clear()
+        self._frame_items.clear()
+        self._blade_items.clear()
 
         if self._door is None:
             return
@@ -294,10 +320,11 @@ class DoorPreview3D(QWidget):
             parts.append((-kb / 2, wall_back_y, kh - ut_t, kb, ut_depth, ut_t))
 
         for (bx, by, bz, dx, dy, dz) in parts:
-            self._add_mesh(
+            mesh = self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color
+                karm_color, is_frame=True
             )
+            mesh.setVisible(self._show_frame)
 
     # =========================================================================
     # KARM SD2 — L-profil
@@ -352,10 +379,11 @@ class DoorPreview3D(QWidget):
             ))
 
         for (bx, by, bz, dx, dy, dz) in parts:
-            self._add_mesh(
+            mesh = self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color
+                karm_color, is_frame=True
             )
+            mesh.setVisible(self._show_frame)
 
     # =========================================================================
     # KARM SD3/ID — Smygmontasje
@@ -380,10 +408,11 @@ class DoorPreview3D(QWidget):
         ))
 
         for (bx, by, bz, dx, dy, dz) in parts:
-            self._add_mesh(
+            mesh = self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color
+                karm_color, is_frame=True
             )
+            mesh.setVisible(self._show_frame)
 
     # =========================================================================
     # DØRBLAD
@@ -441,6 +470,8 @@ class DoorPreview3D(QWidget):
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
+        self._blade_items.append(mesh)
+        mesh.setVisible(self._show_blades)
 
     # =========================================================================
     # HENGSLAR
@@ -481,10 +512,11 @@ class DoorPreview3D(QWidget):
                 else:
                     hx = bcx + b_w / 2
 
-                self._add_mesh(
+                mesh = self._add_mesh(
                     hx * s, hy * s, hz * s, hw * s, hd * s, hh * s,
-                    hinge_color
+                    hinge_color, is_blade=True
                 )
+                mesh.setVisible(self._show_blades)
 
     def _get_hinge_count(self, door) -> int:
         """Hent hengselantal frå DOOR_REGISTRY, med fallback."""
@@ -547,10 +579,11 @@ class DoorPreview3D(QWidget):
         hz = luftspalte_mm + b_h * self.HANDLE_Y_RATIO - hh / 2
 
         handle_color = np.array([0.12, 0.12, 0.12, 1.0])
-        self._add_mesh(
+        mesh = self._add_mesh(
             hx * s, hy * s, hz * s, hw * s, hd * s, hh * s,
-            handle_color
+            handle_color, is_blade=True
         )
+        mesh.setVisible(self._show_blades)
 
     # =========================================================================
     # HJELPEMETODER
@@ -574,7 +607,7 @@ class DoorPreview3D(QWidget):
         return np.array(colors)
 
     def _add_mesh(self, x, y, z, dx, dy, dz, color,
-                  gl_options=None, is_wall=False):
+                  gl_options=None, is_wall=False, is_frame=False, is_blade=False):
         """Lag GLMeshItem-boks med simulert retningslys."""
         verts, faces = self._make_box(x, y, z, dx, dy, dz)
         face_colors = self._lit_face_colors(color)
@@ -589,6 +622,10 @@ class DoorPreview3D(QWidget):
         self._mesh_items.append(mesh)
         if is_wall:
             self._wall_items.append(mesh)
+        if is_frame:
+            self._frame_items.append(mesh)
+        if is_blade:
+            self._blade_items.append(mesh)
         return mesh
 
     @staticmethod
