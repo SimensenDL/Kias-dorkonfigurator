@@ -329,6 +329,24 @@ class DoorPreview3D(QWidget):
         parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
                        kb - 2 * list_w, kobling_d, kobling_t))
 
+        # Anslag — list bak dørbladet som bladet lukker mot
+        anslag_w = 12    # mm, hvor langt inn i åpningen
+        blade_t = door.blade_thickness
+        # Bak bladet, 50mm dybde i Y
+        anslag_d = 50
+        anslag_front_y = wall_t / 2 - blade_t
+        anslag_back_y = anslag_front_y - anslag_d
+
+        # Venstre anslag
+        parts.append((-kb / 2 + list_w, anslag_back_y, 0,
+                       anslag_w, anslag_d, kh - list_w))
+        # Høyre anslag
+        parts.append((kb / 2 - list_w - anslag_w, anslag_back_y, 0,
+                       anslag_w, anslag_d, kh - list_w))
+        # Topp anslag
+        parts.append((-kb / 2 + list_w, anslag_back_y, kh - list_w - anslag_w,
+                       kb - 2 * list_w, anslag_d, anslag_w))
+
         for (bx, by, bz, dx, dy, dz) in parts:
             mesh = self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
