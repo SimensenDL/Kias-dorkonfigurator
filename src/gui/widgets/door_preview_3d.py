@@ -23,7 +23,7 @@ except ImportError:
 
 # --- Konstantar ---
 WALL_COLOR = (0.55, 0.55, 0.52, 1)
-WALL_MARGIN = 1000                        # mm synleg vegg rundt opning
+WALL_MARGIN = 800                        # mm synleg vegg rundt opning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92}
 LISTVERK_WIDTH = {'SD1': 60, 'SD2': 60, 'SD3/ID': 0}
 LISTVERK_THICKNESS = 7                   # mm
@@ -879,7 +879,7 @@ class DoorPreview3D(QWidget):
         return verts, np.array(faces)
 
     @staticmethod
-    def _make_horizontal_cylinder(x, cy, cz, radius, length, segments=16):
+    def _make_horizontal_cylinder(x, cy, cz, radius, length, segments=24):
         """Sylinder langs X-aksen, start ved x, sentrert på (cy, cz)."""
         angles = np.linspace(0, 2 * np.pi, segments, endpoint=False)
 
@@ -906,7 +906,7 @@ class DoorPreview3D(QWidget):
         return verts, np.array(faces)
 
     @staticmethod
-    def _make_swept_tube(path, radius, segments=12):
+    def _make_swept_tube(path, radius, segments=24):
         """Rørform langs ein bane (liste av (x, y, z) punkt)."""
         n_path = len(path)
         verts = []
@@ -974,8 +974,8 @@ class DoorPreview3D(QWidget):
         light_dir = np.array([0.3, 0.6, 0.5])
         light_dir = light_dir / np.linalg.norm(light_dir)
         r, g, b, a = base_color
-        ambient = 0.55
-        diffuse = 0.55
+        ambient = 0.7
+        diffuse = 0.45
 
         colors = []
         for face in faces:
