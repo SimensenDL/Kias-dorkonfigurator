@@ -393,11 +393,13 @@ class DoorPreview3D(QWidget):
         parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
                        kb - 2 * list_w, kobling_d, kobling_t))
 
-        # Anslag — bak dørbladet
+        # Anslag — bak dørbladet (44mm = 84mm karm - 40mm dørblad)
         anslag_w = 20
         blade_t = door.blade_thickness
-        anslag_d = 30
-        anslag_front_y = wall_t / 2 + list_t - blade_t
+        anslag_d = 44
+        # Posisjonert relativt til karmens framkant (list front), ikke veggen
+        karm_front = wall_t / 2 + list_t  # listens framside
+        anslag_front_y = karm_front - blade_t
         anslag_back_y = anslag_front_y - anslag_d
 
         # Venstre anslag
