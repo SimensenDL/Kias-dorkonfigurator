@@ -517,16 +517,16 @@ class DoorPreview3D(QWidget):
                 total_w = db1_b + BLADE_GAP + db2_b
                 start_x = -total_w / 2
 
-                # Blad 1 (venstre)
+                # Blad 2 (venstre i 3D-koord = høgre sett frå framsida)
                 self._render_single_blade(
                     start_x, blade_y, luftspalte_mm,
-                    db1_b, blade_t_mm, db_h,
+                    db2_b, blade_t_mm, db_h,
                     blade_color, s
                 )
-                # Blad 2 (høyre)
+                # Blad 1 (høgre i 3D-koord = venstre sett frå framsida)
                 self._render_single_blade(
-                    start_x + db1_b + BLADE_GAP, blade_y, luftspalte_mm,
-                    db2_b, blade_t_mm, db_h,
+                    start_x + db2_b + BLADE_GAP, blade_y, luftspalte_mm,
+                    db1_b, blade_t_mm, db_h,
                     blade_color, s
                 )
 
@@ -627,11 +627,14 @@ class DoorPreview3D(QWidget):
             total_w = db1_b + BLADE_GAP + db2_b
             per_blade = max(1, total_hinges // 2)
 
-            b1_cx = -total_w / 2 + db1_b / 2
-            b2_cx = -total_w / 2 + db1_b + BLADE_GAP + db2_b / 2
-            # Venstre blad: hengslar på venstre kant, høgre blad: hengslar på høgre kant
-            return [(b1_cx, db1_b, db_h, per_blade, 'left'),
-                    (b2_cx, db2_b, db_h, per_blade, 'right')]
+            # 3D-koord er speilvent: negativ X = høgre sett frå framsida
+            # Blad 2 (venstre i 3D), Blad 1 (høgre i 3D)
+            b2_cx = -total_w / 2 + db2_b / 2
+            b1_cx = -total_w / 2 + db2_b + BLADE_GAP + db1_b / 2
+            # Blad 1 hengslar på høgre i 3D (= venstre frå framsida)
+            # Blad 2 hengslar på venstre i 3D (= høgre frå framsida)
+            return [(b1_cx, db1_b, db_h, per_blade, 'right'),
+                    (b2_cx, db2_b, db_h, per_blade, 'left')]
 
     # =========================================================================
     # HÅNDTAK
@@ -644,8 +647,8 @@ class DoorPreview3D(QWidget):
 
         total_hinges = self._get_hinge_count(door)
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
-        # For 2-fløyet: håndtak på venstre blad ved slagretning venstre, høgre blad ved høgre
-        if door.floyer == 2 and door.swing_direction == 'right':
+        # For 2-fløyet: speilvent i 3D — 'left' → blades[1], 'right' → blades[0]
+        if door.floyer == 2 and door.swing_direction == 'left':
             bcx, b_w, b_h, _, hinge_side = blades[1]
         else:
             bcx, b_w, b_h, _, hinge_side = blades[0]

@@ -118,7 +118,7 @@ class DoorForm(QWidget):
         karm_floyer_layout.addWidget(self.floyer_combo, stretch=1)
 
         self.split_spin = QSpinBox()
-        self.split_spin.setRange(30, 70)
+        self.split_spin.setRange(20, 80)
         self.split_spin.setValue(50)
         self.split_spin.setSuffix(" %")
         self.split_spin.setSingleStep(5)
