@@ -566,7 +566,7 @@ class DoorPreview3D(QWidget):
         # Bygg liste over blad å feste hengslar på: (senter_x, breidde, høgde, antal)
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
 
-        for (bcx, b_w, b_h, count) in blades:
+        for (bcx, b_w, b_h, count, hinge_side) in blades:
             if count <= 0:
                 count = 2
             if count == 2:
@@ -578,7 +578,7 @@ class DoorPreview3D(QWidget):
 
             for p in positions:
                 hz = luftspalte_mm + b_h * p - hh / 2
-                if door.swing_direction == 'left':
+                if hinge_side == 'left':
                     hx = bcx - b_w / 2 - hw
                 else:
                     hx = bcx + b_w / 2
@@ -611,11 +611,14 @@ class DoorPreview3D(QWidget):
         return door.hinge_count if door.hinge_count > 0 else 2
 
     def _get_blade_geometries(self, door, kb, kh, luftspalte_mm, total_hinges):
-        """Returnerer liste av (senter_x, breidde, høgde, hengslar_per_blad) for kvart blad."""
+        """Returnerer liste av (senter_x, breidde, høgde, hengslar_per_blad, hengselside) for kvart blad.
+
+        hengselside er 'left' eller 'right' — angir kva kant hengsla sit på.
+        """
         if door.floyer == 1:
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.blade_type) or (kb - 128)
             db_h = dorblad_hoyde(door.karm_type, kh, 1, door.blade_type, luftspalte_mm) or (kh - 85)
-            return [(0, db_b, db_h, total_hinges)]
+            return [(0, db_b, db_h, total_hinges, door.swing_direction)]
         else:
             db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.blade_type) or (kb - 132)
             db_h = dorblad_hoyde(door.karm_type, kh, 2, door.blade_type, luftspalte_mm) or (kh - 85)
@@ -626,7 +629,9 @@ class DoorPreview3D(QWidget):
 
             b1_cx = -total_w / 2 + db1_b / 2
             b2_cx = -total_w / 2 + db1_b + BLADE_GAP + db2_b / 2
-            return [(b1_cx, db1_b, db_h, per_blade), (b2_cx, db2_b, db_h, per_blade)]
+            # Venstre blad: hengslar på venstre kant, høgre blad: hengslar på høgre kant
+            return [(b1_cx, db1_b, db_h, per_blade, 'left'),
+                    (b2_cx, db2_b, db_h, per_blade, 'right')]
 
     # =========================================================================
     # HÅNDTAK
@@ -639,10 +644,14 @@ class DoorPreview3D(QWidget):
 
         total_hinges = self._get_hinge_count(door)
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
-        bcx, b_w, b_h, _ = blades[0]
+        # For 2-fløyet: håndtak på venstre blad ved slagretning venstre, høgre blad ved høgre
+        if door.floyer == 2 and door.swing_direction == 'right':
+            bcx, b_w, b_h, _, hinge_side = blades[1]
+        else:
+            bcx, b_w, b_h, _, hinge_side = blades[0]
 
-        # Senter-X for skiltet
-        if door.swing_direction == 'left':
+        # Senter-X for skiltet (motsett side av hengsla)
+        if hinge_side == 'left':
             plate_cx = bcx + b_w / 2 - margin
         else:
             plate_cx = bcx - b_w / 2 + margin
@@ -680,8 +689,8 @@ class DoorPreview3D(QWidget):
         # Bygg bane: bue (kvartssirkel) + rett strekk
         path = []
         bend_segs = 10
-        if door.swing_direction == 'left':
-            # Bue frå Y+ retning til X- retning
+        if hinge_side == 'left':
+            # Bue frå Y+ retning til X- retning (grep peikar mot hengslene)
             arc_cx = plate_cx - bend_r
             arc_cy = lever_y_start
             for i in range(bend_segs + 1):
@@ -694,7 +703,7 @@ class DoorPreview3D(QWidget):
             horiz_y = lever_y_start + bend_r
             path.append((end_x * s, horiz_y * s, lever_cz * s))
         else:
-            # Bue frå Y+ retning til X+ retning
+            # Bue frå Y+ retning til X+ retning (grep peikar mot hengslene)
             arc_cx = plate_cx + bend_r
             arc_cy = lever_y_start
             for i in range(bend_segs + 1):
