@@ -220,7 +220,7 @@ class DoorPreview3D(QWidget):
         kh = karm_hoyde(door.karm_type, hm)
 
         # Dørblad-dimensjonar
-        luftspalte_mm = door.effective_luftspalte()
+        luftspalte_mm = 22  # Fast offset i 3D-visning (mm)
         blade_t_mm = door.blade_thickness
         karm_depth = KARM_DEPTHS.get(door.karm_type, 77)
         sidestolpe_w = KARM_SIDESTOLPE_WIDTH.get(door.karm_type, 80)
@@ -289,67 +289,26 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_frame_sd1(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD1 U-profil: karm er STØRRE enn opning, flush med veggfront."""
+        """SD1: enkel list (60mm bred, 7mm tykk) rundt dørbladet — flush med bladet."""
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
-        blade_t = door.blade_thickness
-        front_y = wall_t / 2
-        back_y = front_y - karm_depth
-        listverk_w = LISTVERK_WIDTH.get('SD1', 60)
+        list_w = 60   # mm bredde på listen
+        list_t = 7    # mm tykkelse
+
+        # Flush med dørbladets framside (wall_t/2 for SD1)
+        list_front_y = wall_t / 2
+        list_y = list_front_y - list_t
 
         parts = []
 
-        # Sidestolper (original posisjon)
-        for side in ('left', 'right'):
-            x = -kb / 2 if side == 'left' else kb / 2 - sidestolpe_w
-            parts.append((x, back_y, 0, sidestolpe_w, karm_depth, kh))
-
-        # Toppstykke (mellom sidestolpene)
+        # Venstre list — full høyde
+        parts.append((-kb / 2, list_y, 0, list_w, list_t, kh))
+        # Høyre list — full høyde
+        parts.append((kb / 2 - list_w, list_y, 0, list_w, list_t, kh))
+        # Topp list — mellom sidene
         parts.append((
-            -kb / 2 + sidestolpe_w, back_y, kh - toppstykke_h,
-            kb - 2 * sidestolpe_w, karm_depth, toppstykke_h
+            -kb / 2 + list_w, list_y, kh - list_w,
+            kb - 2 * list_w, list_t, list_w
         ))
-
-        # Anslag — innvendig kant som dørbladet lukker mot
-        # Samme Y-plassering som terskelen (forskjøvet blade_t bak karmen)
-        anslag_depth = karm_depth
-        anslag_back_y = front_y - karm_depth - blade_t
-        anslag_w = 15  # mm, hvor langt anslaget stikker inn i åpningen
-        # Venstre side
-        parts.append((-kb / 2 + sidestolpe_w, anslag_back_y, 0,
-                       anslag_w, anslag_depth, kh))
-        # Høyre side
-        parts.append((kb / 2 - sidestolpe_w - anslag_w, anslag_back_y, 0,
-                       anslag_w, anslag_depth, kh))
-        # Topp
-        parts.append((-kb / 2 + sidestolpe_w, anslag_back_y, kh - toppstykke_h,
-                       kb - 2 * sidestolpe_w, anslag_depth, anslag_w))
-
-        # Listverk framside (tynne strips på veggflaten rundt karmen)
-        wall_back_y = -wall_t / 2
-        if listverk_w > 0:
-            lt = LISTVERK_THICKNESS
-            # Framside: venstre, høyre, topp
-            parts.append((-kb / 2 - listverk_w, front_y, 0, listverk_w, lt, kh))
-            parts.append((kb / 2, front_y, 0, listverk_w, lt, kh))
-            parts.append((
-                -kb / 2 - listverk_w, front_y, kh,
-                kb + 2 * listverk_w, lt, listverk_w
-            ))
-            # Bakside: venstre, høyre, topp (speiler framsiden)
-            parts.append((-kb / 2 - listverk_w, wall_back_y - lt, 0, listverk_w, lt, kh))
-            parts.append((kb / 2, wall_back_y - lt, 0, listverk_w, lt, kh))
-            parts.append((
-                -kb / 2 - listverk_w, wall_back_y - lt, kh,
-                kb + 2 * listverk_w, lt, listverk_w
-            ))
-
-        # Utforing: hvis veggen er tykkere enn karmdybden
-        if back_y > wall_back_y + 1:
-            ut_depth = back_y - wall_back_y
-            ut_t = UTFORING_THICKNESS
-            parts.append((-kb / 2, wall_back_y, 0, ut_t, ut_depth, kh))
-            parts.append((kb / 2 - ut_t, wall_back_y, 0, ut_t, ut_depth, kh))
-            parts.append((-kb / 2, wall_back_y, kh - ut_t, kb, ut_depth, ut_t))
 
         for (bx, by, bz, dx, dy, dz) in parts:
             mesh = self._add_mesh(
