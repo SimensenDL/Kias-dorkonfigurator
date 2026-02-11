@@ -294,10 +294,10 @@ class DoorPreview3D(QWidget):
         list_w = 60   # mm bredde på listen
         list_t = 7    # mm tykkelse
 
-        # Framside — flush med dørbladets framside (wall_t/2)
-        front_y = wall_t / 2 - list_t
-        # Bakside — flush med veggens bakside (-wall_t/2)
-        back_y = -wall_t / 2
+        # Framside — utover fra veggflaten
+        front_y = wall_t / 2
+        # Bakside — utover fra veggflaten
+        back_y = -wall_t / 2 - list_t
 
         # Innvendig kobling gjennom veggen (5mm tykk)
         kobling_t = 5     # mm tykkelse
@@ -306,7 +306,7 @@ class DoorPreview3D(QWidget):
 
         parts = []
 
-        # Lister på fram- og bakside
+        # Lister på fram- og bakside (tykkelsen utover fra veggen)
         for y in (front_y, back_y):
             # Venstre list — full høyde
             parts.append((-kb / 2, y, 0, list_w, list_t, kh))
