@@ -237,7 +237,7 @@ class DoorPreview3D(QWidget):
         for (bx, by, bz, dx, dy, dz) in parts:
             mesh = self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                color, edge_color=(0.4, 0.4, 0.38, 0.5),
+                color,
                 gl_options='translucent', is_wall=True
             )
             mesh.setVisible(self._show_wall)
@@ -296,7 +296,7 @@ class DoorPreview3D(QWidget):
         for (bx, by, bz, dx, dy, dz) in parts:
             self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color, edge_color=(0.2, 0.2, 0.22, 1.0)
+                karm_color
             )
 
     # =========================================================================
@@ -350,7 +350,7 @@ class DoorPreview3D(QWidget):
         for (bx, by, bz, dx, dy, dz) in parts:
             self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color, edge_color=(0.2, 0.2, 0.22, 1.0)
+                karm_color
             )
 
     # =========================================================================
@@ -378,7 +378,7 @@ class DoorPreview3D(QWidget):
         for (bx, by, bz, dx, dy, dz) in parts:
             self._add_mesh(
                 bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color, edge_color=(0.2, 0.2, 0.22, 1.0)
+                karm_color
             )
 
     # =========================================================================
@@ -386,11 +386,8 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_door_blades(self, door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s):
-        """Dørblad med produksjonsmål frå calculations.py."""
+        """Dørblad med produksjonsmål fra calculations.py."""
         blade_color = np.array(self._ral_to_rgba(door.color))
-        edge_color = np.array(self._blend_colors(
-            self._ral_to_rgba(door.color), (0.0, 0.0, 0.0, 1.0), 0.15
-        ))
 
         # Y-posisjon
         if is_flush:
@@ -405,7 +402,7 @@ class DoorPreview3D(QWidget):
                 self._render_single_blade(
                     -db_b / 2, blade_y, luftspalte_mm,
                     db_b, blade_t_mm, db_h,
-                    blade_color, edge_color, s
+                    blade_color, s
                 )
         else:
             db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.blade_type)
@@ -420,31 +417,23 @@ class DoorPreview3D(QWidget):
                 self._render_single_blade(
                     start_x, blade_y, luftspalte_mm,
                     db1_b, blade_t_mm, db_h,
-                    blade_color, edge_color, s
+                    blade_color, s
                 )
-                # Blad 2 (høgre)
+                # Blad 2 (høyre)
                 self._render_single_blade(
                     start_x + db1_b + BLADE_GAP, blade_y, luftspalte_mm,
                     db2_b, blade_t_mm, db_h,
-                    blade_color, edge_color, s
+                    blade_color, s
                 )
 
-    def _render_single_blade(self, x, y, z, w, d, h, color, edge_color, s):
-        """Teiknar eitt dørblad med farga flater og mørkare kantar."""
+    def _render_single_blade(self, x, y, z, w, d, h, color, s):
+        """Tegner ett dørblad med retningsbasert lys."""
         verts, faces = self._make_box(x * s, y * s, z * s, w * s, d * s, h * s)
-
-        face_colors = np.array([
-            edge_color, edge_color,    # Bunn
-            edge_color, edge_color,    # Topp
-            color,      color,         # Front
-            color,      color,         # Bak
-            edge_color, edge_color,    # Venstre
-            edge_color, edge_color,    # Høyre
-        ])
+        face_colors = self._lit_face_colors(color)
 
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=False, drawEdges=True, edgeColor=(0.15, 0.15, 0.15, 1.0)
+            smooth=False, drawEdges=False
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
@@ -490,7 +479,7 @@ class DoorPreview3D(QWidget):
 
                 self._add_mesh(
                     hx * s, hy * s, hz * s, hw * s, hd * s, hh * s,
-                    hinge_color, edge_color=(0.1, 0.1, 0.1, 1.0)
+                    hinge_color
                 )
 
     def _get_hinge_count(self, door) -> int:
@@ -556,21 +545,38 @@ class DoorPreview3D(QWidget):
         handle_color = np.array([0.12, 0.12, 0.12, 1.0])
         self._add_mesh(
             hx * s, hy * s, hz * s, hw * s, hd * s, hh * s,
-            handle_color, edge_color=(0.05, 0.05, 0.05, 1.0)
+            handle_color
         )
 
     # =========================================================================
-    # HJELPE-METODAR
+    # HJELPEMETODER
     # =========================================================================
 
-    def _add_mesh(self, x, y, z, dx, dy, dz, color, edge_color=(0.2, 0.2, 0.22, 1.0),
+    # Lysfaktorer per flateretning (simulerer lys fra øvre front-høyre)
+    # Rekkefølge: bunn, topp, front(Y+), bak(Y-), venstre(X-), høyre(X+)
+    _FACE_LIGHT = (0.55, 1.15, 1.0, 0.62, 0.72, 0.88)
+
+    @staticmethod
+    def _lit_face_colors(base_color, light_factors=None):
+        """Beregn 12 flatefarger (2 trekanter × 6 sider) med retningsbasert lys."""
+        if light_factors is None:
+            light_factors = DoorPreview3D._FACE_LIGHT
+        r, g, b, a = base_color[0], base_color[1], base_color[2], base_color[3]
+        colors = []
+        for f in light_factors:
+            c = (min(1.0, r * f), min(1.0, g * f), min(1.0, b * f), a)
+            colors.append(c)
+            colors.append(c)  # 2 trekanter per side
+        return np.array(colors)
+
+    def _add_mesh(self, x, y, z, dx, dy, dz, color,
                   gl_options=None, is_wall=False):
-        """Lag GLMeshItem-boks, legg til i scene og registrer."""
+        """Lag GLMeshItem-boks med simulert retningslys."""
         verts, faces = self._make_box(x, y, z, dx, dy, dz)
-        colors = np.tile(color, (len(faces), 1))
+        face_colors = self._lit_face_colors(color)
         kwargs = dict(
-            vertexes=verts, faces=faces, faceColors=colors,
-            smooth=False, drawEdges=True, edgeColor=edge_color
+            vertexes=verts, faces=faces, faceColors=face_colors,
+            smooth=False, drawEdges=False
         )
         if gl_options:
             kwargs['glOptions'] = gl_options
