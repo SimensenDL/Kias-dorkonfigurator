@@ -22,7 +22,7 @@ except ImportError:
     HAS_3D = False
 
 # --- Konstantar ---
-WALL_COLOR = (0.55, 0.55, 0.52, 0.6)
+WALL_COLOR = (0.55, 0.55, 0.52, 1)
 WALL_MARGIN = 1000                        # mm synleg vegg rundt opning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92}
 LISTVERK_WIDTH = {'SD1': 60, 'SD2': 60, 'SD3/ID': 0}
@@ -69,11 +69,17 @@ class DoorPreview3D(QWidget):
     SCALE = 1.0 / 100.0
 
     # Håndtak-dimensjonar (mm)
-    HANDLE_WIDTH = 20
-    HANDLE_HEIGHT = 120
-    HANDLE_DEPTH = 30
-    HANDLE_Y_RATIO = 0.47
+    HANDLE_CENTER_HEIGHT = 1020          # mm frå gulv (senter håndtak)
     HANDLE_X_MARGIN = 80
+    # Skilt (bakplate) — avrunda hjørne
+    PLATE_WIDTH = 40
+    PLATE_HEIGHT = 170
+    PLATE_DEPTH = 5
+    PLATE_CORNER_RADIUS = 6
+    # Grep (spak) — sylinder frå nedre del av skilt
+    LEVER_RADIUS = 10
+    LEVER_LENGTH = 110
+    LEVER_Z_OFFSET = -45                  # mm under senter av skilt
 
     # Hengsel-dimensjonar (mm)
     HINGE_WIDTH = 15
@@ -546,15 +552,15 @@ class DoorPreview3D(QWidget):
         hw = self.HINGE_WIDTH
         hh = self.HINGE_HEIGHT
         hd = self.HINGE_DEPTH
-        hinge_color = np.array([0.25, 0.25, 0.25, 1.0])
+        hinge_color = np.array([0.75, 0.75, 0.73, 1.0])
 
         total_hinges = self._get_hinge_count(door)
 
-        # Y-posisjon: sentrert på bladdjupna (flush med listverk)
+        # Y-posisjon: sentrert på framkant av dørblad (synleg frå utsida)
         if is_flush:
-            hy = wall_t / 2 + LISTVERK_THICKNESS - blade_t_mm / 2 - hd / 2
+            hy = wall_t / 2 + LISTVERK_THICKNESS - hd / 2
         else:
-            hy = -hd / 2
+            hy = blade_t_mm / 2 - hd / 2
 
         # Bygg liste over blad å feste hengslar på: (senter_x, breidde, høgde, antal)
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
@@ -576,10 +582,17 @@ class DoorPreview3D(QWidget):
                 else:
                     hx = bcx + b_w / 2
 
-                mesh = self._add_mesh(
-                    hx * s, hy * s, hz * s, hw * s, hd * s, hh * s,
-                    hinge_color, is_blade=True
+                verts, faces = self._make_box(
+                    hx * s, hy * s, hz * s, hw * s, hd * s, hh * s
                 )
+                face_colors = self._normal_lit_face_colors(verts, faces, hinge_color)
+                mesh = gl.GLMeshItem(
+                    vertexes=verts, faces=faces, faceColors=face_colors,
+                    smooth=False, drawEdges=False
+                )
+                self._gl_widget.addItem(mesh)
+                self._mesh_items.append(mesh)
+                self._blade_items.append(mesh)
                 mesh.setVisible(self._show_blades)
 
     def _get_hinge_count(self, door) -> int:
@@ -619,34 +632,66 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_handle(self, door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s):
-        """Håndtak på motsett side av hengslene."""
-        hw = self.HANDLE_WIDTH
-        hh = self.HANDLE_HEIGHT
-        hd = self.HANDLE_DEPTH
+        """Skilthandtak på motsett side av hengslene."""
         margin = self.HANDLE_X_MARGIN
+        handle_color = np.array([0.75, 0.75, 0.73, 1.0])
 
         total_hinges = self._get_hinge_count(door)
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
-        # Håndtak på blad 1 (aktiv fløy)
         bcx, b_w, b_h, _ = blades[0]
 
+        # Senter-X for skiltet
         if door.swing_direction == 'left':
-            hx = bcx + b_w / 2 - margin - hw
+            plate_cx = bcx + b_w / 2 - margin
         else:
-            hx = bcx - b_w / 2 + margin
+            plate_cx = bcx - b_w / 2 + margin
 
+        # Y-posisjon (på framside av dørblad)
         if is_flush:
-            hy = wall_t / 2 + LISTVERK_THICKNESS
+            plate_y = wall_t / 2 + LISTVERK_THICKNESS
         else:
-            hy = blade_t_mm / 2
+            plate_y = blade_t_mm / 2
 
-        hz = luftspalte_mm + b_h * self.HANDLE_Y_RATIO - hh / 2
+        plate_cy = plate_y + self.PLATE_DEPTH / 2
+        plate_cz = self.HANDLE_CENTER_HEIGHT
 
-        handle_color = np.array([0.12, 0.12, 0.12, 1.0])
-        mesh = self._add_mesh(
-            hx * s, hy * s, hz * s, hw * s, hd * s, hh * s,
-            handle_color, is_blade=True
+        # Skilt (avrunda hjørne)
+        verts, faces = self._make_rounded_rect(
+            plate_cx * s, plate_cy * s, plate_cz * s,
+            self.PLATE_WIDTH * s, self.PLATE_HEIGHT * s, self.PLATE_DEPTH * s,
+            self.PLATE_CORNER_RADIUS * s
         )
+        face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
+        mesh = gl.GLMeshItem(
+            vertexes=verts, faces=faces, faceColors=face_colors,
+            smooth=False, drawEdges=False
+        )
+        self._gl_widget.addItem(mesh)
+        self._mesh_items.append(mesh)
+        self._blade_items.append(mesh)
+        mesh.setVisible(self._show_blades)
+
+        # Grep (sylinder frå nedre del av skilt)
+        lever_cy = plate_y + self.PLATE_DEPTH + self.LEVER_RADIUS
+        lever_cz = plate_cz + self.LEVER_Z_OFFSET
+
+        if door.swing_direction == 'left':
+            lever_x = (plate_cx - self.LEVER_LENGTH) * s
+        else:
+            lever_x = plate_cx * s
+
+        verts, faces = self._make_horizontal_cylinder(
+            lever_x, lever_cy * s, lever_cz * s,
+            self.LEVER_RADIUS * s, self.LEVER_LENGTH * s
+        )
+        face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
+        mesh = gl.GLMeshItem(
+            vertexes=verts, faces=faces, faceColors=face_colors,
+            smooth=False, drawEdges=False
+        )
+        self._gl_widget.addItem(mesh)
+        self._mesh_items.append(mesh)
+        self._blade_items.append(mesh)
         mesh.setVisible(self._show_blades)
 
     # =========================================================================
@@ -748,6 +793,117 @@ class DoorPreview3D(QWidget):
             faces.append([ni, segments + ni, segments + i])
 
         return verts, np.array(faces)
+
+    @staticmethod
+    def _make_rounded_rect(cx, cy, cz, width, height, depth, radius, segments=8):
+        """Ekstrudert rektangel med avrunda hjørne, sentrert på (cx, cy, cz).
+
+        Profil i XZ-planet, ekstrudert langs Y.
+        """
+        hw = width / 2
+        hh = height / 2
+        r = min(radius, hw, hh)
+
+        # 2D-profil (X, Z) — fire hjørne med kvartssirkel
+        corners = [
+            (cx + hw - r, cz - hh + r, np.pi * 1.5, np.pi * 2.0),   # nedre høgre
+            (cx + hw - r, cz + hh - r, 0.0,          np.pi * 0.5),   # øvre høgre
+            (cx - hw + r, cz + hh - r, np.pi * 0.5,  np.pi),         # øvre venstre
+            (cx - hw + r, cz - hh + r, np.pi,         np.pi * 1.5),  # nedre venstre
+        ]
+
+        profile = []
+        for (ccx, ccz, a_start, a_end) in corners:
+            for i in range(segments + 1):
+                t = i / segments
+                angle = a_start + t * (a_end - a_start)
+                profile.append((ccx + r * np.cos(angle), ccz + r * np.sin(angle)))
+
+        n = len(profile)
+        front_y = cy + depth / 2
+        back_y = cy - depth / 2
+
+        verts = []
+        for (px, pz) in profile:
+            verts.append([px, front_y, pz])
+        for (px, pz) in profile:
+            verts.append([px, back_y, pz])
+        front_center = len(verts)
+        verts.append([cx, front_y, cz])
+        back_center = len(verts)
+        verts.append([cx, back_y, cz])
+        verts = np.array(verts)
+
+        faces = []
+        # Front
+        for i in range(n - 1):
+            faces.append([front_center, i, i + 1])
+        faces.append([front_center, n - 1, 0])
+        # Bak
+        for i in range(n - 1):
+            faces.append([back_center, n + i + 1, n + i])
+        faces.append([back_center, n, n + n - 1])
+        # Sider
+        for i in range(n - 1):
+            faces.append([i, n + i, i + 1])
+            faces.append([i + 1, n + i, n + i + 1])
+        faces.append([n - 1, n + n - 1, 0])
+        faces.append([0, n + n - 1, n])
+
+        return verts, np.array(faces)
+
+    @staticmethod
+    def _make_horizontal_cylinder(x, cy, cz, radius, length, segments=16):
+        """Sylinder langs X-aksen, start ved x, sentrert på (cy, cz)."""
+        angles = np.linspace(0, 2 * np.pi, segments, endpoint=False)
+
+        verts = []
+        for angle in angles:
+            verts.append([x, cy + radius * np.cos(angle), cz + radius * np.sin(angle)])
+        for angle in angles:
+            verts.append([x + length, cy + radius * np.cos(angle), cz + radius * np.sin(angle)])
+
+        left_c = len(verts)
+        verts.append([x, cy, cz])
+        right_c = len(verts)
+        verts.append([x + length, cy, cz])
+        verts = np.array(verts)
+
+        faces = []
+        for i in range(segments):
+            ni = (i + 1) % segments
+            faces.append([left_c, ni, i])
+            faces.append([right_c, segments + i, segments + ni])
+            faces.append([i, segments + i, ni])
+            faces.append([ni, segments + i, segments + ni])
+
+        return verts, np.array(faces)
+
+    @staticmethod
+    def _uniform_face_colors(color, num_faces):
+        """Éin farge for alle flater (brukt for smooth-shada meshes)."""
+        return np.tile(color, (num_faces, 1))
+
+    @staticmethod
+    def _normal_lit_face_colors(verts, faces, base_color):
+        """Per-face lys basert på flatnormal vs lysretning (øvre front-høgre)."""
+        light_dir = np.array([0.3, 0.6, 0.5])
+        light_dir = light_dir / np.linalg.norm(light_dir)
+        r, g, b, a = base_color
+        ambient = 0.55
+        diffuse = 0.55
+
+        colors = []
+        for face in faces:
+            v0, v1, v2 = verts[face[0]], verts[face[1]], verts[face[2]]
+            normal = np.cross(v1 - v0, v2 - v0)
+            norm_len = np.linalg.norm(normal)
+            if norm_len > 0:
+                normal = normal / norm_len
+            brightness = ambient + diffuse * max(0.0, np.dot(normal, light_dir))
+            colors.append([min(1.0, r * brightness), min(1.0, g * brightness),
+                           min(1.0, b * brightness), a])
+        return np.array(colors)
 
     @staticmethod
     def _ral_to_rgba(ral_code: str, alpha: float = 1.0) -> tuple:

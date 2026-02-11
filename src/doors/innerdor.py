@@ -105,6 +105,7 @@ INNERDOR = {
 
     # Terskel-offsets (karm bredde → terskel lengde)
     # Struktur: {karmtype: {floyer: offset}}
+    # Dette er egentlig Anslag
     'terskel_offsets': {
         'SD1': {1: 160, 2: 160},
         'SD2': {1: 160, 2: 160},
