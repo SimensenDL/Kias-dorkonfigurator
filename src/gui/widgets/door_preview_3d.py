@@ -11,7 +11,7 @@ from PyQt6.QtGui import QMouseEvent
 
 from ...models.door import DoorParams
 from ...utils.constants import RAL_COLORS, KARM_BLADE_FLUSH, KARM_SIDESTOLPE_WIDTH
-from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde
+from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, terskel_lengde
 from ...doors import DOOR_REGISTRY
 
 # Betinget import med fallback
@@ -26,9 +26,10 @@ WALL_COLOR = (0.55, 0.55, 0.52, 0.6)
 WALL_MARGIN = 1000                        # mm synleg vegg rundt opning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92}
 LISTVERK_WIDTH = {'SD1': 60, 'SD2': 60, 'SD3/ID': 0}
-LISTVERK_THICKNESS = 5                   # mm
+LISTVERK_THICKNESS = 7                   # mm
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 UTFORING_THICKNESS = 8                   # mm
+TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
@@ -139,6 +140,17 @@ class DoorPreview3D(QWidget):
             grid.setColor((80, 80, 80, 100))
             self._gl_widget.addItem(grid)
 
+            # Akser ved origo: X=rød, Y=grønn, Z=blå
+            axis_len = 5.0
+            for color, end in [
+                ((1, 0, 0, 1), (axis_len, 0, 0)),
+                ((0, 1, 0, 1), (0, axis_len, 0)),
+                ((0, 0, 1, 1), (0, 0, axis_len)),
+            ]:
+                pts = np.array([[0, 0, 0], list(end)])
+                line = gl.GLLinePlotItem(pos=pts, color=color, width=3, antialias=True)
+                self._gl_widget.addItem(line)
+
             self._setup_camera()
         except Exception:
             self._gl_widget = None
@@ -231,13 +243,17 @@ class DoorPreview3D(QWidget):
         else:
             self._add_frame_sd3id(door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s)
 
-        # 3. Dørblad
+        # 3. Terskel (bare hvis det er valgt en terskeltype)
+        if door.threshold_type != 'ingen':
+            self._add_threshold(door, kb, wall_t, karm_depth, blade_t_mm, is_flush, s)
+
+        # 4. Dørblad
         self._add_door_blades(door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s)
 
-        # 4. Hengslar
+        # 5. Hengsler
         self._add_hinges(door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s)
 
-        # 5. Håndtak
+        # 6. Håndtak
         self._add_handle(door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s)
 
     # =========================================================================
@@ -275,35 +291,51 @@ class DoorPreview3D(QWidget):
     def _add_frame_sd1(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
         """SD1 U-profil: karm er STØRRE enn opning, flush med veggfront."""
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
+        blade_t = door.blade_thickness
         front_y = wall_t / 2
         back_y = front_y - karm_depth
         listverk_w = LISTVERK_WIDTH.get('SD1', 60)
 
         parts = []
 
-        # Sidestolpar
+        # Sidestolper (original posisjon)
         for side in ('left', 'right'):
             x = -kb / 2 if side == 'left' else kb / 2 - sidestolpe_w
             parts.append((x, back_y, 0, sidestolpe_w, karm_depth, kh))
 
-        # Toppstykke (mellom sidestolpane)
+        # Toppstykke (mellom sidestolpene)
         parts.append((
             -kb / 2 + sidestolpe_w, back_y, kh - toppstykke_h,
             kb - 2 * sidestolpe_w, karm_depth, toppstykke_h
         ))
 
-        # Listverk framside (tynne strips på veggflata rundt karmen)
+        # Anslag — innvendig kant som dørbladet lukker mot
+        # Samme Y-plassering som terskelen (forskjøvet blade_t bak karmen)
+        anslag_depth = karm_depth
+        anslag_back_y = front_y - karm_depth - blade_t
+        anslag_w = 15  # mm, hvor langt anslaget stikker inn i åpningen
+        # Venstre side
+        parts.append((-kb / 2 + sidestolpe_w, anslag_back_y, 0,
+                       anslag_w, anslag_depth, kh))
+        # Høyre side
+        parts.append((kb / 2 - sidestolpe_w - anslag_w, anslag_back_y, 0,
+                       anslag_w, anslag_depth, kh))
+        # Topp
+        parts.append((-kb / 2 + sidestolpe_w, anslag_back_y, kh - toppstykke_h,
+                       kb - 2 * sidestolpe_w, anslag_depth, anslag_w))
+
+        # Listverk framside (tynne strips på veggflaten rundt karmen)
         wall_back_y = -wall_t / 2
         if listverk_w > 0:
             lt = LISTVERK_THICKNESS
-            # Framside: venstre, høgre, topp
+            # Framside: venstre, høyre, topp
             parts.append((-kb / 2 - listverk_w, front_y, 0, listverk_w, lt, kh))
             parts.append((kb / 2, front_y, 0, listverk_w, lt, kh))
             parts.append((
                 -kb / 2 - listverk_w, front_y, kh,
                 kb + 2 * listverk_w, lt, listverk_w
             ))
-            # Bakside: venstre, høgre, topp (speglar framsida)
+            # Bakside: venstre, høyre, topp (speiler framsiden)
             parts.append((-kb / 2 - listverk_w, wall_back_y - lt, 0, listverk_w, lt, kh))
             parts.append((kb / 2, wall_back_y - lt, 0, listverk_w, lt, kh))
             parts.append((
@@ -311,7 +343,7 @@ class DoorPreview3D(QWidget):
                 kb + 2 * listverk_w, lt, listverk_w
             ))
 
-        # Utforing: viss veggen er tjukkare enn karmdybda
+        # Utforing: hvis veggen er tykkere enn karmdybden
         if back_y > wall_back_y + 1:
             ut_depth = back_y - wall_back_y
             ut_t = UTFORING_THICKNESS
@@ -336,9 +368,9 @@ class DoorPreview3D(QWidget):
         front_y = wall_t / 2
         listverk_w = LISTVERK_WIDTH.get('SD2', 60)
 
-        # L-profil dimensjonar
-        l_front_depth = 28   # Framkant-djupne
-        l_back_width = 22    # Bakre bein-breidde
+        # L-profil dimensjoner (original)
+        l_front_depth = 28
+        l_back_width = 22
         l_back_depth = karm_depth - l_front_depth
 
         parts = []
@@ -351,9 +383,9 @@ class DoorPreview3D(QWidget):
             # Bakre bein (smalere, på innsiden mot døråpningen)
             if l_back_depth > 0:
                 if side == 'left':
-                    bein_x = x + sidestolpe_w - l_back_width  # innerkant venstre
+                    bein_x = x + sidestolpe_w - l_back_width
                 else:
-                    bein_x = x  # innerkant høyre
+                    bein_x = x
                 parts.append((bein_x, front_y - karm_depth, 0, l_back_width, l_back_depth, kh))
 
         # Toppstykke framkant
@@ -368,7 +400,7 @@ class DoorPreview3D(QWidget):
                 kb - 2 * sidestolpe_w, l_back_depth, l_back_width
             ))
 
-        # Listverk
+        # Listverk (på veggflaten)
         if listverk_w > 0:
             lt = LISTVERK_THICKNESS
             parts.append((-kb / 2 - listverk_w, front_y, 0, listverk_w, lt, kh))
@@ -390,18 +422,18 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_frame_sd3id(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD3/ID smygmontasje: karm er MINDRE enn opning, sentrert i veggdjupna."""
+        """SD3/ID smygmontasje: karm er MINDRE enn opning, sentrert i veggdybden."""
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
         back_y = -karm_depth / 2
 
         parts = []
 
-        # Sidestolpar
+        # Sidestolper (original posisjon)
         for side in ('left', 'right'):
             x = -kb / 2 if side == 'left' else kb / 2 - sidestolpe_w
             parts.append((x, back_y, 0, sidestolpe_w, karm_depth, kh))
 
-        # Toppstykke (mellom sidestolpane)
+        # Toppstykke (mellom sidestolpene)
         parts.append((
             -kb / 2 + sidestolpe_w, back_y, kh - toppstykke_h,
             kb - 2 * sidestolpe_w, karm_depth, toppstykke_h
@@ -413,6 +445,36 @@ class DoorPreview3D(QWidget):
                 karm_color, is_frame=True
             )
             mesh.setVisible(self._show_frame)
+
+    # =========================================================================
+    # TERSKEL
+    # =========================================================================
+
+    def _add_threshold(self, door, kb, wall_t, karm_depth, blade_t_mm, is_flush, s):
+        """Terskel i bunnen av døråpningen. Forskjøvet i Y med blade_thickness."""
+        karm_color = np.array(self._ral_to_rgba(door.karm_color))
+        t_len = terskel_lengde(door.karm_type, kb, door.floyer)
+        if t_len is None:
+            return
+
+        t_h = TERSKEL_HEIGHT
+        t_depth = karm_depth
+
+        # X: sentrert
+        t_x = -t_len / 2
+
+        # Y: forskjøvet med blade_thickness (bak bladets bakside)
+        if is_flush:
+            t_y = wall_t / 2 - t_depth - blade_t_mm
+        else:
+            t_y = -t_depth / 2 - blade_t_mm
+
+        mesh = self._add_mesh(
+            t_x * s, t_y * s, 0,
+            t_len * s, t_depth * s, t_h * s,
+            karm_color, is_frame=True
+        )
+        mesh.setVisible(self._show_frame)
 
     # =========================================================================
     # DØRBLAD
