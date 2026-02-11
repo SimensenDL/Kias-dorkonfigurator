@@ -289,26 +289,45 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_frame_sd1(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD1: enkel list (60mm bred, 7mm tykk) rundt dørbladet — flush med bladet."""
+        """SD1: list (60mm bred, 7mm tykk) på begge sider av veggen."""
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
         list_w = 60   # mm bredde på listen
         list_t = 7    # mm tykkelse
 
-        # Flush med dørbladets framside (wall_t/2 for SD1)
-        list_front_y = wall_t / 2
-        list_y = list_front_y - list_t
+        # Framside — flush med dørbladets framside (wall_t/2)
+        front_y = wall_t / 2 - list_t
+        # Bakside — flush med veggens bakside (-wall_t/2)
+        back_y = -wall_t / 2
+
+        # Innvendig kobling gjennom veggen (5mm tykk)
+        kobling_t = 5     # mm tykkelse
+        kobling_y = -wall_t / 2
+        kobling_d = wall_t  # full veggdybde
 
         parts = []
 
-        # Venstre list — full høyde
-        parts.append((-kb / 2, list_y, 0, list_w, list_t, kh))
-        # Høyre list — full høyde
-        parts.append((kb / 2 - list_w, list_y, 0, list_w, list_t, kh))
-        # Topp list — mellom sidene
-        parts.append((
-            -kb / 2 + list_w, list_y, kh - list_w,
-            kb - 2 * list_w, list_t, list_w
-        ))
+        # Lister på fram- og bakside
+        for y in (front_y, back_y):
+            # Venstre list — full høyde
+            parts.append((-kb / 2, y, 0, list_w, list_t, kh))
+            # Høyre list — full høyde
+            parts.append((kb / 2 - list_w, y, 0, list_w, list_t, kh))
+            # Topp list — mellom sidene
+            parts.append((
+                -kb / 2 + list_w, y, kh - list_w,
+                kb - 2 * list_w, list_t, list_w
+            ))
+
+        # Kobling gjennom veggen — indre kant av listene
+        # Venstre side (opp til topp-koblingens tykkelse)
+        parts.append((-kb / 2 + list_w - kobling_t, kobling_y, 0,
+                       kobling_t, kobling_d, kh - list_w + kobling_t))
+        # Høyre side (opp til topp-koblingens tykkelse)
+        parts.append((kb / 2 - list_w, kobling_y, 0,
+                       kobling_t, kobling_d, kh - list_w + kobling_t))
+        # Topp
+        parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
+                       kb - 2 * list_w, kobling_d, kobling_t))
 
         for (bx, by, bz, dx, dy, dz) in parts:
             mesh = self._add_mesh(
