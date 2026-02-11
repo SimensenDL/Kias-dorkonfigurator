@@ -332,8 +332,8 @@ class DoorPreview3D(QWidget):
         # Anslag — list bak dørbladet som bladet lukker mot
         anslag_w = 20    # mm, hvor langt inn i åpningen (80mm fra utvendig karm - 60mm list)
         blade_t = door.blade_thickness
-        # Bak bladet, 50mm dybde i Y
-        anslag_d = 50
+        # Bak bladet, 30mm dybde i Y (aluminiumprofil)
+        anslag_d = 30
         anslag_front_y = wall_t / 2 - blade_t
         anslag_back_y = anslag_front_y - anslag_d
 
