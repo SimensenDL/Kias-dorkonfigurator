@@ -27,6 +27,7 @@ from ..utils.constants import APP_NAME, APP_VERSION, PROJECT_FILTER, DOOR_TYPES
 
 from .widgets.door_form import DoorForm
 from .widgets.door_preview_3d import DoorPreview3D
+from .widgets import graphics_settings as gfx
 from .widgets.production_tab import ProductionTab
 from .widgets.production_list_tab import ProductionListTab
 from .widgets.detail_tab import DetailTab
@@ -242,6 +243,17 @@ class MainWindow(QMainWindow):
         self.light_theme_action.setCheckable(True)
         self.light_theme_action.triggered.connect(lambda: self._set_theme(Theme.LIGHT))
         theme_menu.addAction(self.light_theme_action)
+
+        # Grafikk-undermeny
+        graphics_menu = settings_menu.addMenu("Grafikk")
+        self._graphics_actions = {}
+        for key, label in gfx.PRESET_LABELS.items():
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.triggered.connect(lambda checked, k=key: self._set_graphics_preset(k))
+            graphics_menu.addAction(action)
+            self._graphics_actions[key] = action
+        self._update_graphics_menu()
 
         # Hjelp-meny
         help_menu = menubar.addMenu("&Hjelp")
@@ -465,6 +477,24 @@ class MainWindow(QMainWindow):
             is_dark = MainWindow.theme_manager.is_dark
             self.dark_theme_action.setChecked(is_dark)
             self.light_theme_action.setChecked(not is_dark)
+
+    def _set_graphics_preset(self, preset_key: str):
+        """Bytter grafikkpreset og rebuilder 3D-scenen."""
+        old_msaa = gfx.MSAA_SAMPLES
+        gfx.apply_preset(preset_key)
+        self._update_graphics_menu()
+        self.door_preview.update_door(self.door)
+        if gfx.MSAA_SAMPLES != old_msaa:
+            QMessageBox.information(
+                self, "Grafikk",
+                f"Grafikkvalitet satt til {gfx.PRESET_LABELS[preset_key]}.\n\n"
+                "Anti-aliasing (MSAA) krever omstart for å tre i kraft."
+            )
+
+    def _update_graphics_menu(self):
+        """Oppdaterer avkrysning i grafikk-menyen."""
+        for key, action in self._graphics_actions.items():
+            action.setChecked(key == gfx.current_preset)
 
     def _load_settings(self):
         """Laster applikasjonsinnstillinger."""
