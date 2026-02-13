@@ -56,6 +56,8 @@ LIGHT_SHININESS = 64.0
 LIGHT_DIRECTION = (0.3, 0.6, 0.5)
 VIEW_DIRECTION = (0.0, 1.0, 0.3)
 BOX_FACE_LIGHT = (0.52, 1.12, 0.98, 0.58, 0.68, 0.85)
+# Additivt lysbidrag (0.0–1.0) — løfter mørke farger slik at flater skilles
+LIGHT_ADDITIVE = 0.07
 
 # Bakgrunn
 BACKGROUND_COLOR = (50, 50, 55, 255)

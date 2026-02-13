@@ -650,9 +650,10 @@ class DoorPreview3D(QWidget):
         if light_factors is None:
             light_factors = DoorPreview3D._FACE_LIGHT
         r, g, b, a = base_color[0], base_color[1], base_color[2], base_color[3]
+        add = gfx.LIGHT_ADDITIVE
         colors = []
         for f in light_factors:
-            c = (min(1.0, r * f), min(1.0, g * f), min(1.0, b * f), a)
+            c = (min(1.0, r * f + add), min(1.0, g * f + add), min(1.0, b * f + add), a)
             colors.append(c)
             colors.append(c)  # 2 trekanter per side
         return np.array(colors)
@@ -851,8 +852,9 @@ class DoorPreview3D(QWidget):
             spec = specular * (n_dot_h ** shininess) if n_dot_l > 0 else 0.0
 
             brightness = ambient + diff + spec
-            colors.append([min(1.0, r * brightness), min(1.0, g * brightness),
-                           min(1.0, b * brightness), a])
+            add = gfx.LIGHT_ADDITIVE
+            colors.append([min(1.0, r * brightness + add), min(1.0, g * brightness + add),
+                           min(1.0, b * brightness + add), a])
         return np.array(colors)
 
     @staticmethod
