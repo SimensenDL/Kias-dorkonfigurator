@@ -35,10 +35,16 @@ uv remove <pakkenavn>
 `DoorParams` → GUI-skjema → PDF-eksport
 
 ### Modulstruktur
+- **src/doors/** - Dørtype-data som rene dicts (ingen imports). Én fil per dørtype.
+  - `__init__.py` - Bygger `DOOR_REGISTRY` fra alle registrerte dørtyper
+  - `innerdor.py` - Innerdør (SDI) — mål, karmtyper, hengsler, dorblad-offsets
 - **src/models/** - Datamodeller (`DoorParams` dataclass, prosjektfil save/load)
 - **src/gui/** - PyQt6 brukergrensesnitt
   - `main_window.py` - Hovedvindu med menyer, toolbar, tabs
-  - **widgets/** - `door_form.py` (parameterskjema med ColorSwatchDelegate)
+  - **widgets/** - `door_form.py` (parameterskjema), `door_preview_3d.py` (3D-viewer)
+  - **karm_profiles/** - Karm-geometri for 3D-viewer (én profil per karmtype)
+    - `base.py` - `KarmProfile` baseklasse
+    - `sdi/` - SD1, SD2, SD3/ID profiler for innerdør
   - **styles/** - `theme_manager.py` (dark/light tema)
 - **src/export/** - PDF-eksport (reportlab)
   - `pdf_exporter.py` - Hovedeksport (`export_door_pdf()`)
@@ -46,6 +52,12 @@ uv remove <pakkenavn>
   - `pdf_utils.py` - Hjelpefunksjoner (skalering, fargekonvertering)
   - `pdf_constants.py` - Farger, sidestørrelser, firmainformasjon
 - **src/utils/** - `constants.py` (APP_NAME, DOOR_TYPES, RAL_COLORS, standardmål)
+
+### Legge til ny dørtype
+1. Opprett datafil i `src/doors/` (som ren dict, sjå `innerdor.py`)
+2. Registrer i `src/doors/__init__.py` (`_DOOR_TYPE_MODULES`)
+3. Opprett karm-profiler i `src/gui/karm_profiles/` (arv frå `KarmProfile`)
+4. Registrer i `src/gui/karm_profiles/__init__.py` (`KARM_PROFILES`)
 
 ### Signal-arkitektur
 - `DoorForm.values_changed` → `MainWindow._on_params_changed()` → oppdater dør + tittel
