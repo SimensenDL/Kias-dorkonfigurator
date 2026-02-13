@@ -227,7 +227,10 @@ class DoorPreview3D(QWidget):
         kh = karm_hoyde(door.karm_type, hm)
 
         # Dørblad-dimensjonar
-        luftspalte_mm = 22  # Fast offset i 3D-visning (mm)
+        if door.karm_type == 'SD3/ID':
+            luftspalte_mm = door.effective_luftspalte()
+        else:
+            luftspalte_mm = 22
         blade_t_mm = door.blade_thickness
         karm_depth = KARM_DEPTHS.get(door.karm_type, 77)
         sidestolpe_w = KARM_SIDESTOLPE_WIDTH.get(door.karm_type, 80)
