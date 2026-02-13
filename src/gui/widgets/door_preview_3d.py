@@ -137,7 +137,7 @@ class DoorPreview3D(QWidget):
 
             # MSAA anti-aliasing for glattare kantar
             fmt = QSurfaceFormat()
-            fmt.setSamples(4)
+            fmt.setSamples(8)
             fmt.setDepthBufferSize(24)
             QSurfaceFormat.setDefaultFormat(fmt)
 
@@ -357,13 +357,13 @@ class DoorPreview3D(QWidget):
                 )
 
     def _render_single_blade(self, x, y, z, w, d, h, color, s):
-        """Tegner ett dørblad med retningsbasert lys og kantlinjer."""
+        """Tegner ett dørblad med retningsbasert lys."""
         verts, faces = self._make_box(x * s, y * s, z * s, w * s, d * s, h * s)
         face_colors = self._lit_face_colors(color)
 
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=False, drawEdges=True, edgeColor=self._EDGE_COLOR
+            smooth=False, drawEdges=False
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
@@ -410,7 +410,7 @@ class DoorPreview3D(QWidget):
                 face_colors = self._normal_lit_face_colors(verts, faces, hinge_color)
                 mesh = gl.GLMeshItem(
                     vertexes=verts, faces=faces, faceColors=face_colors,
-                    smooth=False, drawEdges=True, edgeColor=self._EDGE_COLOR
+                    smooth=False, drawEdges=False
                 )
                 self._gl_widget.addItem(mesh)
                 self._mesh_items.append(mesh)
@@ -488,7 +488,7 @@ class DoorPreview3D(QWidget):
             plate_cx * s, plate_cy * s, plate_cz * s,
             self.PLATE_WIDTH * s, self.PLATE_HEIGHT * s, self.PLATE_DEPTH * s,
             self.PLATE_CORNER_RADIUS * s,
-            segments=16
+            segments=24
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(
@@ -507,7 +507,7 @@ class DoorPreview3D(QWidget):
 
         # Bygg bane: bue (kvartssirkel) + rett strekk
         path = []
-        bend_segs = 20
+        bend_segs = 30
         if hinge_side == 'left':
             # Bue frå Y+ retning til X- retning (grep peikar mot hengslene)
             arc_cx = plate_cx - bend_r
@@ -536,7 +536,7 @@ class DoorPreview3D(QWidget):
             path.append((end_x * s, horiz_y * s, lever_cz * s))
 
         verts, faces = self._make_swept_tube(
-            path, self.LEVER_RADIUS * s, segments=48
+            path, self.LEVER_RADIUS * s, segments=64
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(
@@ -569,17 +569,14 @@ class DoorPreview3D(QWidget):
             colors.append(c)  # 2 trekanter per side
         return np.array(colors)
 
-    # Kantlinje-farge (subtil mørk linje mellom delar)
-    _EDGE_COLOR = (0.15, 0.15, 0.15, 0.35)
-
     def _add_mesh(self, x, y, z, dx, dy, dz, color,
                   gl_options=None, is_wall=False, is_frame=False, is_blade=False):
-        """Lag GLMeshItem-boks med simulert retningslys og kantlinjer."""
+        """Lag GLMeshItem-boks med simulert retningslys."""
         verts, faces = self._make_box(x, y, z, dx, dy, dz)
         face_colors = self._lit_face_colors(color)
         kwargs = dict(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=False, drawEdges=True, edgeColor=self._EDGE_COLOR
+            smooth=False, drawEdges=False
         )
         if gl_options:
             kwargs['glOptions'] = gl_options
@@ -746,7 +743,7 @@ class DoorPreview3D(QWidget):
         ambient = 0.65
         diffuse = 0.40
         specular = 0.25
-        shininess = 32.0
+        shininess = 64.0
 
         colors = []
         for face in faces:
