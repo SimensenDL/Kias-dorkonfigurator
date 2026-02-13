@@ -10,9 +10,10 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QMouseEvent
 
 from ...models.door import DoorParams
-from ...utils.constants import RAL_COLORS, KARM_BLADE_FLUSH, KARM_SIDESTOLPE_WIDTH
+from ...utils.constants import RAL_COLORS, KARM_SIDESTOLPE_WIDTH
 from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, terskel_lengde
 from ...doors import DOOR_REGISTRY
+from ..karm_profiles import KARM_PROFILES
 
 # Betinget import med fallback
 try:
@@ -25,15 +26,12 @@ except ImportError:
 WALL_COLOR = (0.55, 0.55, 0.52, 1)
 WALL_MARGIN = 800                        # mm synleg vegg rundt opning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92}
-LISTVERK_WIDTH = {'SD1': 60, 'SD2': 60, 'SD3/ID': 0}
-LISTVERK_THICKNESS = 7                   # mm
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
-UTFORING_THICKNESS = 8                   # mm
 TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
-    """Lager en kopi av musehendelsen med midtre knapp i stedet for høyre."""
+    """Lagar ein kopi av musehendinga med midtre knapp i staden for høgre."""
     return QMouseEvent(
         event.type(),
         event.position(),
@@ -226,45 +224,40 @@ class DoorPreview3D(QWidget):
         kb = karm_bredde(door.karm_type, bm)
         kh = karm_hoyde(door.karm_type, hm)
 
+        # Karm-profil
+        profile = KARM_PROFILES[door.karm_type]
+        luftspalte_mm = profile.luftspalte(door)
+
         # Dørblad-dimensjonar
-        if door.karm_type == 'SD3/ID':
-            luftspalte_mm = door.effective_luftspalte()
-        else:
-            luftspalte_mm = 22
         blade_t_mm = door.blade_thickness
         karm_depth = KARM_DEPTHS.get(door.karm_type, 77)
         sidestolpe_w = KARM_SIDESTOLPE_WIDTH.get(door.karm_type, 80)
-        is_flush = door.karm_type in KARM_BLADE_FLUSH
-
-        # Berekn bladhøgde for toppstykke-dimensjonering
-        db_h = dorblad_hoyde(door.karm_type, kh, door.floyer, door.blade_type, luftspalte_mm)
-        if db_h is None:
-            db_h = kh - 85
-        toppstykke_h = max(20, kh - (luftspalte_mm + db_h) - 5)
 
         # 1. Vegg (alltid bygd, synlegheit styrt av toggle)
         self._add_wall(bm, hm, wall_t, s)
 
-        # 2. Karm
-        if door.karm_type == 'SD1':
-            self._add_frame_sd1(door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s)
-        elif door.karm_type == 'SD2':
-            self._add_frame_sd2(door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s)
-        else:
-            self._add_frame_sd3id(door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s)
+        # 2. Karm — bygd frå profil
+        karm_color = np.array(self._ral_to_rgba(door.karm_color))
+        parts = profile.build_frame_parts(door, kb, kh, wall_t, karm_depth, sidestolpe_w)
+        for (bx, by, bz, dx, dy, dz) in parts:
+            mesh = self._add_mesh(
+                bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
+                karm_color, is_frame=True
+            )
+            mesh.setVisible(self._show_frame)
 
-        # 3. Terskel (bare hvis det er valgt en terskeltype)
+        # 3. Terskel (bare hvis det er valgt ein terskeltype)
         if door.threshold_type != 'ingen':
-            self._add_threshold(door, kb, wall_t, karm_depth, blade_t_mm, is_flush, s)
+            self._add_threshold(door, profile, kb, wall_t, karm_depth, blade_t_mm, s)
 
         # 4. Dørblad
-        self._add_door_blades(door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s)
+        self._add_door_blades(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
         # 5. Hengsler
-        self._add_hinges(door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s)
+        self._add_hinges(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
         # 6. Håndtak
-        self._add_handle(door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s)
+        self._add_handle(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
     # =========================================================================
     # VEGG
@@ -295,215 +288,11 @@ class DoorPreview3D(QWidget):
             mesh.setVisible(self._show_wall)
 
     # =========================================================================
-    # KARM SD1 — U-profil med utforing
-    # =========================================================================
-
-    def _add_frame_sd1(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD1: list (60mm bred, 7mm tykk) på begge sider av veggen."""
-        karm_color = np.array(self._ral_to_rgba(door.karm_color))
-        list_w = 60   # mm bredde på listen
-        list_t = 7    # mm tykkelse
-
-        # Framside — utover fra veggflaten
-        front_y = wall_t / 2
-        # Bakside — utover fra veggflaten
-        back_y = -wall_t / 2 - list_t
-
-        # Innvendig kobling gjennom veggen (5mm tykk)
-        kobling_t = 5     # mm tykkelse
-        kobling_y = -wall_t / 2
-        kobling_d = wall_t  # full veggdybde
-
-        parts = []
-
-        # Lister på fram- og bakside (tykkelsen utover fra veggen)
-        for y in (front_y, back_y):
-            # Venstre list — full høyde
-            parts.append((-kb / 2, y, 0, list_w, list_t, kh))
-            # Høyre list — full høyde
-            parts.append((kb / 2 - list_w, y, 0, list_w, list_t, kh))
-            # Topp list — mellom sidene
-            parts.append((
-                -kb / 2 + list_w, y, kh - list_w,
-                kb - 2 * list_w, list_t, list_w
-            ))
-
-        # Kobling gjennom veggen — indre kant av listene
-        # Venstre side (opp til topp-koblingens tykkelse)
-        parts.append((-kb / 2 + list_w - kobling_t, kobling_y, 0,
-                       kobling_t, kobling_d, kh - list_w + kobling_t))
-        # Høyre side (opp til topp-koblingens tykkelse)
-        parts.append((kb / 2 - list_w, kobling_y, 0,
-                       kobling_t, kobling_d, kh - list_w + kobling_t))
-        # Topp
-        parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
-                       kb - 2 * list_w, kobling_d, kobling_t))
-
-        # Anslag — list bak dørbladet som bladet lukker mot
-        anslag_w = 20    # mm, hvor langt inn i åpningen (80mm fra utvendig karm - 60mm list)
-        blade_t = door.blade_thickness
-        # Bak bladet, 44mm dybde i Y (84mm karm - 40mm dørblad)
-        anslag_d = 44
-        anslag_front_y = wall_t / 2 + list_t - blade_t
-        anslag_back_y = anslag_front_y - anslag_d
-
-        # Venstre anslag
-        parts.append((-kb / 2 + list_w, anslag_back_y, 0,
-                       anslag_w, anslag_d, kh - list_w))
-        # Høyre anslag
-        parts.append((kb / 2 - list_w - anslag_w, anslag_back_y, 0,
-                       anslag_w, anslag_d, kh - list_w))
-        # Topp anslag
-        parts.append((-kb / 2 + list_w, anslag_back_y, kh - list_w - anslag_w,
-                       kb - 2 * list_w, anslag_d, anslag_w))
-
-        for (bx, by, bz, dx, dy, dz) in parts:
-            mesh = self._add_mesh(
-                bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color, is_frame=True
-            )
-            mesh.setVisible(self._show_frame)
-
-    # =========================================================================
-    # KARM SD2 — L-profil
-    # =========================================================================
-
-    def _add_frame_sd2(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD2: som SD1 men kun list på framside, dybde 77mm + 7mm list = 84mm."""
-        karm_color = np.array(self._ral_to_rgba(door.karm_color))
-        list_w = 60   # mm bredde på listen
-        list_t = 7    # mm tykkelse
-        sd2_depth = 77  # mm karmdybde (84 - 7mm list)
-
-        # Framside list — utover fra veggflaten
-        front_y = wall_t / 2
-
-        parts = []
-
-        # List kun på framside
-        parts.append((-kb / 2, front_y, 0, list_w, list_t, kh))
-        parts.append((kb / 2 - list_w, front_y, 0, list_w, list_t, kh))
-        parts.append((
-            -kb / 2 + list_w, front_y, kh - list_w,
-            kb - 2 * list_w, list_t, list_w
-        ))
-
-        # Kobling gjennom veggen (5mm tykk, 77mm dyp fra veggfront)
-        kobling_t = 5
-        kobling_y = wall_t / 2 - sd2_depth
-        kobling_d = sd2_depth
-
-        # Venstre side
-        parts.append((-kb / 2 + list_w - kobling_t, kobling_y, 0,
-                       kobling_t, kobling_d, kh - list_w + kobling_t))
-        # Høyre side
-        parts.append((kb / 2 - list_w, kobling_y, 0,
-                       kobling_t, kobling_d, kh - list_w + kobling_t))
-        # Topp
-        parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
-                       kb - 2 * list_w, kobling_d, kobling_t))
-
-        # Anslag — bak dørbladet (44mm = 84mm karm - 40mm dørblad)
-        anslag_w = 20
-        blade_t = door.blade_thickness
-        anslag_d = 44
-        # Posisjonert relativt til karmens framkant (list front), ikke veggen
-        karm_front = wall_t / 2 + list_t  # listens framside
-        anslag_front_y = karm_front - blade_t
-        anslag_back_y = anslag_front_y - anslag_d
-
-        # Venstre anslag
-        parts.append((-kb / 2 + list_w, anslag_back_y, 0,
-                       anslag_w, anslag_d, kh - list_w))
-        # Høyre anslag
-        parts.append((kb / 2 - list_w - anslag_w, anslag_back_y, 0,
-                       anslag_w, anslag_d, kh - list_w))
-        # Topp anslag
-        parts.append((-kb / 2 + list_w, anslag_back_y, kh - list_w - anslag_w,
-                       kb - 2 * list_w, anslag_d, anslag_w))
-
-        for (bx, by, bz, dx, dy, dz) in parts:
-            mesh = self._add_mesh(
-                bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color, is_frame=True
-            )
-            mesh.setVisible(self._show_frame)
-
-    # =========================================================================
-    # KARM SD3/ID — Smygmontasje
-    # =========================================================================
-
-    def _add_frame_sd3id(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD3/ID smygmontasje: som SD2 utan listverk, sentrert i veggdybden.
-
-        Profil (frå karmkant innover):
-          body (24mm) | kobling (5mm) | anslag (20mm bak blad)
-        Totalt sidestolpe = 44mm.  Karmdybde 92mm sentrert i vegg.
-        """
-        karm_color = np.array(self._ral_to_rgba(door.karm_color))
-        anslag_w = 20
-        kobling_t = 5
-        body_w = sidestolpe_w - anslag_w  # 44 - 20 = 24mm (synleg ramme-kant)
-
-        # Karm sentrert i vegg
-        karm_back_y = -karm_depth / 2
-        karm_front_y = karm_depth / 2
-
-        parts = []
-
-        # --- Sidestolpe-kropp (erstattar listverk, full djupne) ---
-        # Venstre kropp
-        parts.append((-kb / 2, karm_back_y, 0,
-                       body_w, karm_depth, kh))
-        # Høgre kropp
-        parts.append((kb / 2 - body_w, karm_back_y, 0,
-                       body_w, karm_depth, kh))
-        # Topp kropp (mellom sidene)
-        parts.append((
-            -kb / 2 + body_w, karm_back_y, kh - body_w,
-            kb - 2 * body_w, karm_depth, body_w
-        ))
-
-        # --- Kobling (5mm tykk, full djupne, innerkant av kroppen) ---
-        # Venstre side
-        parts.append((-kb / 2 + body_w, karm_back_y, 0,
-                       kobling_t, karm_depth, kh - body_w + kobling_t))
-        # Høgre side
-        parts.append((kb / 2 - body_w - kobling_t, karm_back_y, 0,
-                       kobling_t, karm_depth, kh - body_w + kobling_t))
-        # Topp
-        parts.append((-kb / 2 + body_w, karm_back_y, kh - body_w,
-                       kb - 2 * body_w, karm_depth, kobling_t))
-
-        # --- Anslag (20mm bred, 52mm djup bak dørbladet) ---
-        blade_t = door.blade_thickness
-        anslag_d = karm_depth - blade_t   # 92 - 40 = 52
-        anslag_back_y = karm_back_y       # flush med karmens bakside
-
-        # Venstre anslag
-        parts.append((-kb / 2 + body_w + kobling_t, anslag_back_y, 0,
-                       anslag_w, anslag_d, kh - body_w))
-        # Høgre anslag
-        parts.append((kb / 2 - body_w - kobling_t - anslag_w, anslag_back_y, 0,
-                       anslag_w, anslag_d, kh - body_w))
-        # Topp anslag
-        parts.append((-kb / 2 + body_w + kobling_t, anslag_back_y,
-                       kh - body_w - anslag_w,
-                       kb - 2 * (body_w + kobling_t), anslag_d, anslag_w))
-
-        for (bx, by, bz, dx, dy, dz) in parts:
-            mesh = self._add_mesh(
-                bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
-                karm_color, is_frame=True
-            )
-            mesh.setVisible(self._show_frame)
-
-    # =========================================================================
     # TERSKEL
     # =========================================================================
 
-    def _add_threshold(self, door, kb, wall_t, karm_depth, blade_t_mm, is_flush, s):
-        """Terskel i bunnen av døråpningen. Forskjøvet i Y med blade_thickness."""
+    def _add_threshold(self, door, profile, kb, wall_t, karm_depth, blade_t_mm, s):
+        """Terskel i bunnen av døråpningen."""
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
         t_len = terskel_lengde(door.karm_type, kb, door.floyer)
         if t_len is None:
@@ -511,18 +300,8 @@ class DoorPreview3D(QWidget):
 
         t_h = TERSKEL_HEIGHT
         t_depth = karm_depth
-
-        # X: sentrert
         t_x = -t_len / 2
-
-        # Y: forskjøvet med blade_thickness (bak bladets bakside)
-        if is_flush:
-            t_y = wall_t / 2 - t_depth - blade_t_mm
-        elif door.karm_type == 'SD3/ID':
-            # Terskel bak bladet, karm sentrert i vegg
-            t_y = karm_depth / 2 - blade_t_mm - t_depth
-        else:
-            t_y = -t_depth / 2 - blade_t_mm
+        t_y = profile.threshold_y(wall_t, blade_t_mm, karm_depth, t_depth)
 
         mesh = self._add_mesh(
             t_x * s, t_y * s, 0,
@@ -535,19 +314,10 @@ class DoorPreview3D(QWidget):
     # DØRBLAD
     # =========================================================================
 
-    def _add_door_blades(self, door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s):
+    def _add_door_blades(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
         """Dørblad med produksjonsmål fra calculations.py."""
         blade_color = np.array(self._ral_to_rgba(door.color))
-
-        # Y-posisjon
-        if is_flush:
-            blade_y = wall_t / 2 + LISTVERK_THICKNESS - blade_t_mm
-        elif door.karm_type == 'SD3/ID':
-            # Blad flush med karmens framkant (karm sentrert i vegg)
-            karm_depth = KARM_DEPTHS.get(door.karm_type, 92)
-            blade_y = karm_depth / 2 - blade_t_mm
-        else:
-            blade_y = -blade_t_mm / 2
+        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
         if door.floyer == 1:
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.blade_type)
@@ -598,7 +368,7 @@ class DoorPreview3D(QWidget):
     # HENGSLAR
     # =========================================================================
 
-    def _add_hinges(self, door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s):
+    def _add_hinges(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
         """Hengslar frå dørtype-data, plassert på riktig side."""
         hw = self.HINGE_WIDTH
         hh = self.HINGE_HEIGHT
@@ -606,17 +376,9 @@ class DoorPreview3D(QWidget):
         hinge_color = np.array([0.478, 0.478, 0.478, 1.0])
 
         total_hinges = self._get_hinge_count(door)
+        hy = profile.hinge_y(wall_t, blade_t_mm, karm_depth, hd)
 
-        # Y-posisjon: sentrert på framkant av dørblad (synleg frå utsida)
-        if is_flush:
-            hy = wall_t / 2 + LISTVERK_THICKNESS - hd / 2
-        elif door.karm_type == 'SD3/ID':
-            karm_depth = KARM_DEPTHS.get(door.karm_type, 92)
-            hy = karm_depth / 2 - hd / 2
-        else:
-            hy = blade_t_mm / 2 - hd / 2
-
-        # Bygg liste over blad å feste hengslar på: (senter_x, breidde, høgde, antal)
+        # Bygg liste over blad å feste hengslar på
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
 
         for (bcx, b_w, b_h, count, hinge_side) in blades:
@@ -681,11 +443,8 @@ class DoorPreview3D(QWidget):
             per_blade = max(1, total_hinges // 2)
 
             # 3D-koord er speilvent: negativ X = høgre sett frå framsida
-            # Blad 2 (venstre i 3D), Blad 1 (høgre i 3D)
             b2_cx = -total_w / 2 + db2_b / 2
             b1_cx = -total_w / 2 + db2_b + BLADE_GAP + db1_b / 2
-            # Blad 1 hengslar på høgre i 3D (= venstre frå framsida)
-            # Blad 2 hengslar på venstre i 3D (= høgre frå framsida)
             return [(b1_cx, db1_b, db_h, per_blade, 'right'),
                     (b2_cx, db2_b, db_h, per_blade, 'left')]
 
@@ -693,7 +452,7 @@ class DoorPreview3D(QWidget):
     # HÅNDTAK
     # =========================================================================
 
-    def _add_handle(self, door, kb, kh, wall_t, blade_t_mm, luftspalte_mm, is_flush, s):
+    def _add_handle(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
         """Skilthandtak på motsett side av hengslene."""
         margin = self.HANDLE_X_MARGIN
         handle_color = np.array([0.478, 0.478, 0.478, 1.0])
@@ -713,13 +472,7 @@ class DoorPreview3D(QWidget):
             plate_cx = bcx - b_w / 2 + margin
 
         # Y-posisjon (på framside av dørblad)
-        if is_flush:
-            plate_y = wall_t / 2 + LISTVERK_THICKNESS
-        elif door.karm_type == 'SD3/ID':
-            karm_depth = KARM_DEPTHS.get(door.karm_type, 92)
-            plate_y = karm_depth / 2
-        else:
-            plate_y = blade_t_mm / 2
+        plate_y = profile.handle_y(wall_t, blade_t_mm, karm_depth)
 
         plate_cy = plate_y + self.PLATE_DEPTH / 2
         plate_cz = self.HANDLE_CENTER_HEIGHT
@@ -855,40 +608,6 @@ class DoorPreview3D(QWidget):
         return verts, faces
 
     @staticmethod
-    def _make_cylinder(cx, cy, cz, radius, depth, segments=24):
-        """Genererer vertices og faces for ein sylinder."""
-        verts = []
-        faces = []
-        angles = np.linspace(0, 2 * np.pi, segments, endpoint=False)
-
-        front_y = cy - depth / 2
-        for angle in angles:
-            verts.append([cx + radius * np.cos(angle), front_y, cz + radius * np.sin(angle)])
-
-        back_y = cy + depth / 2
-        for angle in angles:
-            verts.append([cx + radius * np.cos(angle), back_y, cz + radius * np.sin(angle)])
-
-        front_center = len(verts)
-        verts.append([cx, front_y, cz])
-        back_center = len(verts)
-        verts.append([cx, back_y, cz])
-        verts = np.array(verts)
-
-        for i in range(segments):
-            ni = (i + 1) % segments
-            faces.append([front_center, ni, i])
-        for i in range(segments):
-            ni = (i + 1) % segments
-            faces.append([back_center, segments + i, segments + ni])
-        for i in range(segments):
-            ni = (i + 1) % segments
-            faces.append([i, ni, segments + i])
-            faces.append([ni, segments + ni, segments + i])
-
-        return verts, np.array(faces)
-
-    @staticmethod
     def _make_rounded_rect(cx, cy, cz, width, height, depth, radius, segments=8):
         """Ekstrudert rektangel med avrunda hjørne, sentrert på (cx, cy, cz).
 
@@ -943,33 +662,6 @@ class DoorPreview3D(QWidget):
             faces.append([i + 1, n + i, n + i + 1])
         faces.append([n - 1, n + n - 1, 0])
         faces.append([0, n + n - 1, n])
-
-        return verts, np.array(faces)
-
-    @staticmethod
-    def _make_horizontal_cylinder(x, cy, cz, radius, length, segments=24):
-        """Sylinder langs X-aksen, start ved x, sentrert på (cy, cz)."""
-        angles = np.linspace(0, 2 * np.pi, segments, endpoint=False)
-
-        verts = []
-        for angle in angles:
-            verts.append([x, cy + radius * np.cos(angle), cz + radius * np.sin(angle)])
-        for angle in angles:
-            verts.append([x + length, cy + radius * np.cos(angle), cz + radius * np.sin(angle)])
-
-        left_c = len(verts)
-        verts.append([x, cy, cz])
-        right_c = len(verts)
-        verts.append([x + length, cy, cz])
-        verts = np.array(verts)
-
-        faces = []
-        for i in range(segments):
-            ni = (i + 1) % segments
-            faces.append([left_c, ni, i])
-            faces.append([right_c, segments + i, segments + ni])
-            faces.append([i, segments + i, ni])
-            faces.append([ni, segments + i, segments + ni])
 
         return verts, np.array(faces)
 
@@ -1032,11 +724,6 @@ class DoorPreview3D(QWidget):
         return verts, np.array(faces)
 
     @staticmethod
-    def _uniform_face_colors(color, num_faces):
-        """Éin farge for alle flater (brukt for smooth-shada meshes)."""
-        return np.tile(color, (num_faces, 1))
-
-    @staticmethod
     def _normal_lit_face_colors(verts, faces, base_color):
         """Per-face lys basert på flatnormal vs lysretning (øvre front-høgre)."""
         light_dir = np.array([0.3, 0.6, 0.5])
@@ -1064,8 +751,3 @@ class DoorPreview3D(QWidget):
             r, g, b = RAL_COLORS[ral_code]['rgb']
             return (r, g, b, alpha)
         return (0.5, 0.5, 0.5, alpha)
-
-    @staticmethod
-    def _blend_colors(c1: tuple, c2: tuple, t: float) -> tuple:
-        """Lineær blanding mellom to RGBA-farger."""
-        return tuple(a * (1 - t) + b * t for a, b in zip(c1, c2))
