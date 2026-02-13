@@ -7,7 +7,7 @@ from typing import Optional
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QMouseEvent, QSurfaceFormat
+from PyQt6.QtGui import QMouseEvent, QSurfaceFormat, QMatrix4x4
 
 from ...models.door import DoorParams
 from ...utils.constants import RAL_COLORS, KARM_SIDESTOLPE_WIDTH
@@ -163,14 +163,16 @@ class DoorPreview3D(QWidget):
 
             # Akser ved origo: X=rød, Y=grønn, Z=blå
             axis_len = 5.0
-            for color, end in [
-                ((1, 0, 0, 1), (axis_len, 0, 0)),
-                ((0, 1, 0, 1), (0, axis_len, 0)),
-                ((0, 0, 1, 1), (0, 0, axis_len)),
+            for color, end, label in [
+                ((1, 0, 0, 1), (axis_len, 0, 0), "X"),
+                ((0, 1, 0, 1), (0, axis_len, 0), "Y"),
+                ((0, 0, 1, 1), (0, 0, axis_len), "Z"),
             ]:
                 pts = np.array([[0, 0, 0], list(end)])
                 line = gl.GLLinePlotItem(pos=pts, color=color, width=3, antialias=True)
                 self._gl_widget.addItem(line)
+                txt = gl.GLTextItem(pos=np.array(end), text=label, color=color[:3])
+                self._gl_widget.addItem(txt)
 
             self._setup_camera()
         except Exception:
@@ -204,6 +206,7 @@ class DoorPreview3D(QWidget):
     def _on_open_toggled(self, checked: bool):
         """Åpne/lukke dør (90° rotasjon rundt hengsler)."""
         self._door_open = checked
+        self._open_btn.setText("Lukk" if checked else "Åpne")
         self._rebuild_scene()
 
     def _setup_camera(self):
@@ -344,10 +347,12 @@ class DoorPreview3D(QWidget):
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.blade_type)
             db_h = dorblad_hoyde(door.karm_type, kh, 1, door.blade_type, luftspalte_mm)
             if db_b and db_h:
+                blade_x = -db_b / 2
+                pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, door.swing_direction, s)
                 self._render_single_blade(
-                    -db_b / 2, blade_y, luftspalte_mm,
+                    blade_x, blade_y, luftspalte_mm,
                     db_b, blade_t_mm, db_h,
-                    blade_color, s
+                    blade_color, s, pivot=pivot
                 )
         else:
             db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.blade_type)
@@ -358,32 +363,35 @@ class DoorPreview3D(QWidget):
                 total_w = db1_b + BLADE_GAP + db2_b
                 start_x = -total_w / 2
 
-                # Blad 2 (venstre i 3D-koord = høgre sett frå framsida)
+                # Blad 2 (venstre i 3D-koord = høgre sett frå framsida, hengslar på venstre)
+                blade2_x = start_x
+                pivot2 = self._get_open_pivot(blade2_x, db2_b, blade_y, blade_t_mm, 'left', s)
                 self._render_single_blade(
-                    start_x, blade_y, luftspalte_mm,
+                    blade2_x, blade_y, luftspalte_mm,
                     db2_b, blade_t_mm, db_h,
-                    blade_color, s
+                    blade_color, s, pivot=pivot2
                 )
-                # Blad 1 (høgre i 3D-koord = venstre sett frå framsida)
+                # Blad 1 (høgre i 3D-koord = venstre sett frå framsida, hengslar på høgre)
+                blade1_x = start_x + db2_b + BLADE_GAP
+                pivot1 = self._get_open_pivot(blade1_x, db1_b, blade_y, blade_t_mm, 'right', s)
                 self._render_single_blade(
-                    start_x + db2_b + BLADE_GAP, blade_y, luftspalte_mm,
+                    blade1_x, blade_y, luftspalte_mm,
                     db1_b, blade_t_mm, db_h,
-                    blade_color, s
+                    blade_color, s, pivot=pivot1
                 )
 
     def _render_single_blade(self, x, y, z, w, d, h, color, s, pivot=None):
         """Tegner ett dørblad med retningsbasert lys."""
         verts, faces = self._make_box(x * s, y * s, z * s, w * s, d * s, h * s)
-        if pivot is not None:
-            verts = self._rotate_verts_z(verts, pivot)
-            face_colors = self._normal_lit_face_colors(verts, faces, color)
-        else:
-            face_colors = self._lit_face_colors(color)
+        face_colors = self._lit_face_colors(color)
 
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
             smooth=False, drawEdges=False
         )
+        tr = self._build_open_transform(pivot)
+        if tr is not None:
+            mesh.setTransform(tr)
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
         self._blade_items.append(mesh)
@@ -402,11 +410,16 @@ class DoorPreview3D(QWidget):
 
         total_hinges = self._get_hinge_count(door)
         hy = profile.hinge_y(wall_t, blade_t_mm, karm_depth, hd)
+        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
         # Bygg liste over blad å feste hengslar på
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
 
         for (bcx, b_w, b_h, count, hinge_side) in blades:
+            blade_x = bcx - b_w / 2
+            pivot = self._get_open_pivot(blade_x, b_w, blade_y, blade_t_mm, hinge_side, s)
+            tr = self._build_open_transform(pivot)
+
             if count <= 0:
                 count = 2
             if count == 2:
@@ -431,6 +444,8 @@ class DoorPreview3D(QWidget):
                     vertexes=verts, faces=faces, faceColors=face_colors,
                     smooth=False, drawEdges=False
                 )
+                if tr is not None:
+                    mesh.setTransform(tr)
                 self._gl_widget.addItem(mesh)
                 self._mesh_items.append(mesh)
                 self._blade_items.append(mesh)
@@ -490,6 +505,12 @@ class DoorPreview3D(QWidget):
         else:
             bcx, b_w, b_h, _, hinge_side = blades[0]
 
+        # Pivot for open-rotasjon
+        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
+        blade_x = bcx - b_w / 2
+        pivot = self._get_open_pivot(blade_x, b_w, blade_y, blade_t_mm, hinge_side, s)
+        tr = self._build_open_transform(pivot)
+
         # Senter-X for skiltet (motsett side av hengsla)
         if hinge_side == 'left':
             plate_cx = bcx + b_w / 2 - margin
@@ -514,6 +535,8 @@ class DoorPreview3D(QWidget):
             vertexes=verts, faces=faces, faceColors=face_colors,
             smooth=gfx.SMOOTH_CURVED_PARTS, drawEdges=False
         )
+        if tr is not None:
+            mesh.setTransform(tr)
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
         self._blade_items.append(mesh)
@@ -562,6 +585,8 @@ class DoorPreview3D(QWidget):
             vertexes=verts, faces=faces, faceColors=face_colors,
             smooth=gfx.SMOOTH_CURVED_PARTS, drawEdges=False
         )
+        if tr is not None:
+            mesh.setTransform(tr)
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
         self._blade_items.append(mesh)
@@ -572,7 +597,7 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _get_open_pivot(self, blade_x, blade_w, blade_y, blade_d, hinge_side, s):
-        """Returnerer (vinkel, pivot_x, pivot_y) for open-dør-rotasjon, eller None."""
+        """Returnerer (vinkel, pivot_x, pivot_y, y_offset) for open-dør-rotasjon, eller None."""
         if not self._door_open:
             return None
         if hinge_side == 'left':
@@ -582,20 +607,20 @@ class DoorPreview3D(QWidget):
             px = (blade_x + blade_w) * s
             angle = -90.0
         py = (blade_y + blade_d / 2) * s
-        return (angle, px, py)
+        y_offset = blade_d * s
+        return (angle, px, py, y_offset)
 
     @staticmethod
-    def _rotate_verts_z(verts, pivot):
-        """Roterer vertices rundt Z-aksen ved pivot (vinkel, px, py)."""
-        angle_deg, px, py = pivot
-        angle = np.radians(angle_deg)
-        cos_a, sin_a = np.cos(angle), np.sin(angle)
-        result = verts.copy()
-        dx = result[:, 0] - px
-        dy = result[:, 1] - py
-        result[:, 0] = dx * cos_a - dy * sin_a + px
-        result[:, 1] = dx * sin_a + dy * cos_a + py
-        return result
+    def _build_open_transform(pivot):
+        """Bygg QMatrix4x4 for open-dør-rotasjon rundt hengslekant."""
+        if pivot is None:
+            return None
+        angle_deg, px, py, y_offset = pivot
+        tr = QMatrix4x4()
+        tr.translate(px, py + y_offset, 0)
+        tr.rotate(angle_deg, 0, 0, 1)
+        tr.translate(-px, -py, 0)
+        return tr
 
     _FACE_LIGHT = gfx.BOX_FACE_LIGHT
 
