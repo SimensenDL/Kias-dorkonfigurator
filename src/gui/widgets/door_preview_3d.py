@@ -431,22 +431,62 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_frame_sd3id(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w, toppstykke_h, s):
-        """SD3/ID smygmontasje: karm er MINDRE enn opning, sentrert i veggdybden."""
+        """SD3/ID smygmontasje: som SD2 utan listverk, sentrert i veggdybden.
+
+        Profil (frå karmkant innover):
+          body (24mm) | kobling (5mm) | anslag (20mm bak blad)
+        Totalt sidestolpe = 44mm.  Karmdybde 92mm sentrert i vegg.
+        """
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
-        back_y = -karm_depth / 2
+        anslag_w = 20
+        kobling_t = 5
+        body_w = sidestolpe_w - anslag_w  # 44 - 20 = 24mm (synleg ramme-kant)
+
+        # Karm sentrert i vegg
+        karm_back_y = -karm_depth / 2
+        karm_front_y = karm_depth / 2
 
         parts = []
 
-        # Sidestolper (original posisjon)
-        for side in ('left', 'right'):
-            x = -kb / 2 if side == 'left' else kb / 2 - sidestolpe_w
-            parts.append((x, back_y, 0, sidestolpe_w, karm_depth, kh))
-
-        # Toppstykke (mellom sidestolpene)
+        # --- Sidestolpe-kropp (erstattar listverk, full djupne) ---
+        # Venstre kropp
+        parts.append((-kb / 2, karm_back_y, 0,
+                       body_w, karm_depth, kh))
+        # Høgre kropp
+        parts.append((kb / 2 - body_w, karm_back_y, 0,
+                       body_w, karm_depth, kh))
+        # Topp kropp (mellom sidene)
         parts.append((
-            -kb / 2 + sidestolpe_w, back_y, kh - toppstykke_h,
-            kb - 2 * sidestolpe_w, karm_depth, toppstykke_h
+            -kb / 2 + body_w, karm_back_y, kh - body_w,
+            kb - 2 * body_w, karm_depth, body_w
         ))
+
+        # --- Kobling (5mm tykk, full djupne, innerkant av kroppen) ---
+        # Venstre side
+        parts.append((-kb / 2 + body_w, karm_back_y, 0,
+                       kobling_t, karm_depth, kh - body_w + kobling_t))
+        # Høgre side
+        parts.append((kb / 2 - body_w - kobling_t, karm_back_y, 0,
+                       kobling_t, karm_depth, kh - body_w + kobling_t))
+        # Topp
+        parts.append((-kb / 2 + body_w, karm_back_y, kh - body_w,
+                       kb - 2 * body_w, karm_depth, kobling_t))
+
+        # --- Anslag (20mm bred, 52mm djup bak dørbladet) ---
+        blade_t = door.blade_thickness
+        anslag_d = karm_depth - blade_t   # 92 - 40 = 52
+        anslag_back_y = karm_back_y       # flush med karmens bakside
+
+        # Venstre anslag
+        parts.append((-kb / 2 + body_w + kobling_t, anslag_back_y, 0,
+                       anslag_w, anslag_d, kh - body_w))
+        # Høgre anslag
+        parts.append((kb / 2 - body_w - kobling_t - anslag_w, anslag_back_y, 0,
+                       anslag_w, anslag_d, kh - body_w))
+        # Topp anslag
+        parts.append((-kb / 2 + body_w + kobling_t, anslag_back_y,
+                       kh - body_w - anslag_w,
+                       kb - 2 * (body_w + kobling_t), anslag_d, anslag_w))
 
         for (bx, by, bz, dx, dy, dz) in parts:
             mesh = self._add_mesh(
@@ -475,6 +515,9 @@ class DoorPreview3D(QWidget):
         # Y: forskjøvet med blade_thickness (bak bladets bakside)
         if is_flush:
             t_y = wall_t / 2 - t_depth - blade_t_mm
+        elif door.karm_type == 'SD3/ID':
+            # Terskel bak bladet, karm sentrert i vegg
+            t_y = karm_depth / 2 - blade_t_mm - t_depth
         else:
             t_y = -t_depth / 2 - blade_t_mm
 
@@ -493,9 +536,13 @@ class DoorPreview3D(QWidget):
         """Dørblad med produksjonsmål fra calculations.py."""
         blade_color = np.array(self._ral_to_rgba(door.color))
 
-        # Y-posisjon (flush med listverk)
+        # Y-posisjon
         if is_flush:
             blade_y = wall_t / 2 + LISTVERK_THICKNESS - blade_t_mm
+        elif door.karm_type == 'SD3/ID':
+            # Blad flush med karmens framkant (karm sentrert i vegg)
+            karm_depth = KARM_DEPTHS.get(door.karm_type, 92)
+            blade_y = karm_depth / 2 - blade_t_mm
         else:
             blade_y = -blade_t_mm / 2
 
@@ -560,6 +607,9 @@ class DoorPreview3D(QWidget):
         # Y-posisjon: sentrert på framkant av dørblad (synleg frå utsida)
         if is_flush:
             hy = wall_t / 2 + LISTVERK_THICKNESS - hd / 2
+        elif door.karm_type == 'SD3/ID':
+            karm_depth = KARM_DEPTHS.get(door.karm_type, 92)
+            hy = karm_depth / 2 - hd / 2
         else:
             hy = blade_t_mm / 2 - hd / 2
 
@@ -662,6 +712,9 @@ class DoorPreview3D(QWidget):
         # Y-posisjon (på framside av dørblad)
         if is_flush:
             plate_y = wall_t / 2 + LISTVERK_THICKNESS
+        elif door.karm_type == 'SD3/ID':
+            karm_depth = KARM_DEPTHS.get(door.karm_type, 92)
+            plate_y = karm_depth / 2
         else:
             plate_y = blade_t_mm / 2
 
