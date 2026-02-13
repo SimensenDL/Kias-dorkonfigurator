@@ -7,7 +7,7 @@ from typing import Optional
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtGui import QMouseEvent, QSurfaceFormat
 
 from ...models.door import DoorParams
 from ...utils.constants import RAL_COLORS, KARM_SIDESTOLPE_WIDTH
@@ -134,6 +134,12 @@ class DoorPreview3D(QWidget):
 
             toolbar.addStretch()
             layout.addLayout(toolbar)
+
+            # MSAA anti-aliasing for glattare kantar
+            fmt = QSurfaceFormat()
+            fmt.setSamples(4)
+            fmt.setDepthBufferSize(24)
+            QSurfaceFormat.setDefaultFormat(fmt)
 
             self._gl_widget = _PanGLViewWidget()
             self._gl_widget.setBackgroundColor(50, 50, 55, 255)
@@ -351,13 +357,13 @@ class DoorPreview3D(QWidget):
                 )
 
     def _render_single_blade(self, x, y, z, w, d, h, color, s):
-        """Tegner ett dørblad med retningsbasert lys."""
+        """Tegner ett dørblad med retningsbasert lys og kantlinjer."""
         verts, faces = self._make_box(x * s, y * s, z * s, w * s, d * s, h * s)
         face_colors = self._lit_face_colors(color)
 
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=False, drawEdges=False
+            smooth=False, drawEdges=True, edgeColor=self._EDGE_COLOR
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
@@ -404,7 +410,7 @@ class DoorPreview3D(QWidget):
                 face_colors = self._normal_lit_face_colors(verts, faces, hinge_color)
                 mesh = gl.GLMeshItem(
                     vertexes=verts, faces=faces, faceColors=face_colors,
-                    smooth=False, drawEdges=False
+                    smooth=False, drawEdges=True, edgeColor=self._EDGE_COLOR
                 )
                 self._gl_widget.addItem(mesh)
                 self._mesh_items.append(mesh)
@@ -477,16 +483,17 @@ class DoorPreview3D(QWidget):
         plate_cy = plate_y + self.PLATE_DEPTH / 2
         plate_cz = self.HANDLE_CENTER_HEIGHT
 
-        # Skilt (avrunda hjørne)
+        # Skilt (avrunda hjørne, høgare oppløysing)
         verts, faces = self._make_rounded_rect(
             plate_cx * s, plate_cy * s, plate_cz * s,
             self.PLATE_WIDTH * s, self.PLATE_HEIGHT * s, self.PLATE_DEPTH * s,
-            self.PLATE_CORNER_RADIUS * s
+            self.PLATE_CORNER_RADIUS * s,
+            segments=16
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=False, drawEdges=False
+            smooth=True, drawEdges=False
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
@@ -500,7 +507,7 @@ class DoorPreview3D(QWidget):
 
         # Bygg bane: bue (kvartssirkel) + rett strekk
         path = []
-        bend_segs = 10
+        bend_segs = 20
         if hinge_side == 'left':
             # Bue frå Y+ retning til X- retning (grep peikar mot hengslene)
             arc_cx = plate_cx - bend_r
@@ -529,12 +536,12 @@ class DoorPreview3D(QWidget):
             path.append((end_x * s, horiz_y * s, lever_cz * s))
 
         verts, faces = self._make_swept_tube(
-            path, self.LEVER_RADIUS * s
+            path, self.LEVER_RADIUS * s, segments=48
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=False, drawEdges=False
+            smooth=True, drawEdges=False
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
@@ -545,9 +552,9 @@ class DoorPreview3D(QWidget):
     # HJELPEMETODER
     # =========================================================================
 
-    # Lysfaktorer per flateretning (simulerer lys fra øvre front-høyre)
+    # Lysfaktorer per flateretning (simulerer lys frå øvre front-høgre)
     # Rekkefølge: bunn, topp, front(Y+), bak(Y-), venstre(X-), høyre(X+)
-    _FACE_LIGHT = (0.55, 1.15, 1.0, 0.62, 0.72, 0.88)
+    _FACE_LIGHT = (0.52, 1.12, 0.98, 0.58, 0.68, 0.85)
 
     @staticmethod
     def _lit_face_colors(base_color, light_factors=None):
@@ -562,14 +569,17 @@ class DoorPreview3D(QWidget):
             colors.append(c)  # 2 trekanter per side
         return np.array(colors)
 
+    # Kantlinje-farge (subtil mørk linje mellom delar)
+    _EDGE_COLOR = (0.15, 0.15, 0.15, 0.35)
+
     def _add_mesh(self, x, y, z, dx, dy, dz, color,
                   gl_options=None, is_wall=False, is_frame=False, is_blade=False):
-        """Lag GLMeshItem-boks med simulert retningslys."""
+        """Lag GLMeshItem-boks med simulert retningslys og kantlinjer."""
         verts, faces = self._make_box(x, y, z, dx, dy, dz)
         face_colors = self._lit_face_colors(color)
         kwargs = dict(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=False, drawEdges=False
+            smooth=False, drawEdges=True, edgeColor=self._EDGE_COLOR
         )
         if gl_options:
             kwargs['glOptions'] = gl_options
@@ -725,12 +735,18 @@ class DoorPreview3D(QWidget):
 
     @staticmethod
     def _normal_lit_face_colors(verts, faces, base_color):
-        """Per-face lys basert på flatnormal vs lysretning (øvre front-høgre)."""
+        """Per-face lys med ambient, diffuse og spekulær refleksjon."""
         light_dir = np.array([0.3, 0.6, 0.5])
         light_dir = light_dir / np.linalg.norm(light_dir)
+        # Kameraretning (omtrentleg frå framside)
+        view_dir = np.array([0.0, 1.0, 0.3])
+        view_dir = view_dir / np.linalg.norm(view_dir)
+
         r, g, b, a = base_color
-        ambient = 0.7
-        diffuse = 0.45
+        ambient = 0.65
+        diffuse = 0.40
+        specular = 0.25
+        shininess = 32.0
 
         colors = []
         for face in faces:
@@ -739,7 +755,18 @@ class DoorPreview3D(QWidget):
             norm_len = np.linalg.norm(normal)
             if norm_len > 0:
                 normal = normal / norm_len
-            brightness = ambient + diffuse * max(0.0, np.dot(normal, light_dir))
+
+            # Diffus komponent
+            n_dot_l = max(0.0, np.dot(normal, light_dir))
+            diff = diffuse * n_dot_l
+
+            # Spekulær komponent (Blinn-Phong)
+            halfway = light_dir + view_dir
+            halfway = halfway / np.linalg.norm(halfway)
+            n_dot_h = max(0.0, np.dot(normal, halfway))
+            spec = specular * (n_dot_h ** shininess) if n_dot_l > 0 else 0.0
+
+            brightness = ambient + diff + spec
             colors.append([min(1.0, r * brightness), min(1.0, g * brightness),
                            min(1.0, b * brightness), a])
         return np.array(colors)

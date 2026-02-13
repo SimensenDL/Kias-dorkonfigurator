@@ -6,7 +6,7 @@ Instruksjoner for Claude Code når det arbeides med dette prosjektet.
 
 KIAS Dørkonfigurator er en PyQt6 desktop-applikasjon for å konfigurere dører produsert av Kvanne Industrier AS (KIAS). Brukes av selgere for å sette opp dørspesifikasjoner og generere produksjonsunderlag (PDF-tegninger, kapplister).
 
-**Språk:** Kode-kommentarer og UI-tekst er på norsk. Bruk alltid korrekte norske tegn (æøå) - f.eks. "dør" ikke "dor", "høyde" ikke "hoyde".
+**Språk:** Kode-kommentarer og UI-tekst er på norsk (Bookmål). Bruk alltid korrekte norske tegn (æøå) - f.eks. "dør" ikke "dor", "høyde" ikke "hoyde".
 
 ## Kommandoer
 
@@ -32,9 +32,11 @@ uv remove <pakkenavn>
 ## Arkitektur
 
 ### Dataflyt
+
 `DoorParams` → GUI-skjema → PDF-eksport
 
 ### Modulstruktur
+
 - **src/doors/** - Dørtype-data som rene dicts (ingen imports). Én fil per dørtype.
   - `__init__.py` - Bygger `DOOR_REGISTRY` fra alle registrerte dørtyper
   - `innerdor.py` - Innerdør (SDI) — mål, karmtyper, hengsler, dorblad-offsets
@@ -54,15 +56,18 @@ uv remove <pakkenavn>
 - **src/utils/** - `constants.py` (APP_NAME, DOOR_TYPES, RAL_COLORS, standardmål)
 
 ### Legge til ny dørtype
+
 1. Opprett datafil i `src/doors/` (som ren dict, sjå `innerdor.py`)
 2. Registrer i `src/doors/__init__.py` (`_DOOR_TYPE_MODULES`)
 3. Opprett karm-profiler i `src/gui/karm_profiles/` (arv frå `KarmProfile`)
 4. Registrer i `src/gui/karm_profiles/__init__.py` (`KARM_PROFILES`)
 
 ### Signal-arkitektur
+
 - `DoorForm.values_changed` → `MainWindow._on_params_changed()` → oppdater dør + tittel
 
 ### DoorParams (src/models/door.py)
+
 Dataclass med alle dørparametere: type, mål (mm), farger (RAL), glass, lås, hengsler, brannklasse, lydklasse, U-verdi. Serialiseres til JSON (.kdf-filer).
 
 ## Konvensjoner
