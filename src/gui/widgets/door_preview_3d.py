@@ -14,6 +14,7 @@ from ...utils.constants import RAL_COLORS, KARM_SIDESTOLPE_WIDTH
 from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, terskel_lengde
 from ...doors import DOOR_REGISTRY
 from ..karm_profiles import KARM_PROFILES
+from . import graphics_settings as gfx
 
 # Betinget import med fallback
 try:
@@ -95,6 +96,7 @@ class DoorPreview3D(QWidget):
         self._show_wall = False
         self._show_frame = True
         self._show_blades = True
+        self._door_open = False
         self._gl_widget = None
         self._init_ui()
 
@@ -132,17 +134,25 @@ class DoorPreview3D(QWidget):
                 toolbar.addWidget(btn)
                 setattr(self, f'_{name.lower()}_btn', btn)
 
+            # Åpne/lukke dør
+            self._open_btn = QPushButton("Åpne")
+            self._open_btn.setCheckable(True)
+            self._open_btn.setChecked(False)
+            self._open_btn.setMinimumWidth(80)
+            self._open_btn.toggled.connect(self._on_open_toggled)
+            toolbar.addWidget(self._open_btn)
+
             toolbar.addStretch()
             layout.addLayout(toolbar)
 
-            # MSAA anti-aliasing for glattare kantar
+            # MSAA anti-aliasing for glattere kanter
             fmt = QSurfaceFormat()
-            fmt.setSamples(8)
-            fmt.setDepthBufferSize(24)
+            fmt.setSamples(gfx.MSAA_SAMPLES)
+            fmt.setDepthBufferSize(gfx.DEPTH_BUFFER_SIZE)
             QSurfaceFormat.setDefaultFormat(fmt)
 
             self._gl_widget = _PanGLViewWidget()
-            self._gl_widget.setBackgroundColor(50, 50, 55, 255)
+            self._gl_widget.setBackgroundColor(*gfx.BACKGROUND_COLOR)
             layout.addWidget(self._gl_widget)
 
             grid = gl.GLGridItem()
@@ -190,6 +200,11 @@ class DoorPreview3D(QWidget):
         self._show_blades = checked
         for item in self._blade_items:
             item.setVisible(checked)
+
+    def _on_open_toggled(self, checked: bool):
+        """Åpne/lukke dør (90° rotasjon rundt hengsler)."""
+        self._door_open = checked
+        self._rebuild_scene()
 
     def _setup_camera(self):
         """Setter opp initialt kameraperspektiv."""
@@ -356,10 +371,14 @@ class DoorPreview3D(QWidget):
                     blade_color, s
                 )
 
-    def _render_single_blade(self, x, y, z, w, d, h, color, s):
+    def _render_single_blade(self, x, y, z, w, d, h, color, s, pivot=None):
         """Tegner ett dørblad med retningsbasert lys."""
         verts, faces = self._make_box(x * s, y * s, z * s, w * s, d * s, h * s)
-        face_colors = self._lit_face_colors(color)
+        if pivot is not None:
+            verts = self._rotate_verts_z(verts, pivot)
+            face_colors = self._normal_lit_face_colors(verts, faces, color)
+        else:
+            face_colors = self._lit_face_colors(color)
 
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
@@ -488,12 +507,12 @@ class DoorPreview3D(QWidget):
             plate_cx * s, plate_cy * s, plate_cz * s,
             self.PLATE_WIDTH * s, self.PLATE_HEIGHT * s, self.PLATE_DEPTH * s,
             self.PLATE_CORNER_RADIUS * s,
-            segments=24
+            segments=gfx.PLATE_CORNER_SEGMENTS
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=True, drawEdges=False
+            smooth=gfx.SMOOTH_CURVED_PARTS, drawEdges=False
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
@@ -507,7 +526,7 @@ class DoorPreview3D(QWidget):
 
         # Bygg bane: bue (kvartssirkel) + rett strekk
         path = []
-        bend_segs = 30
+        bend_segs = gfx.LEVER_BEND_SEGMENTS
         if hinge_side == 'left':
             # Bue frå Y+ retning til X- retning (grep peikar mot hengslene)
             arc_cx = plate_cx - bend_r
@@ -536,12 +555,12 @@ class DoorPreview3D(QWidget):
             path.append((end_x * s, horiz_y * s, lever_cz * s))
 
         verts, faces = self._make_swept_tube(
-            path, self.LEVER_RADIUS * s, segments=64
+            path, self.LEVER_RADIUS * s, segments=gfx.LEVER_TUBE_SEGMENTS
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(
             vertexes=verts, faces=faces, faceColors=face_colors,
-            smooth=True, drawEdges=False
+            smooth=gfx.SMOOTH_CURVED_PARTS, drawEdges=False
         )
         self._gl_widget.addItem(mesh)
         self._mesh_items.append(mesh)
@@ -552,9 +571,33 @@ class DoorPreview3D(QWidget):
     # HJELPEMETODER
     # =========================================================================
 
-    # Lysfaktorer per flateretning (simulerer lys frå øvre front-høgre)
-    # Rekkefølge: bunn, topp, front(Y+), bak(Y-), venstre(X-), høyre(X+)
-    _FACE_LIGHT = (0.52, 1.12, 0.98, 0.58, 0.68, 0.85)
+    def _get_open_pivot(self, blade_x, blade_w, blade_y, blade_d, hinge_side, s):
+        """Returnerer (vinkel, pivot_x, pivot_y) for open-dør-rotasjon, eller None."""
+        if not self._door_open:
+            return None
+        if hinge_side == 'left':
+            px = blade_x * s
+            angle = 90.0
+        else:
+            px = (blade_x + blade_w) * s
+            angle = -90.0
+        py = (blade_y + blade_d / 2) * s
+        return (angle, px, py)
+
+    @staticmethod
+    def _rotate_verts_z(verts, pivot):
+        """Roterer vertices rundt Z-aksen ved pivot (vinkel, px, py)."""
+        angle_deg, px, py = pivot
+        angle = np.radians(angle_deg)
+        cos_a, sin_a = np.cos(angle), np.sin(angle)
+        result = verts.copy()
+        dx = result[:, 0] - px
+        dy = result[:, 1] - py
+        result[:, 0] = dx * cos_a - dy * sin_a + px
+        result[:, 1] = dx * sin_a + dy * cos_a + py
+        return result
+
+    _FACE_LIGHT = gfx.BOX_FACE_LIGHT
 
     @staticmethod
     def _lit_face_colors(base_color, light_factors=None):
@@ -733,17 +776,16 @@ class DoorPreview3D(QWidget):
     @staticmethod
     def _normal_lit_face_colors(verts, faces, base_color):
         """Per-face lys med ambient, diffuse og spekulær refleksjon."""
-        light_dir = np.array([0.3, 0.6, 0.5])
+        light_dir = np.array(gfx.LIGHT_DIRECTION, dtype=float)
         light_dir = light_dir / np.linalg.norm(light_dir)
-        # Kameraretning (omtrentleg frå framside)
-        view_dir = np.array([0.0, 1.0, 0.3])
+        view_dir = np.array(gfx.VIEW_DIRECTION, dtype=float)
         view_dir = view_dir / np.linalg.norm(view_dir)
 
         r, g, b, a = base_color
-        ambient = 0.65
-        diffuse = 0.40
-        specular = 0.25
-        shininess = 64.0
+        ambient = gfx.LIGHT_AMBIENT
+        diffuse = gfx.LIGHT_DIFFUSE
+        specular = gfx.LIGHT_SPECULAR
+        shininess = gfx.LIGHT_SHININESS
 
         colors = []
         for face in faces:
