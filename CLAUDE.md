@@ -6,7 +6,7 @@ Instruksjoner for Claude Code når det arbeides med dette prosjektet.
 
 KIAS Dørkonfigurator er en PyQt6 desktop-applikasjon for å konfigurere dører produsert av Kvanne Industrier AS (KIAS). Brukes av selgere for å sette opp dørspesifikasjoner og generere produksjonsunderlag (PDF-tegninger, kapplister).
 
-**Språk:** Kode-kommentarer og UI-tekst er på norsk (Bookmål). Bruk alltid korrekte norske tegn (æøå) - f.eks. "dør" ikke "dor", "høyde" ikke "hoyde".
+**Språk:** Kode-kommentarer og UI-tekst er på norsk **bokmål**. Bruk **alltid bokmål, aldri nynorsk**. Bruk alltid korrekte norske tegn (æøå) - f.eks. "dør" ikke "dor", "høyde" ikke "hoyde".
 
 ## Kommandoer
 
@@ -57,9 +57,9 @@ uv remove <pakkenavn>
 
 ### Legge til ny dørtype
 
-1. Opprett datafil i `src/doors/` (som ren dict, sjå `innerdor.py`)
+1. Opprett datafil i `src/doors/` (som ren dict, se `innerdor.py`)
 2. Registrer i `src/doors/__init__.py` (`_DOOR_TYPE_MODULES`)
-3. Opprett karm-profiler i `src/gui/karm_profiles/` (arv frå `KarmProfile`)
+3. Opprett karm-profiler i `src/gui/karm_profiles/` (arv fra `KarmProfile`)
 4. Registrer i `src/gui/karm_profiles/__init__.py` (`KARM_PROFILES`)
 
 ### Signal-arkitektur

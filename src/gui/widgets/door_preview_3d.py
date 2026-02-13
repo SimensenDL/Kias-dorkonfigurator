@@ -23,16 +23,16 @@ try:
 except ImportError:
     HAS_3D = False
 
-# --- Konstantar ---
+# --- Konstanter ---
 WALL_COLOR = (0.55, 0.55, 0.52, 1)
-WALL_MARGIN = 800                        # mm synleg vegg rundt opning
+WALL_MARGIN = 800                        # mm synlig vegg rundt åpning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92}
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
-    """Lagar ein kopi av musehendinga med midtre knapp i staden for høgre."""
+    """Lager en kopi av musehendelsen med midtre knapp i stedet for høyre."""
     return QMouseEvent(
         event.type(),
         event.position(),
@@ -63,25 +63,25 @@ class _PanGLViewWidget(gl.GLViewWidget if HAS_3D else object):
 
 
 class DoorPreview3D(QWidget):
-    """3D-forhåndsvisning av ein konfigurert dør med vegg, karm, dørblad, hengslar og håndtak."""
+    """3D-forhåndsvisning av en konfigurert dør med vegg, karm, dørblad, hengsler og håndtak."""
 
     SCALE = 1.0 / 100.0
 
-    # Håndtak-dimensjonar (mm)
-    HANDLE_CENTER_HEIGHT = 1020          # mm frå gulv (senter håndtak)
+    # Håndtak-dimensjoner (mm)
+    HANDLE_CENTER_HEIGHT = 1020          # mm fra gulv (senter håndtak)
     HANDLE_X_MARGIN = 80
-    # Skilt (bakplate) — avrunda hjørne
+    # Skilt (bakplate) — avrundede hjørner
     PLATE_WIDTH = 40
     PLATE_HEIGHT = 170
     PLATE_DEPTH = 5
     PLATE_CORNER_RADIUS = 6
-    # Grep (spak) — bue frå skilt + horisontal sylinder
+    # Grep (spak) — bue fra skilt + horisontal sylinder
     LEVER_RADIUS = 10
-    LEVER_BEND_RADIUS = 30                # mm radius på buen frå skilt
+    LEVER_BEND_RADIUS = 30                # mm radius på buen fra skilt
     LEVER_STRAIGHT = 85                   # mm rett del etter buen
     LEVER_Z_OFFSET = -45                  # mm under senter av skilt
 
-    # Hengsel-dimensjonar (mm)
+    # Hengsel-dimensjoner (mm)
     HINGE_WIDTH = 15
     HINGE_HEIGHT = 60
     HINGE_DEPTH = 8
@@ -97,6 +97,8 @@ class DoorPreview3D(QWidget):
         self._show_frame = True
         self._show_blades = True
         self._door_open = False
+        self._show_axes = False
+        self._axes_items: list = []
         self._gl_widget = None
         self._init_ui()
 
@@ -142,6 +144,14 @@ class DoorPreview3D(QWidget):
             self._open_btn.toggled.connect(self._on_open_toggled)
             toolbar.addWidget(self._open_btn)
 
+            # Akser toggle
+            self._axes_btn = QPushButton("Akser")
+            self._axes_btn.setCheckable(True)
+            self._axes_btn.setChecked(False)
+            self._axes_btn.setMinimumWidth(80)
+            self._axes_btn.toggled.connect(self._on_axes_toggled)
+            toolbar.addWidget(self._axes_btn)
+
             toolbar.addStretch()
             layout.addLayout(toolbar)
 
@@ -170,9 +180,13 @@ class DoorPreview3D(QWidget):
             ]:
                 pts = np.array([[0, 0, 0], list(end)])
                 line = gl.GLLinePlotItem(pos=pts, color=color, width=3, antialias=True)
+                line.setVisible(self._show_axes)
                 self._gl_widget.addItem(line)
+                self._axes_items.append(line)
                 txt = gl.GLTextItem(pos=np.array(end), text=label, color=color[:3])
+                txt.setVisible(self._show_axes)
                 self._gl_widget.addItem(txt)
+                self._axes_items.append(txt)
 
             self._setup_camera()
         except Exception:
@@ -201,6 +215,12 @@ class DoorPreview3D(QWidget):
         """Vis/skjul dørblad."""
         self._show_blades = checked
         for item in self._blade_items:
+            item.setVisible(checked)
+
+    def _on_axes_toggled(self, checked: bool):
+        """Vis/skjul akser (X/Y/Z)."""
+        self._show_axes = checked
+        for item in self._axes_items:
             item.setVisible(checked)
 
     def _on_open_toggled(self, checked: bool):
@@ -252,15 +272,15 @@ class DoorPreview3D(QWidget):
         profile = KARM_PROFILES[door.karm_type]
         luftspalte_mm = profile.luftspalte(door)
 
-        # Dørblad-dimensjonar
+        # Dørblad-dimensjoner
         blade_t_mm = door.blade_thickness
         karm_depth = KARM_DEPTHS.get(door.karm_type, 77)
         sidestolpe_w = KARM_SIDESTOLPE_WIDTH.get(door.karm_type, 80)
 
-        # 1. Vegg (alltid bygd, synlegheit styrt av toggle)
+        # 1. Vegg (alltid bygd, synlighet styrt av toggle)
         self._add_wall(bm, hm, wall_t, s)
 
-        # 2. Karm — bygd frå profil
+        # 2. Karm — bygd fra profil
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
         parts = profile.build_frame_parts(door, kb, kh, wall_t, karm_depth, sidestolpe_w)
         for (bx, by, bz, dx, dy, dz) in parts:
@@ -270,7 +290,7 @@ class DoorPreview3D(QWidget):
             )
             mesh.setVisible(self._show_frame)
 
-        # 3. Terskel (bare hvis det er valgt ein terskeltype)
+        # 3. Terskel (bare hvis det er valgt en terskeltype)
         if door.threshold_type != 'ingen':
             self._add_threshold(door, profile, kb, wall_t, karm_depth, blade_t_mm, s)
 
@@ -295,11 +315,11 @@ class DoorPreview3D(QWidget):
         wd = wall_t
 
         parts = [
-            # Venstre kolonne (full høgde + margin over opning)
+            # Venstre kolonne (full høyde + margin over åpning)
             (-(bm / 2 + M), wy, 0, M, wd, hm + M),
-            # Høgre kolonne
+            # Høyre kolonne
             (bm / 2, wy, 0, M, wd, hm + M),
-            # Topp-bjelke (mellom kolonnane)
+            # Topp-bjelke (mellom kolonnene)
             (-bm / 2, wy, hm, bm, wd, M),
         ]
 
@@ -363,7 +383,7 @@ class DoorPreview3D(QWidget):
                 total_w = db1_b + BLADE_GAP + db2_b
                 start_x = -total_w / 2
 
-                # Blad 2 (venstre i 3D-koord = høgre sett frå framsida, hengslar på venstre)
+                # Blad 2 (venstre i 3D-koord = høyre sett fra framsiden, hengsler på venstre)
                 blade2_x = start_x
                 pivot2 = self._get_open_pivot(blade2_x, db2_b, blade_y, blade_t_mm, 'left', s)
                 self._render_single_blade(
@@ -371,7 +391,7 @@ class DoorPreview3D(QWidget):
                     db2_b, blade_t_mm, db_h,
                     blade_color, s, pivot=pivot2
                 )
-                # Blad 1 (høgre i 3D-koord = venstre sett frå framsida, hengslar på høgre)
+                # Blad 1 (høyre i 3D-koord = venstre sett fra framsiden, hengsler på høyre)
                 blade1_x = start_x + db2_b + BLADE_GAP
                 pivot1 = self._get_open_pivot(blade1_x, db1_b, blade_y, blade_t_mm, 'right', s)
                 self._render_single_blade(
@@ -398,11 +418,11 @@ class DoorPreview3D(QWidget):
         mesh.setVisible(self._show_blades)
 
     # =========================================================================
-    # HENGSLAR
+    # HENGSLER
     # =========================================================================
 
     def _add_hinges(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
-        """Hengslar frå dørtype-data, plassert på riktig side."""
+        """Hengsler fra dørtype-data, plassert på riktig side."""
         hw = self.HINGE_WIDTH
         hh = self.HINGE_HEIGHT
         hd = self.HINGE_DEPTH
@@ -412,7 +432,7 @@ class DoorPreview3D(QWidget):
         hy = profile.hinge_y(wall_t, blade_t_mm, karm_depth, hd)
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
-        # Bygg liste over blad å feste hengslar på
+        # Bygg liste over blad å feste hengsler på
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
 
         for (bcx, b_w, b_h, count, hinge_side) in blades:
@@ -452,7 +472,7 @@ class DoorPreview3D(QWidget):
                 mesh.setVisible(self._show_blades)
 
     def _get_hinge_count(self, door) -> int:
-        """Hent hengselantal frå DOOR_REGISTRY, med fallback."""
+        """Hent hengselantall fra DOOR_REGISTRY, med fallback."""
         try:
             reg = DOOR_REGISTRY.get(door.door_type, {})
             hengsler = reg.get('hengsler', {})
@@ -466,9 +486,9 @@ class DoorPreview3D(QWidget):
         return door.hinge_count if door.hinge_count > 0 else 2
 
     def _get_blade_geometries(self, door, kb, kh, luftspalte_mm, total_hinges):
-        """Returnerer liste av (senter_x, breidde, høgde, hengslar_per_blad, hengselside) for kvart blad.
+        """Returnerer liste av (senter_x, bredde, høyde, hengsler_per_blad, hengselside) for hvert blad.
 
-        hengselside er 'left' eller 'right' — angir kva kant hengsla sit på.
+        hengselside er 'left' eller 'right' — angir hvilken kant hengselet sitter på.
         """
         if door.floyer == 1:
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.blade_type) or (kb - 128)
@@ -482,7 +502,7 @@ class DoorPreview3D(QWidget):
             total_w = db1_b + BLADE_GAP + db2_b
             per_blade = max(1, total_hinges // 2)
 
-            # 3D-koord er speilvent: negativ X = høgre sett frå framsida
+            # 3D-koord er speilvendt: negativ X = høyre sett fra framsiden
             b2_cx = -total_w / 2 + db2_b / 2
             b1_cx = -total_w / 2 + db2_b + BLADE_GAP + db1_b / 2
             return [(b1_cx, db1_b, db_h, per_blade, 'right'),
@@ -493,7 +513,7 @@ class DoorPreview3D(QWidget):
     # =========================================================================
 
     def _add_handle(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
-        """Skilthandtak på motsett side av hengslene."""
+        """Skilthåndtak på motsatt side av hengslene."""
         margin = self.HANDLE_X_MARGIN
         handle_color = np.array([0.478, 0.478, 0.478, 1.0])
 
@@ -511,7 +531,7 @@ class DoorPreview3D(QWidget):
         pivot = self._get_open_pivot(blade_x, b_w, blade_y, blade_t_mm, hinge_side, s)
         tr = self._build_open_transform(pivot)
 
-        # Senter-X for skiltet (motsett side av hengsla)
+        # Senter-X for skiltet (motsatt side av hengselet)
         if hinge_side == 'left':
             plate_cx = bcx + b_w / 2 - margin
         else:
@@ -523,7 +543,7 @@ class DoorPreview3D(QWidget):
         plate_cy = plate_y + self.PLATE_DEPTH / 2
         plate_cz = self.HANDLE_CENTER_HEIGHT
 
-        # Skilt (avrunda hjørne, høgare oppløysing)
+        # Skilt (avrundede hjørner, høyere oppløsning)
         verts, faces = self._make_rounded_rect(
             plate_cx * s, plate_cy * s, plate_cz * s,
             self.PLATE_WIDTH * s, self.PLATE_HEIGHT * s, self.PLATE_DEPTH * s,
@@ -542,7 +562,7 @@ class DoorPreview3D(QWidget):
         self._blade_items.append(mesh)
         mesh.setVisible(self._show_blades)
 
-        # Grep (bue frå skilt + rett spak)
+        # Grep (bue fra skilt + rett spak)
         bend_r = self.LEVER_BEND_RADIUS
         lever_cz = plate_cz + self.LEVER_Z_OFFSET
         lever_y_start = plate_y + self.PLATE_DEPTH
@@ -551,7 +571,7 @@ class DoorPreview3D(QWidget):
         path = []
         bend_segs = gfx.LEVER_BEND_SEGMENTS
         if hinge_side == 'left':
-            # Bue frå Y+ retning til X- retning (grep peikar mot hengslene)
+            # Bue fra Y+ retning til X- retning (grep peker mot hengslene)
             arc_cx = plate_cx - bend_r
             arc_cy = lever_y_start
             for i in range(bend_segs + 1):
@@ -564,7 +584,7 @@ class DoorPreview3D(QWidget):
             horiz_y = lever_y_start + bend_r
             path.append((end_x * s, horiz_y * s, lever_cz * s))
         else:
-            # Bue frå Y+ retning til X+ retning (grep peikar mot hengslene)
+            # Bue fra Y+ retning til X+ retning (grep peker mot hengslene)
             arc_cx = plate_cx + bend_r
             arc_cy = lever_y_start
             for i in range(bend_segs + 1):
@@ -572,7 +592,7 @@ class DoorPreview3D(QWidget):
                 px = arc_cx + bend_r * np.cos(angle)
                 py = arc_cy + bend_r * np.sin(angle)
                 path.append((px * s, py * s, lever_cz * s))
-            # Rett del mot høgre
+            # Rett del mot høyre
             end_x = plate_cx + bend_r + self.LEVER_STRAIGHT
             horiz_y = lever_y_start + bend_r
             path.append((end_x * s, horiz_y * s, lever_cz * s))
@@ -612,7 +632,7 @@ class DoorPreview3D(QWidget):
 
     @staticmethod
     def _build_open_transform(pivot):
-        """Bygg QMatrix4x4 for open-dør-rotasjon rundt hengslekant."""
+        """Bygger QMatrix4x4 for åpen-dør-rotasjon rundt hengselkant."""
         if pivot is None:
             return None
         angle_deg, px, py, y_offset = pivot
@@ -661,7 +681,7 @@ class DoorPreview3D(QWidget):
 
     @staticmethod
     def _make_box(x, y, z, dx, dy, dz):
-        """Genererer vertices og faces for ein boks."""
+        """Genererer vertices og faces for en boks."""
         verts = np.array([
             [x,      y,      z],
             [x + dx, y,      z],
@@ -684,7 +704,7 @@ class DoorPreview3D(QWidget):
 
     @staticmethod
     def _make_rounded_rect(cx, cy, cz, width, height, depth, radius, segments=8):
-        """Ekstrudert rektangel med avrunda hjørne, sentrert på (cx, cy, cz).
+        """Ekstrudert rektangel med avrundede hjørner, sentrert på (cx, cy, cz).
 
         Profil i XZ-planet, ekstrudert langs Y.
         """
@@ -692,10 +712,10 @@ class DoorPreview3D(QWidget):
         hh = height / 2
         r = min(radius, hw, hh)
 
-        # 2D-profil (X, Z) — fire hjørne med kvartssirkel
+        # 2D-profil (X, Z) — fire hjørner med kvartssirkel
         corners = [
-            (cx + hw - r, cz - hh + r, np.pi * 1.5, np.pi * 2.0),   # nedre høgre
-            (cx + hw - r, cz + hh - r, 0.0,          np.pi * 0.5),   # øvre høgre
+            (cx + hw - r, cz - hh + r, np.pi * 1.5, np.pi * 2.0),   # nedre høyre
+            (cx + hw - r, cz + hh - r, 0.0,          np.pi * 0.5),   # øvre høyre
             (cx - hw + r, cz + hh - r, np.pi * 0.5,  np.pi),         # øvre venstre
             (cx - hw + r, cz - hh + r, np.pi,         np.pi * 1.5),  # nedre venstre
         ]
@@ -742,7 +762,7 @@ class DoorPreview3D(QWidget):
 
     @staticmethod
     def _make_swept_tube(path, radius, segments=24):
-        """Rørform langs ein bane (liste av (x, y, z) punkt)."""
+        """Rørform langs en bane (liste av (x, y, z) punkt)."""
         n_path = len(path)
         verts = []
 
