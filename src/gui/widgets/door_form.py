@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QSpinBox, QCheckBox, QLineEdit, QLabel,
     QStyledItemDelegate, QStyle, QSlider
 )
-from PyQt6.QtCore import pyqtSignal, Qt, QRect
+from PyQt6.QtCore import pyqtSignal, Qt, QRect, QObject, QEvent
 from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
 
 from ...utils.constants import (
@@ -56,6 +56,16 @@ class ColorSwatchDelegate(QStyledItemDelegate):
             # Tegn kant rundt fargeruten
             painter.setPen(QPen(QColor(80, 80, 80), 1))
             painter.drawRect(swatch_rect)
+
+
+class ScrollGuardFilter(QObject):
+    """Blokkerer scroll-hendelser på widgets som ikke har fokus."""
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Wheel and not obj.hasFocus():
+            event.ignore()
+            return True
+        return super().eventFilter(obj, event)
 
 
 class DoorForm(QWidget):
@@ -433,6 +443,12 @@ class DoorForm(QWidget):
         # Initial visning av typeavhengige felt
         self._update_type_dependent_fields()
         self._update_transport_labels()
+
+        # Scroll-guard: hindre at scroll-hjulet endrer verdier på widgets uten fokus
+        self._scroll_guard = ScrollGuardFilter(self)
+        for widget in self.findChildren((QSpinBox, QComboBox, QSlider)):
+            widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            widget.installEventFilter(self._scroll_guard)
 
     def _populate_color_combo(self, combo: QComboBox):
         """Fyller en farge-combobox med RAL-farger og fargeruter."""
