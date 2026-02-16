@@ -105,6 +105,10 @@ class ThemeManager:
                 selection-background-color: {title_color};
                 selection-color: #000000;
             }}
+            QComboBox::item:selected {{
+                color: #000000;
+                background-color: {title_color};
+            }}
         """
         app.setStyleSheet(app.styleSheet() + custom_css)
 
