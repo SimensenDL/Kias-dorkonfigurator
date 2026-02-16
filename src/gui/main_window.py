@@ -326,11 +326,15 @@ class MainWindow(QMainWindow):
 
         if self._editing_door_id:
             # Oppdater eksisterende dør
+            updated_id = self._editing_door_id
             params_copy = DoorParams.from_dict(self.door.to_dict())
-            self._prod_list.update_door(self._editing_door_id, params_copy)
+            self._prod_list.update_door(updated_id, params_copy)
             self.door_list_tab.refresh()
-            self.statusbar.showMessage("Dør oppdatert i dørlisten")
             self._exit_edit_mode()
+            # Bytt til dørlisten og marker den oppdaterte døren
+            self.tab_widget.setCurrentWidget(self.door_list_tab)
+            self.door_list_tab.select_door(updated_id)
+            self.statusbar.showMessage("Dør oppdatert i dørlisten")
         else:
             # Legg til ny dør (klon av gjeldende parametere)
             params_copy = DoorParams.from_dict(self.door.to_dict())
@@ -355,7 +359,8 @@ class MainWindow(QMainWindow):
         self.door_preview.update_door(self.door)
         self.detail_tab.update_door(self.door)
 
-        # Bytt til redigeringsmodus
+        # Bytt til forhåndsvisning og redigeringsmodus
+        self.tab_widget.setCurrentWidget(self.door_preview)
         self._apply_update_door_style()
         self.cancel_edit_btn.setVisible(True)
         self.statusbar.showMessage(f"Redigerer dør: {door.label}")

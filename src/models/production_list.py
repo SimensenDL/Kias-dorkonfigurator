@@ -11,6 +11,7 @@ import uuid
 
 from .door import DoorParams
 from ..utils.calculations import karm_bredde, karm_hoyde
+from ..utils.constants import DOOR_TYPES
 
 
 @dataclass
@@ -41,11 +42,12 @@ class ProductionDoor:
             self.label = self._generate_label()
 
     def _generate_label(self) -> str:
-        """Genererer visningsnavn i desimeterformat, f.eks. 'SD1 10x21'."""
+        """Genererer visningsnavn, f.eks. 'Innerdør - SD1 10x21'."""
         p = self.params
+        door_type_name = DOOR_TYPES.get(p.door_type, p.door_type)
         dm_w = round(p.width / 100)
         dm_h = round(p.height / 100)
-        return f"{p.karm_type} {dm_w}x{dm_h}"
+        return f"{door_type_name} - {p.karm_type} {dm_w}x{dm_h}"
 
 
 class ProductionList:

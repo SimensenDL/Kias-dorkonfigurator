@@ -47,7 +47,7 @@ class DoorListTab(QWidget):
         self.clear_btn.clicked.connect(self._clear_list)
         toolbar.addWidget(self.clear_btn)
 
-        hint_label = QLabel("Dobbeltklikk på en dør for å redigere")
+        hint_label = QLabel("Dobbeltklikk på en dør for å forhåndsvise")
         hint_label.setStyleSheet("color: #888888; font-style: italic; padding-left: 12px;")
         toolbar.addWidget(hint_label)
 
@@ -86,6 +86,15 @@ class DoorListTab(QWidget):
     # ------------------------------------------------------------------
     # Offentlige metoder
     # ------------------------------------------------------------------
+
+    def select_door(self, door_id: str):
+        """Markerer raden til en bestemt dør i tabellen."""
+        doors = self._prod_list.doors
+        for row, door in enumerate(doors):
+            if door.id == door_id:
+                self.table.selectRow(row)
+                self.table.scrollTo(self.table.model().index(row, 0))
+                return
 
     def refresh(self):
         """Oppdaterer tabellen fra produksjonslisten."""
