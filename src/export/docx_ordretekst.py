@@ -20,19 +20,24 @@ def export_ordretekst_docx(prod_list: ProductionList, filepath: str) -> None:
     doc = Document()
 
     # Overskrift
-    heading = doc.add_heading("TEKSTER FOR GENERELLE KUNDER", level=1)
+    heading = doc.add_heading("ORDRETEKST", level=1)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph()
 
     for i, door in enumerate(prod_list.doors):
         linjer = generer_ordretekst(door.params)
         if not linjer:
             continue
 
+        # Samle alle avsnitt for denne døren
+        door_paras = []
+
         # Tittel (indeks 0) — fet
         tittel_para = doc.add_paragraph()
         tittel_run = tittel_para.add_run(linjer[0])
         tittel_run.bold = True
         tittel_run.font.size = Pt(12)
+        door_paras.append(tittel_para)
 
         # "Produktdetaljer:" (indeks 1) — fet, understreket
         if len(linjer) > 1:
@@ -40,10 +45,18 @@ def export_ordretekst_docx(prod_list: ProductionList, filepath: str) -> None:
             detaljer_run = detaljer_para.add_run(linjer[1])
             detaljer_run.bold = True
             detaljer_run.underline = True
+            door_paras.append(detaljer_para)
 
         # Kulepunkt-linjer (indeks 2+)
         for linje in linjer[2:]:
-            doc.add_paragraph(linje, style='List Bullet')
+            door_paras.append(doc.add_paragraph(linje, style='List Bullet'))
+
+        # Hold alle avsnitt for denne døren samlet på én side
+        for para in door_paras:
+            para.paragraph_format.keep_with_next = True
+        # Siste avsnitt trenger ikke keep_with_next
+        if door_paras:
+            door_paras[-1].paragraph_format.keep_with_next = False
 
         # Mellomrom mellom dører (unntatt siste)
         if i < len(prod_list.doors) - 1:
