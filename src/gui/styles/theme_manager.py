@@ -105,9 +105,23 @@ class ThemeManager:
                 selection-background-color: {title_color};
                 selection-color: #000000;
             }}
-            QComboBox::item:selected {{
+            QComboBox::item:selected,
+            QMenu::item:selected {{
                 color: #000000;
                 background-color: {title_color};
+            }}
+            QMenuBar::item:selected,
+            QMenuBar::item:pressed {{
+                color: #000000;
+                background-color: {title_color};
+            }}
+            QTableView::item:selected:focus,
+            QTreeView::item:selected:focus,
+            QListView::item:selected:focus {{
+                color: #000000;
+                background-color: {title_color};
+                selection-color: #000000;
+                selection-background-color: {title_color};
             }}
         """
         app.setStyleSheet(app.styleSheet() + custom_css)
