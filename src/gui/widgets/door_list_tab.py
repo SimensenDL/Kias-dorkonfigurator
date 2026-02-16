@@ -47,6 +47,10 @@ class DoorListTab(QWidget):
         self.clear_btn.clicked.connect(self._clear_list)
         toolbar.addWidget(self.clear_btn)
 
+        hint_label = QLabel("Dobbeltklikk på en dør for å redigere")
+        hint_label.setStyleSheet("color: #888888; font-style: italic; padding-left: 12px;")
+        toolbar.addWidget(hint_label)
+
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
