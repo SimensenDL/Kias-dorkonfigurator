@@ -101,6 +101,10 @@ class ThemeManager:
             QHeaderView::section {{
                 text-transform: none;
             }}
+            QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit, QAbstractSpinBox {{
+                selection-background-color: {title_color};
+                selection-color: #000000;
+            }}
         """
         app.setStyleSheet(app.styleSheet() + custom_css)
 
