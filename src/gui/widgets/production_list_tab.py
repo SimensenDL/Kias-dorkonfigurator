@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 
 from ...models.production_list import get_production_list
+from ...utils.constants import DEFAULT_COLOR
 
 
 class ProductionListTab(QWidget):
@@ -99,8 +100,14 @@ class ProductionListTab(QWidget):
             self._insert_section_header(row, section['title'])
             row += 1
 
+            prev_profil = ''
             for data_row in section['rows']:
-                self._insert_data_row(row, data_row, current_section_title)
+                # Vis profilnavn kun på første rad i hver komponentgruppe
+                show_name = data_row['profilnavn'] != prev_profil
+                prev_profil = data_row['profilnavn']
+                self._insert_data_row(
+                    row, data_row, current_section_title, show_name
+                )
                 total_data_rows += 1
                 row += 1
 
@@ -111,20 +118,25 @@ class ProductionListTab(QWidget):
 
     def _insert_section_header(self, row: int, title: str):
         """Setter inn en seksjon-overskrift som span over alle kolonner."""
-        item = QTableWidgetItem(title)
-        item.setFlags(Qt.ItemFlag.NoItemFlags)
-        font = QFont()
-        font.setBold(True)
-        item.setFont(font)
-        item.setForeground(QColor(255, 255, 255))
-        item.setBackground(QColor(33, 150, 243))
-        self.table.setItem(row, 0, item)
         self.table.setSpan(row, 0, 1, 6)
+        # Bruk QLabel-widget for å tvinge farger (qt-material overstyrer item-farger)
+        label = QLabel(f"  {title}")
+        label.setStyleSheet(
+            "background-color: #FFC107; color: #000000;"
+            "font-weight: bold; font-size: 13px; padding: 4px 8px;"
+        )
+        self.table.setCellWidget(row, 0, label)
+        # Sett tom item for å blokkere redigering/seleksjon
+        item = QTableWidgetItem()
+        item.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.table.setItem(row, 0, item)
 
-    def _insert_data_row(self, row: int, data: dict, section_title: str):
+    def _insert_data_row(self, row: int, data: dict, section_title: str,
+                         show_name: bool = True):
         """Setter inn en datarad med redigerbar merknad."""
-        # Profilnavn
-        profil_item = QTableWidgetItem(data['profilnavn'])
+        # Profilnavn — kun på første rad i komponentgruppen
+        profil_text = data['profilnavn'] if show_name else ''
+        profil_item = QTableWidgetItem(profil_text)
         profil_item.setFlags(profil_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.table.setItem(row, self.COL_PROFIL, profil_item)
 
@@ -146,8 +158,9 @@ class ProductionListTab(QWidget):
         slag_item.setFlags(slag_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.table.setItem(row, self.COL_SLAG, slag_item)
 
-        # Farge
-        farge_item = QTableWidgetItem(data['farge'])
+        # Farge — skjul standardfarge (RAL 9010)
+        farge_text = data['farge'] if data['farge'] != DEFAULT_COLOR else ''
+        farge_item = QTableWidgetItem(farge_text)
         farge_item.setFlags(farge_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.table.setItem(row, self.COL_FARGE, farge_item)
 
@@ -161,20 +174,26 @@ class ProductionListTab(QWidget):
         """Lagrer merknader fra tabellen til intern dict."""
         self._merknader.clear()
         current_section = ''
+        current_profil = ''
 
         for row in range(self.table.rowCount()):
             # Seksjon-header (span > 1)
             if self.table.columnSpan(row, 0) > 1:
-                item = self.table.item(row, 0)
-                if item:
-                    current_section = item.text()
+                widget = self.table.cellWidget(row, 0)
+                if widget and isinstance(widget, QLabel):
+                    current_section = widget.text().strip()
+                current_profil = ''
                 continue
 
             profil_item = self.table.item(row, self.COL_PROFIL)
             mm_item = self.table.item(row, self.COL_MM)
             merknad_item = self.table.item(row, self.COL_MERKNAD)
 
-            if profil_item and merknad_item and merknad_item.text():
-                key = (current_section, profil_item.text(),
+            # Profilnavn vises kun på første rad — bruk sist kjente navn
+            if profil_item and profil_item.text():
+                current_profil = profil_item.text()
+
+            if current_profil and merknad_item and merknad_item.text():
+                key = (current_section, current_profil,
                        mm_item.text() if mm_item else '')
                 self._merknader[key] = merknad_item.text()

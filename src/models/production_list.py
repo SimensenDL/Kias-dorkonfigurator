@@ -611,7 +611,7 @@ class ProductionList:
             rows = self._accumulate_standard_items(
                 dorramme_items, DORRAMME_KOMPONENT_ORDER
             )
-            sections.append({'title': '40mm Dørramme', 'rows': rows})
+            sections.append({'title': 'Dørrammer', 'rows': rows})
 
         # Diverse
         if diverse_items:
