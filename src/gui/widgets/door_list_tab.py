@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 from ...models.production_list import ProductionList, get_production_list
 from ...models.door_list_io import save_door_list, load_door_list
+from ...export.docx_ordretekst import export_ordretekst_docx
 from ...utils.constants import DOOR_LIST_FILTER, SWING_DIRECTIONS
 
 
@@ -46,6 +47,14 @@ class DoorListTab(QWidget):
         self.clear_btn.setStyleSheet("padding: 6px 14px;")
         self.clear_btn.clicked.connect(self._clear_list)
         toolbar.addWidget(self.clear_btn)
+
+        self.ordretekst_btn = QPushButton("Ordretekst")
+        self.ordretekst_btn.setStyleSheet(
+            "padding: 6px 14px; background-color: #388E3C; color: white;"
+        )
+        self.ordretekst_btn.setEnabled(False)
+        self.ordretekst_btn.clicked.connect(self._export_ordretekst)
+        toolbar.addWidget(self.ordretekst_btn)
 
         hint_label = QLabel("Dobbeltklikk på en dør for å forhåndsvise")
         hint_label.setStyleSheet("color: #888888; font-style: italic; padding-left: 12px;")
@@ -153,6 +162,7 @@ class DoorListTab(QWidget):
             self.table.setCellWidget(row, 7, del_btn)
 
         self.summary_label.setText(f"Antall dører: {len(doors)}")
+        self.ordretekst_btn.setEnabled(len(doors) > 0)
 
     # ------------------------------------------------------------------
     # Signaler / hendelser
@@ -242,3 +252,25 @@ class DoorListTab(QWidget):
             self._prod_list.clear()
             self.refresh()
             self.list_changed.emit()
+
+    def _export_ordretekst(self):
+        """Eksporterer ordretekst for alle dører til Word-dokument."""
+        if self._prod_list.door_count == 0:
+            return
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Eksporter ordretekst", "Ordretekst",
+            "Word-dokumenter (*.docx)"
+        )
+        if filepath:
+            try:
+                export_ordretekst_docx(self._prod_list, filepath)
+                QMessageBox.information(
+                    self, "Eksport fullført",
+                    f"Ordretekst eksportert til:\n{filepath}"
+                )
+            except Exception as e:
+                QMessageBox.critical(
+                    self, "Eksportfeil",
+                    f"Kunne ikke eksportere ordretekst:\n{e}"
+                )
