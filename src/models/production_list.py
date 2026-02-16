@@ -70,7 +70,7 @@ KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID']
 
 KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
 DORRAMME_KOMPONENT_ORDER = ['DR40 over-/underdel', 'DR40 sidedel']
-DIVERSE_KOMPONENT_ORDER = ['Glassfiberlaminat', 'Terskel', 'Dekklist']
+DIVERSE_KOMPONENT_ORDER = ['Laminat', 'Terskel', 'Dekklist']
 
 
 class ProductionList:
@@ -259,13 +259,13 @@ class ProductionList:
                 ))
 
         # --- Tilbehør ---
-        # Glassfiberlaminat (2 per fløy: front + bak)
+        # Laminat (2 per fløy: front + bak)
         for bw in blade_widths:
             if bw and db_h:
                 lam_b, lam_h = laminat_mal(karm_type, bw, db_h, blade_type)
                 if lam_b and lam_h:
                     items.append(ProductionItem(
-                        komponent='Glassfiberlaminat', antall=2,
+                        komponent='Laminat', antall=2,
                         bredde=lam_b, hoyde=lam_h,
                         farge=p.color, dor_id=door.id, karm_type=karm_type,
                     ))
@@ -581,14 +581,12 @@ class ProductionList:
 
         sections: List[dict] = []
 
-        # Kategoriser items
+        # Kategoriser items (kun karm + dørramme i hovedtabellen)
         karm_komps = {'Overligger', 'Hengselside', 'Sluttstykkeside'}
         dorramme_komps = {'DR40 over-/underdel', 'DR40 sidedel'}
-        diverse_komps = {'Glassfiberlaminat', 'Terskel', 'Dekklist'}
 
         karm_items = [i for i in items if i.komponent in karm_komps]
         dorramme_items = [i for i in items if i.komponent in dorramme_komps]
-        diverse_items = [i for i in items if i.komponent in diverse_komps]
 
         # Grupper karm etter familie
         karm_by_family: Dict[str, List[ProductionItem]] = defaultdict(list)
@@ -613,14 +611,52 @@ class ProductionList:
             )
             sections.append({'title': 'Dørrammer', 'rows': rows})
 
-        # Diverse
-        if diverse_items:
-            rows = self._accumulate_standard_items(
-                diverse_items, DIVERSE_KOMPONENT_ORDER
-            )
-            sections.append({'title': 'Diverse', 'rows': rows})
-
         return sections
+
+    def get_diverse_rows(self) -> List[dict]:
+        """Returnerer rader for diverse-tabellen (separat fra hovedtabellen).
+
+        Returns:
+            Liste med rader, hver med 'forklaring', 'stk', 'b_mm', 'h_mm', 'farge'
+        """
+        items = self.get_all_items()
+        if not items:
+            return []
+
+        diverse_komps = {'Laminat', 'Terskel', 'Dekklist'}
+        diverse_items = [i for i in items if i.komponent in diverse_komps]
+        if not diverse_items:
+            return []
+
+        # Grupper på (komponent, bredde, hoyde, lengde, farge)
+        groups: Dict[tuple, int] = defaultdict(int)
+        for item in diverse_items:
+            key = (item.komponent, item.bredde, item.hoyde,
+                   item.lengde, item.farge or '')
+            groups[key] += item.antall
+
+        def sort_key(entry):
+            (komponent, bredde, hoyde, lengde, farge) = entry[0]
+            order = (DIVERSE_KOMPONENT_ORDER.index(komponent)
+                     if komponent in DIVERSE_KOMPONENT_ORDER else 99)
+            return (order, bredde or 0, hoyde or 0, lengde or 0)
+
+        rows = []
+        for (komponent, bredde, hoyde, lengde, farge), total in sorted(
+            groups.items(), key=sort_key
+        ):
+            b_mm = str(bredde) if bredde else (str(lengde) if lengde else '')
+            h_mm = str(hoyde) if hoyde else ''
+            rows.append({
+                'forklaring': komponent,
+                'stk': total,
+                'b_mm': b_mm,
+                'h_mm': h_mm,
+                'farge': farge,
+                'merknad': '',
+            })
+
+        return rows
 
     def _accumulate_karm_items(self, items: List[ProductionItem]) -> List[dict]:
         """Akkumulerer karm-items med V/H-telling.
