@@ -330,6 +330,7 @@ class MainWindow(QMainWindow):
             params_copy = DoorParams.from_dict(self.door.to_dict())
             self._prod_list.update_door(updated_id, params_copy)
             self.door_list_tab.refresh()
+            self.production_list_tab.refresh()
             self._exit_edit_mode()
             # Bytt til dørlisten og marker den oppdaterte døren
             self.tab_widget.setCurrentWidget(self.door_list_tab)
@@ -340,6 +341,7 @@ class MainWindow(QMainWindow):
             params_copy = DoorParams.from_dict(self.door.to_dict())
             self._prod_list.add_door(params_copy)
             self.door_list_tab.refresh()
+            self.production_list_tab.refresh()
             self.statusbar.showMessage("Dør lagt til i dørlisten")
             # Bytt til Dørliste-tab
             self.tab_widget.setCurrentWidget(self.door_list_tab)
@@ -369,6 +371,7 @@ class MainWindow(QMainWindow):
         """Dør slettet fra listen — avbryt redigering hvis det var denne."""
         if self._editing_door_id == door_id:
             self._exit_edit_mode()
+        self.production_list_tab.refresh()
         self.statusbar.showMessage("Dør fjernet fra dørlisten")
 
     def _on_door_list_changed(self):
@@ -377,6 +380,7 @@ class MainWindow(QMainWindow):
             # Sjekk om døren vi redigerer fortsatt finnes
             if not self._prod_list.get_door(self._editing_door_id):
                 self._exit_edit_mode()
+        self.production_list_tab.refresh()
 
     def _cancel_edit(self):
         """Avbryter redigeringsmodus."""

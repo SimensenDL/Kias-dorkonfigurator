@@ -10,7 +10,11 @@ from collections import defaultdict
 import uuid
 
 from .door import DoorParams
-from ..utils.calculations import karm_bredde, karm_hoyde
+from ..utils.calculations import (
+    karm_bredde, karm_hoyde,
+    dorblad_bredde, dorblad_hoyde,
+    terskel_lengde, laminat_mal, dekklist_lengde,
+)
 from ..utils.constants import DOOR_TYPES
 
 
@@ -48,6 +52,25 @@ class ProductionDoor:
         dm_w = round(p.width / 100)
         dm_h = round(p.height / 100)
         return f"{door_type_name} - {p.karm_type} {dm_w}x{dm_h}"
+
+
+# Karmtype-familier for kappeliste-gruppering
+KARM_FAMILY_GROUPS = {
+    'SD1': 'SD1_SD2',
+    'SD2': 'SD1_SD2',
+    'SD3/ID': 'SD3_ID',
+}
+
+KARM_FAMILY_TITLES = {
+    'SD1_SD2': 'Slagdørkarm Justerbar (SD1 og SD2)',
+    'SD3_ID': 'Slagdørkarm Justerbar (SD3/ID)',
+}
+
+KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID']
+
+KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
+DORRAMME_KOMPONENT_ORDER = ['DR40 over-/underdel', 'DR40 sidedel']
+DIVERSE_KOMPONENT_ORDER = ['Glassfiberlaminat', 'Terskel', 'Dekklist']
 
 
 class ProductionList:
@@ -163,9 +186,108 @@ class ProductionList:
         """Henter alle produksjonskomponenter fra alle dører.
 
         Returns:
-            Liste med alle ProductionItem (tom – bygges ut senere)
+            Liste med alle ProductionItem
         """
-        return []
+        if self._items_cache is not None:
+            return self._items_cache
+        items: List[ProductionItem] = []
+        for door in self._doors:
+            items.extend(self._build_items_for_door(door))
+        self._items_cache = items
+        return items
+
+    def _build_items_for_door(self, door: ProductionDoor) -> List[ProductionItem]:
+        """Beregner alle produksjonskomponenter for en enkelt dør."""
+        p = door.params
+        karm_type = p.karm_type
+        blade_type = p.blade_type
+        floyer = p.floyer
+        luftspalte = p.effective_luftspalte()
+
+        karm_b = karm_bredde(karm_type, p.width)
+        karm_h = karm_hoyde(karm_type, p.height)
+
+        # Slagretning: left → hengselside=V, sluttstykke=H
+        if p.swing_direction == 'left':
+            hengsel_side = 'V'
+            sluttstykke_side = 'H'
+        else:
+            hengsel_side = 'H'
+            sluttstykke_side = 'V'
+
+        items: List[ProductionItem] = []
+
+        # --- Karm ---
+        items.append(ProductionItem(
+            komponent='Overligger', antall=1, lengde=karm_b,
+            farge=p.karm_color, dor_id=door.id, karm_type=karm_type,
+        ))
+        items.append(ProductionItem(
+            komponent='Hengselside', antall=1, lengde=karm_h,
+            farge=p.karm_color, side=hengsel_side,
+            dor_id=door.id, karm_type=karm_type,
+        ))
+        items.append(ProductionItem(
+            komponent='Sluttstykkeside', antall=1, lengde=karm_h,
+            farge=p.karm_color, side=sluttstykke_side,
+            dor_id=door.id, karm_type=karm_type,
+        ))
+
+        # --- Dørramme ---
+        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, blade_type)
+        db_h = dorblad_hoyde(karm_type, karm_h, floyer, blade_type, luftspalte)
+
+        if floyer == 2 and db_b_total:
+            split_pct = p.floyer_split / 100.0
+            db1_b = round(db_b_total * split_pct)
+            db2_b = db_b_total - db1_b
+            blade_widths = [db1_b, db2_b]
+        elif db_b_total:
+            blade_widths = [db_b_total]
+        else:
+            blade_widths = []
+
+        for bw in blade_widths:
+            items.append(ProductionItem(
+                komponent='DR40 over-/underdel', antall=2, lengde=bw,
+                farge=p.color, dor_id=door.id, karm_type=karm_type,
+            ))
+            if db_h:
+                items.append(ProductionItem(
+                    komponent='DR40 sidedel', antall=2, lengde=db_h,
+                    farge=p.color, dor_id=door.id, karm_type=karm_type,
+                ))
+
+        # --- Tilbehør ---
+        # Glassfiberlaminat (2 per fløy: front + bak)
+        for bw in blade_widths:
+            if bw and db_h:
+                lam_b, lam_h = laminat_mal(karm_type, bw, db_h, blade_type)
+                if lam_b and lam_h:
+                    items.append(ProductionItem(
+                        komponent='Glassfiberlaminat', antall=2,
+                        bredde=lam_b, hoyde=lam_h,
+                        farge=p.color, dor_id=door.id, karm_type=karm_type,
+                    ))
+
+        # Terskel (kun hvis type ≠ 'ingen')
+        if p.threshold_type != 'ingen':
+            t_lengde = terskel_lengde(karm_type, karm_b, floyer)
+            if t_lengde:
+                items.append(ProductionItem(
+                    komponent='Terskel', antall=1, lengde=t_lengde,
+                    dor_id=door.id, karm_type=karm_type,
+                ))
+
+        # Dekklist (kun 2-fløyet)
+        if floyer == 2:
+            dk_lengde = dekklist_lengde(karm_h)
+            items.append(ProductionItem(
+                komponent='Dekklist', antall=1, lengde=dk_lengde,
+                farge=p.karm_color, dor_id=door.id, karm_type=karm_type,
+            ))
+
+        return items
 
     def _extract_items(self, mal: dict, dor_id: str, karm_type: str) -> List[ProductionItem]:
         """Ekstraherer ProductionItem fra produksjonsmål-dict.
@@ -443,6 +565,149 @@ class ProductionList:
         for door in self._doors:
             summary[door.params.karm_type] += 1
         return dict(summary)
+
+    def get_kappeliste_sections(self) -> List[dict]:
+        """Returnerer seksjoner for kappeliste-visning.
+
+        Grupperer produksjonskomponenter etter karmtype-familie
+        og akkumulerer like komponenter med V/H-telling.
+
+        Returns:
+            Liste med seksjoner, hver med 'title' og 'rows'
+        """
+        items = self.get_all_items()
+        if not items:
+            return []
+
+        sections: List[dict] = []
+
+        # Kategoriser items
+        karm_komps = {'Overligger', 'Hengselside', 'Sluttstykkeside'}
+        dorramme_komps = {'DR40 over-/underdel', 'DR40 sidedel'}
+        diverse_komps = {'Glassfiberlaminat', 'Terskel', 'Dekklist'}
+
+        karm_items = [i for i in items if i.komponent in karm_komps]
+        dorramme_items = [i for i in items if i.komponent in dorramme_komps]
+        diverse_items = [i for i in items if i.komponent in diverse_komps]
+
+        # Grupper karm etter familie
+        karm_by_family: Dict[str, List[ProductionItem]] = defaultdict(list)
+        for item in karm_items:
+            family = KARM_FAMILY_GROUPS.get(item.karm_type, item.karm_type)
+            karm_by_family[family].append(item)
+
+        for family_key in KARM_FAMILY_ORDER:
+            family_items = karm_by_family.get(family_key)
+            if not family_items:
+                continue
+            rows = self._accumulate_karm_items(family_items)
+            sections.append({
+                'title': KARM_FAMILY_TITLES[family_key],
+                'rows': rows,
+            })
+
+        # Dørramme (alle karmtyper samlet)
+        if dorramme_items:
+            rows = self._accumulate_standard_items(
+                dorramme_items, DORRAMME_KOMPONENT_ORDER
+            )
+            sections.append({'title': '40mm Dørramme', 'rows': rows})
+
+        # Diverse
+        if diverse_items:
+            rows = self._accumulate_standard_items(
+                diverse_items, DIVERSE_KOMPONENT_ORDER
+            )
+            sections.append({'title': 'Diverse', 'rows': rows})
+
+        return sections
+
+    def _accumulate_karm_items(self, items: List[ProductionItem]) -> List[dict]:
+        """Akkumulerer karm-items med V/H-telling.
+
+        Grupperer på (komponent, lengde, farge) og teller V/H separat.
+        """
+        groups: Dict[tuple, Dict[str, int]] = defaultdict(
+            lambda: {'V': 0, 'H': 0, 'none': 0}
+        )
+
+        for item in items:
+            key = (item.komponent, item.lengde, item.farge)
+            if item.side == 'V':
+                groups[key]['V'] += item.antall
+            elif item.side == 'H':
+                groups[key]['H'] += item.antall
+            else:
+                groups[key]['none'] += item.antall
+
+        def sort_key(entry):
+            (komponent, lengde, farge) = entry[0]
+            order = (KARM_KOMPONENT_ORDER.index(komponent)
+                     if komponent in KARM_KOMPONENT_ORDER else 99)
+            return (order, lengde or 0)
+
+        rows = []
+        for (komponent, lengde, farge), counts in sorted(
+            groups.items(), key=sort_key
+        ):
+            total = counts['V'] + counts['H'] + counts['none']
+            parts = []
+            if counts['V']:
+                parts.append(f"{counts['V']}V")
+            if counts['H']:
+                parts.append(f"{counts['H']}H")
+            slagretning = ', '.join(parts)
+
+            rows.append({
+                'profilnavn': komponent,
+                'stk': total,
+                'mm': str(lengde) if lengde else '',
+                'slagretning': slagretning,
+                'farge': farge or '',
+                'merknad': '',
+            })
+
+        return rows
+
+    def _accumulate_standard_items(
+        self, items: List[ProductionItem], komponent_order: list
+    ) -> List[dict]:
+        """Akkumulerer standard-items (dørramme, diverse).
+
+        Grupperer på (komponent, mål-streng, farge) og summerer antall.
+        """
+        groups: Dict[tuple, int] = defaultdict(int)
+
+        for item in items:
+            if item.bredde and item.hoyde:
+                mm_str = f"{item.bredde} x {item.hoyde}"
+            elif item.lengde:
+                mm_str = str(item.lengde)
+            else:
+                mm_str = ''
+            key = (item.komponent, mm_str, item.farge or '')
+            groups[key] += item.antall
+
+        def sort_key(entry):
+            (komponent, mm_str, farge) = entry[0]
+            order = (komponent_order.index(komponent)
+                     if komponent in komponent_order else 99)
+            return (order, mm_str)
+
+        rows = []
+        for (komponent, mm_str, farge), total in sorted(
+            groups.items(), key=sort_key
+        ):
+            rows.append({
+                'profilnavn': komponent,
+                'stk': total,
+                'mm': mm_str,
+                'slagretning': '',
+                'farge': farge,
+                'merknad': '',
+            })
+
+        return rows
 
 
 # Global produksjonsliste (singleton for enkel tilgang)
