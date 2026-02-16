@@ -4,9 +4,9 @@ Kappeliste-tab widget – gruppert kappeliste med separat diverse-tabell.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QHeaderView, QLabel, QAbstractItemView, QPushButton,
-    QFileDialog, QMessageBox
+    QFileDialog, QMessageBox, QScrollArea
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QColor, QFont
 
 from ...models.production_list import get_production_list
@@ -64,6 +64,15 @@ class ProductionListTab(QWidget):
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
+        # --- Felles skrollområde for begge tabeller ---
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+
+        content = QWidget()
+        self._content_layout = QVBoxLayout(content)
+        self._content_layout.setContentsMargins(0, 0, 0, 0)
+
         # --- Hovedtabell (karm + dørramme) ---
         self.table = QTableWidget()
         self.table.setColumnCount(6)
@@ -71,14 +80,16 @@ class ProductionListTab(QWidget):
             "PROFILNAVN", "STK", "MM", "SLAGRETNING", "FARGE", "MERKNAD"
         ])
         self._setup_table(self.table, stretch_col=self.COL_PROFIL)
+        self.table.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.table.setVisible(False)
-        layout.addWidget(self.table)
+        self._content_layout.addWidget(self.table)
 
         # --- Diverse-header ---
         self.diverse_header = QLabel("  Diverse")
         self.diverse_header.setStyleSheet(_SECTION_HEADER_STYLE)
         self.diverse_header.setVisible(False)
-        layout.addWidget(self.diverse_header)
+        self._content_layout.addWidget(self.diverse_header)
 
         # --- Diverse-tabell ---
         self.diverse_table = QTableWidget()
@@ -87,14 +98,20 @@ class ProductionListTab(QWidget):
             "FORKLARING", "STK", "B MM", "H MM", "FARGE", "MERKNAD"
         ])
         self._setup_table(self.diverse_table, stretch_col=self.DIV_COL_FORKL)
+        self.diverse_table.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.diverse_table.setVisible(False)
-        layout.addWidget(self.diverse_table)
+        self._content_layout.addWidget(self.diverse_table)
 
         # --- Tom-tilstand ---
         self.empty_label = QLabel("Ingen dører i listen")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_label.setStyleSheet("font-size: 16px; color: #888; padding: 40px;")
-        layout.addWidget(self.empty_label)
+        self._content_layout.addWidget(self.empty_label)
+
+        self._content_layout.addStretch()
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
 
         # --- Oppsummering ---
         self.summary_label = QLabel("")
@@ -137,6 +154,9 @@ class ProductionListTab(QWidget):
 
         # --- Diverse-tabell ---
         self._refresh_diverse_table(diverse_rows)
+
+        # --- Juster tabellhøyder til innhold (deferred for at Qt skal layoute først) ---
+        QTimer.singleShot(0, self._update_table_heights)
 
         # --- Oppsummering ---
         if has_data:
@@ -253,6 +273,26 @@ class ProductionListTab(QWidget):
     # ------------------------------------------------------------------
     # Hjelpemetoder
     # ------------------------------------------------------------------
+
+    def _update_table_heights(self):
+        """Oppdaterer begge tabellers høyde etter at Qt har layoutet."""
+        self._resize_table_to_content(self.table)
+        self._resize_table_to_content(self.diverse_table)
+
+    @staticmethod
+    def _resize_table_to_content(table: QTableWidget):
+        """Justerer tabellens høyde til å vise alle rader uten egen skrollbar."""
+        if table.rowCount() == 0:
+            table.setFixedHeight(0)
+            return
+        height = table.horizontalHeader().height()
+        for row in range(table.rowCount()):
+            h = table.rowHeight(row)
+            if h < 1:
+                h = 30  # fallback hvis Qt ikke har beregnet ennå
+            height += h
+        height += 2  # ramme
+        table.setFixedHeight(height)
 
     @staticmethod
     def _set_readonly_cell(table: QTableWidget, row: int, col: int,
