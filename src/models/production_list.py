@@ -207,13 +207,13 @@ class ProductionList:
         karm_b = karm_bredde(karm_type, p.width)
         karm_h = karm_hoyde(karm_type, p.height)
 
-        # Slagretning: left → hengselside=V, sluttstykke=H
+        # Slagretning: left → dør slår mot venstre → hengsler på høyre side
         if p.swing_direction == 'left':
-            hengsel_side = 'V'
-            sluttstykke_side = 'H'
-        else:
             hengsel_side = 'H'
             sluttstykke_side = 'V'
+        else:
+            hengsel_side = 'V'
+            sluttstykke_side = 'H'
 
         items: List[ProductionItem] = []
 
