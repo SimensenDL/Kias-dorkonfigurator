@@ -33,11 +33,16 @@ A4_WIDTH, A4_HEIGHT = landscape(A4)
 A3_MARGIN = 15 * mm
 A4_MARGIN = 10 * mm
 
+# A4 portrett (for kappeliste etc.)
+A4_PORT_WIDTH, A4_PORT_HEIGHT = A4          # 595 x 842 pt
+A4_PORT_MARGIN = 15 * mm
+
 # Firmainformasjon for tittelfelt
 COMPANY_NAME = "KVANNE INDUSTRIER AS"
 COMPANY_ADDRESS = "6652 Surnadal - post@kvanne.no"
 DRAWING_STATUS = "Produksjonstegning"
 COLOR_COMPANY_BLUE = Color(0, 0.2, 0.5)
+COLOR_KIAS_YELLOW = Color(1.0, 0.757, 0.027)   # #FFC107
 
 # Logo-fil (SVG, renderes via svglib)
 LOGO_PATH = get_base_path() / "assets" / "KIAS-dorer-logo.svg"

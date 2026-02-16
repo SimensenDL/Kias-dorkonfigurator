@@ -2,13 +2,15 @@
 Kappeliste-tab widget – gruppert kappeliste med separat diverse-tabell.
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QLabel, QAbstractItemView
+    QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
+    QHeaderView, QLabel, QAbstractItemView, QPushButton,
+    QFileDialog, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 
 from ...models.production_list import get_production_list
+from ...export.pdf_kappeliste import export_kappeliste_pdf
 
 _SECTION_HEADER_STYLE = (
     "background-color: #FFC107; color: #000000;"
@@ -46,6 +48,21 @@ class ProductionListTab(QWidget):
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
+
+        # --- Eksportknapp ---
+        toolbar = QHBoxLayout()
+        self.export_btn = QPushButton("Eksporter kappeliste")
+        self.export_btn.setStyleSheet(
+            "QPushButton { background-color: #1976D2; color: white;"
+            "  padding: 6px 16px; font-weight: bold; border-radius: 4px; }"
+            "QPushButton:hover { background-color: #1565C0; }"
+            "QPushButton:disabled { background-color: #666666; color: #999999; }"
+        )
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self._export_kappeliste_pdf)
+        toolbar.addWidget(self.export_btn)
+        toolbar.addStretch()
+        layout.addLayout(toolbar)
 
         # --- Hovedtabell (karm + dørramme) ---
         self.table = QTableWidget()
@@ -112,6 +129,7 @@ class ProductionListTab(QWidget):
 
         has_data = bool(sections) or bool(diverse_rows)
 
+        self.export_btn.setEnabled(has_data)
         self.empty_label.setVisible(not has_data)
 
         # --- Hovedtabell ---
@@ -245,6 +263,39 @@ class ProductionListTab(QWidget):
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
         table.setItem(row, col, item)
+
+    # ------------------------------------------------------------------
+    # PDF-eksport
+    # ------------------------------------------------------------------
+
+    def _export_kappeliste_pdf(self):
+        """Eksporterer kappelisten til PDF."""
+        self._save_merknader()
+        self._save_diverse_merknader()
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Eksporter kappeliste",
+            "Kappeliste",
+            "PDF-filer (*.pdf)"
+        )
+        if not filepath:
+            return
+
+        try:
+            export_kappeliste_pdf(
+                self._prod_list, filepath,
+                merknader=self._merknader,
+                diverse_merknader=self._diverse_merknader,
+            )
+            QMessageBox.information(
+                self, "Eksport fullført",
+                f"Kappelisten ble eksportert til:\n{filepath}"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Eksportfeil",
+                f"Kunne ikke eksportere kappeliste:\n{e}"
+            )
 
     # ------------------------------------------------------------------
     # Merknad-lagring
