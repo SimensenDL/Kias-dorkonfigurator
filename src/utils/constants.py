@@ -13,6 +13,9 @@ APP_VERSION = "0.3.0"
 PROJECT_EXTENSION = ".kdf"
 PROJECT_FILTER = f"KIAS Dørfil (*{PROJECT_EXTENSION})"
 
+DOOR_LIST_EXTENSION = ".kdl"
+DOOR_LIST_FILTER = f"KIAS Dørliste (*{DOOR_LIST_EXTENSION})"
+
 # =============================================================================
 # DYNAMISK OPPBYGGING FRA DOOR_REGISTRY
 # =============================================================================

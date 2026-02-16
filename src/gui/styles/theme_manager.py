@@ -13,6 +13,7 @@ from qt_material import apply_stylesheet
 # Mapping fra intern tema-enum til qt-material temanavn
 _THEME_MAP = {
     "dark": "dark_blue.xml",
+    "dark_yellow": "dark_yellow.xml",
     "light": "light_blue.xml",
 }
 
@@ -20,6 +21,7 @@ _THEME_MAP = {
 class Theme(Enum):
     """Tilgjengelige temaer."""
     DARK = "dark"
+    DARK_YELLOW = "dark_yellow"
     LIGHT = "light"
 
 
@@ -30,7 +32,7 @@ class ThemeManager:
     """
 
     SETTINGS_KEY = "theme"
-    DEFAULT_THEME = Theme.DARK
+    DEFAULT_THEME = Theme.DARK_YELLOW
 
     def __init__(self):
         self._settings = QSettings("KIASDorkonfigurator", "KIASDorkonfigurator")
@@ -61,8 +63,8 @@ class ThemeManager:
         apply_stylesheet(app, theme=theme_file)
 
         # Overstyrer qt-material for bedre visuelt hierarki
-        if self._current_theme == Theme.DARK:
-            title_color = "#64B5F6"
+        if self._current_theme in (Theme.DARK, Theme.DARK_YELLOW):
+            title_color = "#FFD54F" if self._current_theme == Theme.DARK_YELLOW else "#64B5F6"
             border_color = "#4f5b62"
             label_color = "rgba(255, 255, 255, 0.50)"
             value_color = "rgba(255, 255, 255, 0.95)"
@@ -95,6 +97,9 @@ class ThemeManager:
                 color: {value_color};
                 font-weight: bold;
                 font-size: 13px;
+            }}
+            QHeaderView::section {{
+                text-transform: none;
             }}
         """
         app.setStyleSheet(app.styleSheet() + custom_css)
@@ -130,7 +135,27 @@ class ThemeManager:
     @property
     def is_dark(self) -> bool:
         """Returnerer True hvis dark mode er aktivt."""
-        return self._current_theme == Theme.DARK
+        return self._current_theme in (Theme.DARK, Theme.DARK_YELLOW)
+
+    @property
+    def accent_color(self) -> str:
+        """Returnerer aksentfargen for gjeldende tema."""
+        if self._current_theme == Theme.DARK_YELLOW:
+            return "#FFD54F"
+        elif self._current_theme == Theme.LIGHT:
+            return "#1565C0"
+        else:
+            return "#8ab4f8"
+
+    @property
+    def accent_button_color(self) -> str:
+        """Returnerer aksentfarge for knapper (litt mørkere variant)."""
+        if self._current_theme == Theme.DARK_YELLOW:
+            return "#FFC107"
+        elif self._current_theme == Theme.LIGHT:
+            return "#1976D2"
+        else:
+            return "#2196F3"
 
     @staticmethod
     def is_available() -> bool:

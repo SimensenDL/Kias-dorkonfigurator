@@ -70,6 +70,28 @@ uv remove <pakkenavn>
 
 Dataclass med alle dørparametere: type, mål (mm), farger (RAL), glass, lås, hengsler, brannklasse, lydklasse, U-verdi. Serialiseres til JSON (.kdf-filer).
 
+## Kjente fallgruver
+
+### QTableWidget-headere klippes av (qt-material)
+
+qt-material setter `text-transform: uppercase` på `QHeaderView::section`. Qt's `resizeColumnToContents()` beregner kolonnebredde basert på den *originale* teksten (f.eks. "Veggtykkelse"), men rendrer den i UPPERCASE ("VEGGTYKKELSE") som er bredere. Resultatet: header-tekst klippes.
+
+**Løsning (allerede implementert globalt i `theme_manager.py`):**
+1. `theme_manager.py` overstyrer `QHeaderView::section { text-transform: none; }` — fjerner mismatch
+2. Sett header-labels **eksplisitt i UPPERCASE** i koden (f.eks. `"VEGGTYKKELSE"` ikke `"Veggtykkelse"`)
+3. Bruk `setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)` per kolonne — **ikke** manuelt `resizeColumnToContents()` i `refresh()`
+
+**Ved nye tabeller — alltid følg dette mønsteret:**
+```python
+header = table.horizontalHeader()
+header.setStretchLastSection(False)
+for col in range(table.columnCount()):
+    if col == stretch_col:
+        header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+    else:
+        header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+```
+
 ## Konvensjoner
 
 - **Alle mål i millimeter (mm)**

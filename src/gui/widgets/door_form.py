@@ -143,23 +143,18 @@ class DoorForm(QWidget):
         width_layout.addWidget(self.width_spin)
 
         self.karm_width_label = QLabel("Karm: —")
-        self.karm_width_label.setStyleSheet("color: #448aff;")
         width_layout.addWidget(self.karm_width_label)
 
-        _sep_w = QLabel("|")
-        _sep_w.setStyleSheet("color: #448aff;")
-        width_layout.addWidget(_sep_w)
+        self._sep_w = QLabel("|")
+        width_layout.addWidget(self._sep_w)
 
         self.transport_width_90_label = QLabel("BT 90°: —")
-        self.transport_width_90_label.setStyleSheet("color: #448aff;")
         width_layout.addWidget(self.transport_width_90_label)
 
-        _sep_w2 = QLabel("|")
-        _sep_w2.setStyleSheet("color: #448aff;")
-        width_layout.addWidget(_sep_w2)
+        self._sep_w2 = QLabel("|")
+        width_layout.addWidget(self._sep_w2)
 
         self.transport_width_180_label = QLabel("BT 180°: —")
-        self.transport_width_180_label.setStyleSheet("color: #448aff;")
         width_layout.addWidget(self.transport_width_180_label)
 
         width_layout.addStretch()
@@ -181,15 +176,12 @@ class DoorForm(QWidget):
         height_layout.addWidget(self.height_spin)
 
         self.karm_height_label = QLabel("Karm: —")
-        self.karm_height_label.setStyleSheet("color: #448aff;")
         height_layout.addWidget(self.karm_height_label)
 
-        _sep_h = QLabel("|")
-        _sep_h.setStyleSheet("color: #448aff;")
-        height_layout.addWidget(_sep_h)
+        self._sep_h = QLabel("|")
+        height_layout.addWidget(self._sep_h)
 
         self.transport_height_label = QLabel("HT: —")
-        self.transport_height_label.setStyleSheet("color: #448aff;")
         height_layout.addWidget(self.transport_height_label)
 
         height_layout.addStretch()
@@ -980,6 +972,18 @@ class DoorForm(QWidget):
         door.fire_rating = self.fire_rating_combo.currentData() or ""
         door.sound_rating = self.sound_rating_combo.currentData() or 0
         door.notes = self.notes_edit.text()
+
+    def update_accent_color(self, color: str) -> None:
+        """Oppdaterer aksentfargen på info-labels."""
+        style = f"color: {color};"
+        for label in (
+            self.karm_width_label, self._sep_w,
+            self.transport_width_90_label, self._sep_w2,
+            self.transport_width_180_label,
+            self.karm_height_label, self._sep_h,
+            self.transport_height_label,
+        ):
+            label.setStyleSheet(style)
 
     def load_door(self, door: DoorParams) -> None:
         """Laster DoorParams-verdier inn i skjemaet."""

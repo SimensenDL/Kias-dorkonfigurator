@@ -41,12 +41,11 @@ class ProductionDoor:
             self.label = self._generate_label()
 
     def _generate_label(self) -> str:
-        """Genererer visningsnavn for døren."""
+        """Genererer visningsnavn i desimeterformat, f.eks. 'SD1 10x21'."""
         p = self.params
-        karm_b = karm_bredde(p.karm_type, p.width)
-        karm_h = karm_hoyde(p.karm_type, p.height)
-        size_str = f"{karm_b}x{karm_h}"
-        return f"{p.karm_type} {size_str} {p.color}"
+        dm_w = round(p.width / 100)
+        dm_h = round(p.height / 100)
+        return f"{p.karm_type} {dm_w}x{dm_h}"
 
 
 class ProductionList:
@@ -96,10 +95,67 @@ class ProductionList:
                 return True
         return False
 
+    def get_door(self, door_id: str) -> Optional[ProductionDoor]:
+        """Henter en dør etter ID."""
+        for door in self._doors:
+            if door.id == door_id:
+                return door
+        return None
+
+    def update_door(self, door_id: str, params: DoorParams) -> bool:
+        """Oppdaterer parametere for en eksisterende dør.
+
+        Args:
+            door_id: ID for døren som skal oppdateres
+            params: Nye DoorParams
+
+        Returns:
+            True hvis døren ble oppdatert, False ellers
+        """
+        for door in self._doors:
+            if door.id == door_id:
+                door.params = params
+                door.label = door._generate_label()
+                self._items_cache = None
+                return True
+        return False
+
     def clear(self) -> None:
         """Tømmer hele produksjonslisten."""
         self._doors.clear()
         self._items_cache = None
+
+    def to_list_dict(self) -> dict:
+        """Serialiserer hele dørlisten til dict for .kdl-eksport."""
+        return {
+            'version': '1.0',
+            'type': 'door_list',
+            'doors': [
+                {
+                    'id': d.id,
+                    'label': d.label,
+                    'params': d.params.to_dict(),
+                }
+                for d in self._doors
+            ],
+        }
+
+    def from_list_dict(self, data: dict) -> int:
+        """Importerer dører fra dict (adderer til eksisterende liste).
+
+        Args:
+            data: Dict fra .kdl-fil
+
+        Returns:
+            Antall importerte dører
+        """
+        doors = data.get('doors', [])
+        count = 0
+        for entry in doors:
+            params = DoorParams.from_dict(entry.get('params', {}))
+            self.add_door(params)
+            count += 1
+        return count
 
     def get_all_items(self) -> List[ProductionItem]:
         """Henter alle produksjonskomponenter fra alle dører.
