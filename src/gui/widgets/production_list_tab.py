@@ -9,7 +9,6 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 
 from ...models.production_list import get_production_list
-from ...utils.constants import DEFAULT_COLOR
 
 _SECTION_HEADER_STYLE = (
     "background-color: #FFC107; color: #000000;"
@@ -200,8 +199,7 @@ class ProductionListTab(QWidget):
                                 data['mm'], center=True)
         self._set_readonly_cell(self.table, row, self.COL_SLAG,
                                 data['slagretning'], center=True)
-        farge_text = data['farge'] if data['farge'] != DEFAULT_COLOR else ''
-        self._set_readonly_cell(self.table, row, self.COL_FARGE, farge_text)
+        self._set_readonly_cell(self.table, row, self.COL_FARGE, data['farge'])
 
         # Merknad (redigerbar)
         merknad_key = (section_title, data['profilnavn'], data['mm'])
@@ -224,9 +222,8 @@ class ProductionListTab(QWidget):
                                 data['b_mm'], center=True)
         self._set_readonly_cell(self.diverse_table, row, self.DIV_COL_H,
                                 data['h_mm'], center=True)
-        farge_text = data['farge'] if data['farge'] != DEFAULT_COLOR else ''
         self._set_readonly_cell(self.diverse_table, row, self.DIV_COL_FARGE,
-                                farge_text)
+                                data['farge'])
 
         # Merknad (redigerbar)
         merknad_key = (data['forklaring'], data['b_mm'], data['h_mm'])
