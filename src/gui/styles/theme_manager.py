@@ -66,7 +66,7 @@ class ThemeManager:
         if self._current_theme in (Theme.DARK, Theme.DARK_YELLOW):
             title_color = "#FFD54F" if self._current_theme == Theme.DARK_YELLOW else "#64B5F6"
             border_color = "#4f5b62"
-            label_color = "rgba(255, 255, 255, 0.50)"
+            label_color = "rgba(255, 255, 255, 0.70)"
             value_color = "rgba(255, 255, 255, 0.95)"
         else:
             title_color = "#1565C0"

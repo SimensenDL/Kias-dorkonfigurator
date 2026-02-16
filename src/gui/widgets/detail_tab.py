@@ -31,14 +31,14 @@ class DetailTab(QWidget):
     def _make_label(self, text: str) -> QLabel:
         """Lager en form-label med dempet stil."""
         lbl = QLabel(text)
-        lbl.setProperty("class", "detail-label")
+        lbl.setStyleSheet("color: rgba(255, 255, 255, 0.85); font-size: 13px;")
         lbl.setMinimumWidth(self._LABEL_MIN_WIDTH)
         return lbl
 
     def _make_value(self) -> QLabel:
         """Lager en verdi-label med fremhevet stil."""
         val = QLabel("—")
-        val.setProperty("class", "detail-value")
+        val.setStyleSheet("color: rgba(255, 255, 255, 0.95); font-weight: bold; font-size: 13px;")
         val.setTextFormat(Qt.TextFormat.RichText)
         return val
 
@@ -49,7 +49,7 @@ class DetailTab(QWidget):
             return "—"
         return (
             f"{value}"
-            f" <span style='color:gray; font-weight:normal; font-size:11px'>"
+            f" <span style='color:rgba(255,255,255,0.50); font-weight:normal; font-size:11px'>"
             f"{unit}</span>"
         )
 
