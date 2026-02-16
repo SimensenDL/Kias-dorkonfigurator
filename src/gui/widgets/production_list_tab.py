@@ -71,6 +71,8 @@ class ProductionListTab(QWidget):
         sections = self._prod_list.get_kappeliste_sections()
 
         if not sections:
+            self.table.clearContents()
+            self.table.clearSpans()
             self.table.setRowCount(0)
             self.table.setVisible(False)
             self.empty_label.setVisible(True)
@@ -79,6 +81,10 @@ class ProductionListTab(QWidget):
 
         self.table.setVisible(True)
         self.empty_label.setVisible(False)
+
+        # Rydd opp stale spans/items fra forrige render
+        self.table.clearContents()
+        self.table.clearSpans()
 
         # Tell totalt antall rader (datarader + seksjon-headere)
         total_rows = sum(len(s['rows']) + 1 for s in sections)
