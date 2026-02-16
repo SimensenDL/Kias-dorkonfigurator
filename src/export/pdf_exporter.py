@@ -13,7 +13,7 @@ from ..utils.constants import DOOR_TYPES
 from .pdf_constants import (
     A3_WIDTH, A3_HEIGHT, A3_MARGIN,
     COLOR_DOOR_FILL, COLOR_DOOR_STROKE, COLOR_FRAME_FILL,
-    COLOR_GLASS, COLOR_DIMENSION, COLOR_HANDLE, COLOR_HINGE
+    COLOR_DIMENSION, COLOR_HANDLE, COLOR_HINGE
 )
 from .pdf_utils import ral_to_color, mm_to_scaled, calculate_scale
 from .pdf_title_block import draw_title_block, draw_drawing_frame
@@ -117,51 +117,6 @@ def _draw_door(c: canvas.Canvas, door: DoorParams,
     c.setStrokeColor(COLOR_DOOR_STROKE)
     c.setLineWidth(0.8)
     c.rect(x, y, w, h, fill=1, stroke=1)
-
-    # Vindu (hvis aktuelt)
-    if door.has_window:
-        # Bruk faktiske vindusmål fra modellen
-        glass_w = mm_to_scaled(door.window_width, scale)
-        glass_h = mm_to_scaled(door.window_height, scale)
-
-        # Senter: midt horisontalt + offset, 65% opp + offset
-        center_x = x + w / 2 + mm_to_scaled(door.window_pos_x, scale)
-        center_y = y + h * 0.65 + mm_to_scaled(door.window_pos_y, scale)
-
-        glass_x = center_x - glass_w / 2
-        glass_y = center_y - glass_h / 2
-
-        c.setFillColor(COLOR_GLASS)
-        c.setStrokeColor(COLOR_DOOR_STROKE)
-        c.setLineWidth(0.5)
-
-        # Tegn riktig form basert på vindusprofil
-        shape = door.window_shape  # 'rect', 'circle', eller 'rounded_rect'
-
-        if shape == 'circle':
-            # Sirkel - bruk ellipse med samme bredde/høyde
-            c.ellipse(glass_x, glass_y, glass_x + glass_w, glass_y + glass_h, fill=1, stroke=1)
-            # Kryss i glass (markering)
-            c.setStrokeColor(Color(0.6, 0.75, 0.9))
-            c.setLineWidth(0.3)
-            c.line(center_x, glass_y, center_x, glass_y + glass_h)
-            c.line(glass_x, center_y, glass_x + glass_w, center_y)
-        elif shape == 'rounded_rect':
-            # Avrundet rektangel
-            radius = min(glass_w, glass_h) / 2  # Hjørneradius = halve minste side
-            c.roundRect(glass_x, glass_y, glass_w, glass_h, radius, fill=1, stroke=1)
-            # Kryss i glass (markering)
-            c.setStrokeColor(Color(0.6, 0.75, 0.9))
-            c.setLineWidth(0.3)
-            c.line(glass_x, glass_y, glass_x + glass_w, glass_y + glass_h)
-            c.line(glass_x + glass_w, glass_y, glass_x, glass_y + glass_h)
-        else:  # 'rect'
-            c.rect(glass_x, glass_y, glass_w, glass_h, fill=1, stroke=1)
-            # Kryss i glass (markering)
-            c.setStrokeColor(Color(0.6, 0.75, 0.9))
-            c.setLineWidth(0.3)
-            c.line(glass_x, glass_y, glass_x + glass_w, glass_y + glass_h)
-            c.line(glass_x + glass_w, glass_y, glass_x, glass_y + glass_h)
 
     # Håndtak
     handle_w = w * 0.04

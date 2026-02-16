@@ -12,8 +12,6 @@ from .constants import (
     KARM_SIZE_OFFSETS,
     TRANSPORT_WIDTH_OFFSETS,
     TRANSPORT_HEIGHT_OFFSETS,
-    WINDOW_GLASS_DEDUCTION,
-    WINDOW_LIGHT_DEDUCTION,
     DORBLAD_OFFSETS,
     DORBLAD_HOYDE_INKL_LUFTSPALTE,
     TERSKEL_OFFSETS,
@@ -290,47 +288,6 @@ def laminat_mal(karm_type: str, dorblad_b: int, dorblad_h: int,
         offset = offsets
 
     return (dorblad_b - offset, dorblad_h - offset)
-
-
-# =============================================================================
-# VINDU-MÅL
-# =============================================================================
-
-def vindu_glasmal(utsparing_b: int, utsparing_h: int) -> tuple[int, int]:
-    """Beregn glassmål fra vindusutsparing.
-
-    Glassmål = utsparing - 36mm
-
-    Args:
-        utsparing_b: Vindusutsparing bredde i mm
-        utsparing_h: Vindusutsparing høyde i mm
-
-    Returns:
-        Tuple (glass_bredde, glass_høyde) i mm
-    """
-    return (
-        max(0, utsparing_b - WINDOW_GLASS_DEDUCTION),
-        max(0, utsparing_h - WINDOW_GLASS_DEDUCTION)
-    )
-
-
-def vindu_lysapning(utsparing_b: int, utsparing_h: int) -> tuple[int, int]:
-    """Beregn lysåpning fra vindusutsparing.
-
-    Lysåpning = glassmål - 26mm = utsparing - 62mm
-
-    Args:
-        utsparing_b: Vindusutsparing bredde i mm
-        utsparing_h: Vindusutsparing høyde i mm
-
-    Returns:
-        Tuple (lys_bredde, lys_høyde) i mm
-    """
-    glass_b, glass_h = vindu_glasmal(utsparing_b, utsparing_h)
-    return (
-        max(0, glass_b - WINDOW_LIGHT_DEDUCTION),
-        max(0, glass_h - WINDOW_LIGHT_DEDUCTION)
-    )
 
 
 # =============================================================================

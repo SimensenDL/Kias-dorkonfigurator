@@ -22,7 +22,6 @@ def get_base_path() -> Path:
 COLOR_DOOR_FILL = Color(0.78, 0.78, 0.78)       # Lys grå for dør
 COLOR_DOOR_STROKE = Color(0.2, 0.2, 0.2)        # Mørk grå for dørkonturer
 COLOR_FRAME_FILL = Color(0.55, 0.55, 0.55)      # Grå for karm
-COLOR_GLASS = Color(0.8, 0.9, 1.0)              # Lyseblå for glass
 COLOR_DIMENSION = Color(0, 0, 0.7)              # Blå for dimensjoner
 COLOR_TITLE_BG = white                            # Hvit bakgrunn for tittelfelt
 COLOR_HINGE = Color(0.3, 0.3, 0.3)              # Mørk for hengsler

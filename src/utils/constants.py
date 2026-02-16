@@ -205,52 +205,5 @@ RAL_COLORS = {
 # Standard fargevalg
 DEFAULT_COLOR = 'RAL 9010'
 
-# --- Vindu-konstanter ---
-WINDOW_MIN_MARGIN = 150
-WINDOW_GLASS_DEDUCTION = 36
-WINDOW_LIGHT_DEDUCTION = 26
-
-DEFAULT_WINDOW_WIDTH = 300
-DEFAULT_WINDOW_HEIGHT = 400
-MIN_WINDOW_SIZE = 100
-MAX_WINDOW_SIZE = 3000
-MAX_WINDOW_OFFSET = 500
-
-# Vindusprofiler
-WINDOW_PROFILES = {
-    'rektangular': {
-        'name': 'Rektangulær',
-        'shape': 'rect',
-        'width': 600,
-        'height': 600,
-        'pos_x': 0,
-        'pos_y': 260,
-    },
-    'rund': {
-        'name': 'Rund',
-        'shape': 'circle',
-        'width': 570,
-        'height': 400,
-        'pos_x': 0,
-        'pos_y': 300,
-    },
-    'avlang_liten': {
-        'name': 'Avlang liten',
-        'shape': 'rounded_rect',
-        'width': 150,
-        'height': 600,
-        'pos_x': 220,
-        'pos_y': 220,
-    },
-    'avlang_stor': {
-        'name': 'Avlang stor',
-        'shape': 'rounded_rect',
-        'width': 150,
-        'height': 1700,
-        'pos_x': 0,
-        'pos_y': -300,
-    },
-}
-
 # PDF eksportinnstillinger
 PDF_SCALE = 10

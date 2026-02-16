@@ -5,7 +5,7 @@ Viser input-felt for dørtype, mål, farge, beslag og tilleggsutstyr.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QComboBox, QSpinBox, QCheckBox, QLineEdit, QLabel,
-    QStyledItemDelegate, QStyle, QSlider
+    QStyledItemDelegate, QStyle
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QRect, QObject, QEvent
 from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
@@ -17,9 +17,6 @@ from ...utils.constants import (
     DOOR_KARM_TYPES, DOOR_FLOYER, KARM_THRESHOLD_TYPES,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, KARM_FLOYER, DOOR_TYPE_BLADE_OVERRIDE,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
-    WINDOW_PROFILES,
-    WINDOW_MIN_MARGIN, MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, MAX_WINDOW_OFFSET,
-    DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
     UTFORING_RANGES, KARM_HAS_UTFORING, UTFORING_MAX_THICKNESS
 )
 from ...models.door import DoorParams
@@ -315,101 +312,6 @@ class DoorForm(QWidget):
 
         layout.addWidget(look_group)
 
-        # --- Vindu ---
-        window_group = QGroupBox("Vindu")
-        window_layout = QFormLayout(window_group)
-
-        self.window_check = QCheckBox("Vindu i dør")
-        self.window_check.stateChanged.connect(self._on_window_changed)
-        window_layout.addRow(self.window_check)
-
-        # Vindusprofil
-        self.window_profile_combo = QComboBox()
-        for key, profile in WINDOW_PROFILES.items():
-            self.window_profile_combo.addItem(profile['name'], key)
-        self.window_profile_combo.currentIndexChanged.connect(self._on_profile_changed)
-        self.window_profile_label = QLabel("Profil:")
-        window_layout.addRow(self.window_profile_label, self.window_profile_combo)
-
-        # Utsparing (mm)
-        window_layout.addRow(QLabel("Utsparing (mm):"))
-
-        self.window_width_spin = QSpinBox()
-        self.window_width_spin.setRange(MIN_WINDOW_SIZE, MAX_WINDOW_SIZE)
-        self.window_width_spin.setValue(DEFAULT_WINDOW_WIDTH)
-        self.window_width_spin.setSuffix(" mm")
-        self.window_width_spin.setSingleStep(10)
-        self.window_width_spin.valueChanged.connect(self._on_window_size_changed)
-        self.window_width_label = QLabel("Bredde:")
-        window_layout.addRow(self.window_width_label, self.window_width_spin)
-
-        self.window_height_spin = QSpinBox()
-        self.window_height_spin.setRange(MIN_WINDOW_SIZE, MAX_WINDOW_SIZE)
-        self.window_height_spin.setValue(DEFAULT_WINDOW_HEIGHT)
-        self.window_height_spin.setSuffix(" mm")
-        self.window_height_spin.setSingleStep(10)
-        self.window_height_spin.valueChanged.connect(self._on_window_size_changed)
-        self.window_height_label = QLabel("Høyde:")
-        window_layout.addRow(self.window_height_label, self.window_height_spin)
-
-        # Beregnet (glasmål og lysåpning)
-        self.glass_dims_label = QLabel("Glasmål:")
-        self.glass_dims_value = QLabel("— × — mm")
-        window_layout.addRow(self.glass_dims_label, self.glass_dims_value)
-
-        self.light_dims_label = QLabel("Lysåpning:")
-        self.light_dims_value = QLabel("— × — mm")
-        window_layout.addRow(self.light_dims_label, self.light_dims_value)
-
-        # Plassering
-        window_layout.addRow(QLabel("Plassering:"))
-
-        # Horisontal (X)
-        x_widget = QWidget()
-        x_layout = QHBoxLayout(x_widget)
-        x_layout.setContentsMargins(0, 0, 0, 0)
-        self.window_x_slider = QSlider(Qt.Orientation.Horizontal)
-        self.window_x_slider.setRange(-MAX_WINDOW_OFFSET, MAX_WINDOW_OFFSET)
-        self.window_x_slider.setValue(0)
-        self.window_x_slider.valueChanged.connect(self._on_window_x_slider_changed)
-        x_layout.addWidget(self.window_x_slider, stretch=1)
-        self.window_x_spin = QSpinBox()
-        self.window_x_spin.setRange(-MAX_WINDOW_OFFSET, MAX_WINDOW_OFFSET)
-        self.window_x_spin.setValue(0)
-        self.window_x_spin.setSuffix(" mm")
-        self.window_x_spin.setMinimumWidth(90)
-        self.window_x_spin.valueChanged.connect(self._on_window_x_spin_changed)
-        x_layout.addWidget(self.window_x_spin)
-        self.window_x_label = QLabel("Horisontal (X):")
-        window_layout.addRow(self.window_x_label, x_widget)
-
-        # Vertikal (Y)
-        y_widget = QWidget()
-        y_layout = QHBoxLayout(y_widget)
-        y_layout.setContentsMargins(0, 0, 0, 0)
-        self.window_y_slider = QSlider(Qt.Orientation.Horizontal)
-        self.window_y_slider.setRange(-MAX_WINDOW_OFFSET, MAX_WINDOW_OFFSET)
-        self.window_y_slider.setValue(0)
-        self.window_y_slider.valueChanged.connect(self._on_window_y_slider_changed)
-        y_layout.addWidget(self.window_y_slider, stretch=1)
-        self.window_y_spin = QSpinBox()
-        self.window_y_spin.setRange(-MAX_WINDOW_OFFSET, MAX_WINDOW_OFFSET)
-        self.window_y_spin.setValue(0)
-        self.window_y_spin.setSuffix(" mm")
-        self.window_y_spin.setMinimumWidth(90)
-        self.window_y_spin.valueChanged.connect(self._on_window_y_spin_changed)
-        y_layout.addWidget(self.window_y_spin)
-        self.window_y_label = QLabel("Vertikal (Y):")
-        window_layout.addRow(self.window_y_label, y_widget)
-
-        # Advarsel for margin
-        self.window_warning_label = QLabel("")
-        self.window_warning_label.setStyleSheet("color: #cc3333; font-weight: bold;")
-        self.window_warning_label.setWordWrap(True)
-        window_layout.addRow(self.window_warning_label)
-
-        layout.addWidget(window_group)
-
         # --- Skjulte widgets for DoorParams-kompatibilitet ---
         # Disse brukes av update_door() og load_door() men vises ikke i UI
         self.fire_rating_combo = QComboBox()
@@ -446,7 +348,7 @@ class DoorForm(QWidget):
 
         # Scroll-guard: hindre at scroll-hjulet endrer verdier på widgets uten fokus
         self._scroll_guard = ScrollGuardFilter(self)
-        for widget in self.findChildren((QSpinBox, QComboBox, QSlider)):
+        for widget in self.findChildren((QSpinBox, QComboBox)):
             widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             widget.installEventFilter(self._scroll_guard)
 
@@ -559,166 +461,6 @@ class DoorForm(QWidget):
         self._update_transport_labels()
 
         self._on_changed()
-
-    def _on_window_changed(self):
-        """Håndterer endring av vindu-checkbox."""
-        if self._block_signals:
-            return
-        self._update_window_visibility()
-        self._on_changed()
-
-    def _on_profile_changed(self):
-        """Håndterer endring av vindusprofil - setter alle verdier fra profilen."""
-        if self._block_signals:
-            return
-
-        profile_key = self.window_profile_combo.currentData()
-        profile = WINDOW_PROFILES.get(profile_key, {})
-
-        self._block_signals = True
-        self.window_width_spin.setValue(profile.get('width', 400))
-        self.window_height_spin.setValue(profile.get('height', 400))
-        self.window_x_spin.setValue(profile.get('pos_x', 0))
-        self.window_x_slider.setValue(profile.get('pos_x', 0))
-        self.window_y_spin.setValue(profile.get('pos_y', 0))
-        self.window_y_slider.setValue(profile.get('pos_y', 0))
-        self._block_signals = False
-
-        # Oppdater beregnede mål og validering
-        self._update_window_calculated()
-        self._validate_window_position()
-        self._on_changed()
-
-    def _on_window_size_changed(self):
-        """Håndterer endring av vindus-størrelse."""
-        if self._block_signals:
-            return
-        self._update_window_calculated()
-        self._validate_window_position()
-        self._on_changed()
-
-    def _on_window_x_slider_changed(self, value: int):
-        """Synkroniserer X-slider med spinbox."""
-        if self._block_signals:
-            return
-        self._block_signals = True
-        self.window_x_spin.setValue(value)
-        self._block_signals = False
-        self._validate_window_position()
-        self._on_changed()
-
-    def _on_window_x_spin_changed(self, value: int):
-        """Synkroniserer X-spinbox med slider."""
-        if self._block_signals:
-            return
-        self._block_signals = True
-        self.window_x_slider.setValue(value)
-        self._block_signals = False
-        self._validate_window_position()
-        self._on_changed()
-
-    def _on_window_y_slider_changed(self, value: int):
-        """Synkroniserer Y-slider med spinbox."""
-        if self._block_signals:
-            return
-        self._block_signals = True
-        self.window_y_spin.setValue(value)
-        self._block_signals = False
-        self._validate_window_position()
-        self._on_changed()
-
-    def _on_window_y_spin_changed(self, value: int):
-        """Synkroniserer Y-spinbox med slider."""
-        if self._block_signals:
-            return
-        self._block_signals = True
-        self.window_y_slider.setValue(value)
-        self._block_signals = False
-        self._validate_window_position()
-        self._on_changed()
-
-    def _update_window_visibility(self):
-        """Viser/skjuler vinduskontroller basert på checkbox."""
-        has_window = self.window_check.isChecked()
-        self.window_profile_label.setVisible(has_window)
-        self.window_profile_combo.setVisible(has_window)
-        self.window_width_label.setVisible(has_window)
-        self.window_width_spin.setVisible(has_window)
-        self.window_height_label.setVisible(has_window)
-        self.window_height_spin.setVisible(has_window)
-        self.glass_dims_label.setVisible(has_window)
-        self.glass_dims_value.setVisible(has_window)
-        self.light_dims_label.setVisible(has_window)
-        self.light_dims_value.setVisible(has_window)
-        self.window_x_label.setVisible(has_window)
-        self.window_x_slider.parent().setVisible(has_window)
-        self.window_y_label.setVisible(has_window)
-        self.window_y_slider.parent().setVisible(has_window)
-        self.window_warning_label.setVisible(has_window and bool(self.window_warning_label.text()))
-
-        if has_window:
-            self._update_window_calculated()
-            self._validate_window_position()
-
-    def _update_window_calculated(self):
-        """Oppdaterer beregnede mål for glasmål og lysåpning."""
-        utsp_w = self.window_width_spin.value()
-        utsp_h = self.window_height_spin.value()
-
-        glass_w = max(0, utsp_w - 36)
-        glass_h = max(0, utsp_h - 36)
-        light_w = max(0, glass_w - 26)
-        light_h = max(0, glass_h - 26)
-
-        self.glass_dims_value.setText(f"{glass_w} × {glass_h} mm")
-        self.light_dims_value.setText(f"{light_w} × {light_h} mm")
-
-    def _validate_window_position(self):
-        """Validerer at vinduet holder 150mm margin fra kanter."""
-        if not self.window_check.isChecked():
-            self.window_warning_label.setText("")
-            self.window_warning_label.setVisible(False)
-            return
-
-        door_w = self.width_spin.value()
-        door_h = self.height_spin.value()
-        karm_offset = 90  # Antatt karm-bredde
-        blade_w = door_w - karm_offset
-        blade_h = door_h - 50  # Antatt karm-høyde differanse
-
-        win_w = self.window_width_spin.value()
-        win_h = self.window_height_spin.value()
-        pos_x = self.window_x_spin.value()
-        pos_y = self.window_y_spin.value()
-
-        # Senter-posisjon (standard: midt horisontalt, 65% opp vertikalt)
-        center_x = blade_w / 2 + pos_x
-        center_y = blade_h * 0.65 + pos_y
-
-        # Kanter
-        left = center_x - win_w / 2
-        right = center_x + win_w / 2
-        bottom = center_y - win_h / 2
-        top = center_y + win_h / 2
-
-        warnings = []
-        min_margin = WINDOW_MIN_MARGIN
-
-        if left < min_margin:
-            warnings.append(f"Venstre: {int(left)}mm (min {min_margin}mm)")
-        if blade_w - right < min_margin:
-            warnings.append(f"Høyre: {int(blade_w - right)}mm (min {min_margin}mm)")
-        if bottom < min_margin:
-            warnings.append(f"Bunn: {int(bottom)}mm (min {min_margin}mm)")
-        if blade_h - top < min_margin:
-            warnings.append(f"Topp: {int(blade_h - top)}mm (min {min_margin}mm)")
-
-        if warnings:
-            self.window_warning_label.setText("⚠ For nær kant: " + ", ".join(warnings))
-            self.window_warning_label.setVisible(True)
-        else:
-            self.window_warning_label.setText("")
-            self.window_warning_label.setVisible(False)
 
     def _on_karm_changed(self):
         """Oppdaterer dørblad-valg basert på valgt karmtype."""
@@ -934,9 +676,6 @@ class DoorForm(QWidget):
         # Fordeling-synlighet
         self._update_split_visibility()
 
-        # Vindu-felt synlighet
-        self._update_window_visibility()
-
         # Terskel/luftspalte aktivering
         threshold_key = self.threshold_combo.currentData()
         is_luftspalte = (threshold_key == 'ingen')
@@ -968,14 +707,6 @@ class DoorForm(QWidget):
         door.swing_direction = self.hinge_combo.currentData() or "left"
         door.lock_case = self.laaskasse_combo.currentText()
         door.handle_type = self.beslag_combo.currentText()
-
-        # Vindu
-        door.has_window = self.window_check.isChecked()
-        door.window_width = self.window_width_spin.value()
-        door.window_height = self.window_height_spin.value()
-        door.window_pos_x = self.window_x_spin.value()
-        door.window_pos_y = self.window_y_spin.value()
-        door.window_profile = self.window_profile_combo.currentData() or "rektangular"
 
         # Tillegg
         door.threshold_type = self.threshold_combo.currentData() or "standard"
@@ -1074,18 +805,6 @@ class DoorForm(QWidget):
         idx = self.hinge_combo.findData(door.swing_direction)
         if idx >= 0:
             self.hinge_combo.setCurrentIndex(idx)
-
-        # Vindu
-        self.window_check.setChecked(door.has_window)
-        idx = self.window_profile_combo.findData(door.window_profile)
-        if idx >= 0:
-            self.window_profile_combo.setCurrentIndex(idx)
-        self.window_width_spin.setValue(door.window_width)
-        self.window_height_spin.setValue(door.window_height)
-        self.window_x_spin.setValue(door.window_pos_x)
-        self.window_x_slider.setValue(door.window_pos_x)
-        self.window_y_spin.setValue(door.window_pos_y)
-        self.window_y_slider.setValue(door.window_pos_y)
 
         # Spesielle
         idx = self.fire_rating_combo.findData(door.fire_rating)
