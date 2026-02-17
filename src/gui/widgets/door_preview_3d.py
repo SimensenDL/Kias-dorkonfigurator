@@ -368,7 +368,9 @@ class DoorPreview3D(QWidget):
             db_h = dorblad_hoyde(door.karm_type, kh, 1, door.blade_type, luftspalte_mm)
             if db_b and db_h:
                 blade_x = -db_b / 2
-                pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, door.swing_direction, s)
+                # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
+                hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
+                pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, hinge_3d, s)
                 self._render_single_blade(
                     blade_x, blade_y, luftspalte_mm,
                     db_b, blade_t_mm, db_h,
@@ -380,24 +382,31 @@ class DoorPreview3D(QWidget):
             if db_b_total and db_h:
                 db1_b = round(db_b_total * door.floyer_split / 100)
                 db2_b = db_b_total - db1_b
-                total_w = db1_b + BLADE_GAP + db2_b
+
+                # Primærblad (aktivt) plasseres på slagretning-siden
+                if door.swing_direction == 'left':
+                    left_w, right_w = db1_b, db2_b
+                else:
+                    left_w, right_w = db2_b, db1_b
+
+                total_w = left_w + BLADE_GAP + right_w
                 start_x = -total_w / 2
 
-                # Blad 2 (venstre i 3D-koord = høyre sett fra framsiden, hengsler på venstre)
-                blade2_x = start_x
-                pivot2 = self._get_open_pivot(blade2_x, db2_b, blade_y, blade_t_mm, 'left', s)
+                # Visuelt høyre blad (negativ X i 3D), hengsler på ytre kant
+                right_x = start_x
+                pivot_r = self._get_open_pivot(right_x, right_w, blade_y, blade_t_mm, 'left', s)
                 self._render_single_blade(
-                    blade2_x, blade_y, luftspalte_mm,
-                    db2_b, blade_t_mm, db_h,
-                    blade_color, s, pivot=pivot2
+                    right_x, blade_y, luftspalte_mm,
+                    right_w, blade_t_mm, db_h,
+                    blade_color, s, pivot=pivot_r
                 )
-                # Blad 1 (høyre i 3D-koord = venstre sett fra framsiden, hengsler på høyre)
-                blade1_x = start_x + db2_b + BLADE_GAP
-                pivot1 = self._get_open_pivot(blade1_x, db1_b, blade_y, blade_t_mm, 'right', s)
+                # Visuelt venstre blad (positiv X i 3D), hengsler på ytre kant
+                left_x = start_x + right_w + BLADE_GAP
+                pivot_l = self._get_open_pivot(left_x, left_w, blade_y, blade_t_mm, 'right', s)
                 self._render_single_blade(
-                    blade1_x, blade_y, luftspalte_mm,
-                    db1_b, blade_t_mm, db_h,
-                    blade_color, s, pivot=pivot1
+                    left_x, blade_y, luftspalte_mm,
+                    left_w, blade_t_mm, db_h,
+                    blade_color, s, pivot=pivot_l
                 )
 
     def _render_single_blade(self, x, y, z, w, d, h, color, s, pivot=None):
@@ -493,20 +502,28 @@ class DoorPreview3D(QWidget):
         if door.floyer == 1:
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.blade_type) or (kb - 128)
             db_h = dorblad_hoyde(door.karm_type, kh, 1, door.blade_type, luftspalte_mm) or (kh - 85)
-            return [(0, db_b, db_h, total_hinges, door.swing_direction)]
+            # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
+            hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
+            return [(0, db_b, db_h, total_hinges, hinge_3d)]
         else:
             db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.blade_type) or (kb - 132)
             db_h = dorblad_hoyde(door.karm_type, kh, 2, door.blade_type, luftspalte_mm) or (kh - 85)
             db1_b = round(db_b_total * door.floyer_split / 100)
             db2_b = db_b_total - db1_b
-            total_w = db1_b + BLADE_GAP + db2_b
             per_blade = max(1, total_hinges // 2)
 
-            # 3D-koord er speilvendt: negativ X = høyre sett fra framsiden
-            b2_cx = -total_w / 2 + db2_b / 2
-            b1_cx = -total_w / 2 + db2_b + BLADE_GAP + db1_b / 2
-            return [(b1_cx, db1_b, db_h, per_blade, 'right'),
-                    (b2_cx, db2_b, db_h, per_blade, 'left')]
+            # Primærblad (aktivt) plasseres på slagretning-siden
+            if door.swing_direction == 'left':
+                left_w, right_w = db1_b, db2_b
+            else:
+                left_w, right_w = db2_b, db1_b
+
+            total_w = left_w + BLADE_GAP + right_w
+            # Visuelt høyre (negativ X i 3D), visuelt venstre (positiv X)
+            right_cx = -total_w / 2 + right_w / 2
+            left_cx = -total_w / 2 + right_w + BLADE_GAP + left_w / 2
+            return [(left_cx, left_w, db_h, per_blade, 'right'),
+                    (right_cx, right_w, db_h, per_blade, 'left')]
 
     # =========================================================================
     # HÅNDTAK
@@ -519,8 +536,8 @@ class DoorPreview3D(QWidget):
 
         total_hinges = self._get_hinge_count(door)
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
-        # For 2-fløyet: speilvent i 3D — 'left' → blades[1], 'right' → blades[0]
-        if door.floyer == 2 and door.swing_direction == 'left':
+        # Håndtak på aktivt blad (slagretning-siden)
+        if door.floyer == 2 and door.swing_direction == 'right':
             bcx, b_w, b_h, _, hinge_side = blades[1]
         else:
             bcx, b_w, b_h, _, hinge_side = blades[0]

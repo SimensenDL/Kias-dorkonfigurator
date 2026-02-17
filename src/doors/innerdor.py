@@ -143,7 +143,7 @@ INNERDOR = {
     # Karmbeskrivelse per karmtype (med {farge}-placeholder)
     'karm_beskrivelse': {
         'SD1': 'Aluminiumskarm SD1, dybde 77 mm, forberedt for KIAS alu-utforinger, pulverlakkert {farge}',
-        'SD2': 'Aluminiumskarm SD2, dybde 84 mm, pulverlakkert {farge}',
+        'SD2': 'Aluminiumskarm SD2, dybde 77 mm, pulverlakkert {farge}',
         'SD3/ID': 'Aluminiumskarm ID1 92 mm m/notspor og dempelist, pulverlakkert {farge}',
     },
 
@@ -166,3 +166,4 @@ INNERDOR = {
         ],
     },
 }
+
