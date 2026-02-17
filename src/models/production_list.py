@@ -30,6 +30,7 @@ class ProductionItem:
     side: Optional[str] = None  # "V", "H", "1V, 1H", eller None
     dor_id: str = ''           # Referanse til hvilken dør
     karm_type: str = ''        # Karmtype for gruppering
+    ordre_ref: str = ''        # Ordre-referanse fra customer-feltet
 
 
 @dataclass
@@ -221,6 +222,7 @@ class ProductionList:
         items.append(ProductionItem(
             komponent='Overligger', antall=1, lengde=karm_b,
             farge=p.karm_color, dor_id=door.id, karm_type=karm_type,
+            ordre_ref=p.customer,
         ))
 
         if floyer == 2:
@@ -229,11 +231,13 @@ class ProductionList:
                 komponent='Hengselside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side='V',
                 dor_id=door.id, karm_type=karm_type,
+                ordre_ref=p.customer,
             ))
             items.append(ProductionItem(
                 komponent='Hengselside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side='H',
                 dor_id=door.id, karm_type=karm_type,
+                ordre_ref=p.customer,
             ))
         else:
             # 1-fløyet: én hengselside + én sluttstykkeside
@@ -241,11 +245,13 @@ class ProductionList:
                 komponent='Hengselside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side=hengsel_side,
                 dor_id=door.id, karm_type=karm_type,
+                ordre_ref=p.customer,
             ))
             items.append(ProductionItem(
                 komponent='Sluttstykkeside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side=sluttstykke_side,
                 dor_id=door.id, karm_type=karm_type,
+                ordre_ref=p.customer,
             ))
 
         # --- Dørramme ---
@@ -266,11 +272,13 @@ class ProductionList:
             items.append(ProductionItem(
                 komponent='DR40 over-/underdel', antall=2, lengde=bw,
                 farge=p.color, dor_id=door.id, karm_type=karm_type,
+                ordre_ref=p.customer,
             ))
             if db_h:
                 items.append(ProductionItem(
                     komponent='DR40 sidedel', antall=2, lengde=db_h,
                     farge=p.color, dor_id=door.id, karm_type=karm_type,
+                    ordre_ref=p.customer,
                 ))
 
         # --- Tilbehør ---
@@ -283,6 +291,7 @@ class ProductionList:
                         komponent='Laminat', antall=2,
                         bredde=lam_b, hoyde=lam_h,
                         farge=p.color, dor_id=door.id, karm_type=karm_type,
+                        ordre_ref=p.customer,
                     ))
 
         # Terskel (kun hvis type ≠ 'ingen')
@@ -292,6 +301,7 @@ class ProductionList:
                 items.append(ProductionItem(
                     komponent='Terskel', antall=1, lengde=t_lengde,
                     dor_id=door.id, karm_type=karm_type,
+                    ordre_ref=p.customer,
                 ))
 
         # Dekklist (kun 2-fløyet)
@@ -300,6 +310,7 @@ class ProductionList:
             items.append(ProductionItem(
                 komponent='Dekklist', antall=1, lengde=dk_lengde,
                 farge=p.karm_color, dor_id=door.id, karm_type=karm_type,
+                ordre_ref=p.customer,
             ))
 
         return items
@@ -628,11 +639,20 @@ class ProductionList:
 
         return sections
 
+    @staticmethod
+    def _format_ordre_refs(counts: Dict[str, int]) -> str:
+        """Formaterer ordre-referanser med antall, f.eks. 'o1000(2), o1001(3)'."""
+        parts = []
+        for ref, count in sorted(counts.items()):
+            if ref:
+                parts.append(f"o{ref}({count})")
+        return ', '.join(parts)
+
     def get_diverse_rows(self) -> List[dict]:
         """Returnerer rader for diverse-tabellen (separat fra hovedtabellen).
 
         Returns:
-            Liste med rader, hver med 'forklaring', 'stk', 'b_mm', 'h_mm', 'farge'
+            Liste med rader, hver med 'forklaring', 'stk', 'b_mm', 'h_mm', 'farge', 'ordre'
         """
         items = self.get_all_items()
         if not items:
@@ -645,10 +665,12 @@ class ProductionList:
 
         # Grupper på (komponent, bredde, hoyde, lengde, farge)
         groups: Dict[tuple, int] = defaultdict(int)
+        ordre_counts: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
         for item in diverse_items:
             key = (item.komponent, item.bredde, item.hoyde,
                    item.lengde, item.farge or '')
             groups[key] += item.antall
+            ordre_counts[key][item.ordre_ref] += item.antall
 
         def sort_key(entry):
             (komponent, bredde, hoyde, lengde, farge) = entry[0]
@@ -660,6 +682,7 @@ class ProductionList:
         for (komponent, bredde, hoyde, lengde, farge), total in sorted(
             groups.items(), key=sort_key
         ):
+            key = (komponent, bredde, hoyde, lengde, farge)
             b_mm = str(bredde) if bredde else (str(lengde) if lengde else '')
             h_mm = str(hoyde) if hoyde else ''
             rows.append({
@@ -668,6 +691,7 @@ class ProductionList:
                 'b_mm': b_mm,
                 'h_mm': h_mm,
                 'farge': farge,
+                'ordre': self._format_ordre_refs(ordre_counts[key]),
                 'merknad': '',
             })
 
@@ -681,6 +705,7 @@ class ProductionList:
         groups: Dict[tuple, Dict[str, int]] = defaultdict(
             lambda: {'V': 0, 'H': 0, 'none': 0}
         )
+        ordre_counts: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         for item in items:
             key = (item.komponent, item.lengde, item.farge)
@@ -690,6 +715,7 @@ class ProductionList:
                 groups[key]['H'] += item.antall
             else:
                 groups[key]['none'] += item.antall
+            ordre_counts[key][item.ordre_ref] += item.antall
 
         def sort_key(entry):
             (komponent, lengde, farge) = entry[0]
@@ -701,6 +727,7 @@ class ProductionList:
         for (komponent, lengde, farge), counts in sorted(
             groups.items(), key=sort_key
         ):
+            key = (komponent, lengde, farge)
             total = counts['V'] + counts['H'] + counts['none']
             parts = []
             if counts['V']:
@@ -715,6 +742,7 @@ class ProductionList:
                 'mm': str(lengde) if lengde else '',
                 'slagretning': slagretning,
                 'farge': farge or '',
+                'ordre': self._format_ordre_refs(ordre_counts[key]),
                 'merknad': '',
             })
 
@@ -728,6 +756,7 @@ class ProductionList:
         Grupperer på (komponent, mål-streng, farge) og summerer antall.
         """
         groups: Dict[tuple, int] = defaultdict(int)
+        ordre_counts: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         for item in items:
             if item.bredde and item.hoyde:
@@ -738,6 +767,7 @@ class ProductionList:
                 mm_str = ''
             key = (item.komponent, mm_str, item.farge or '')
             groups[key] += item.antall
+            ordre_counts[key][item.ordre_ref] += item.antall
 
         def sort_key(entry):
             (komponent, mm_str, farge) = entry[0]
@@ -749,12 +779,14 @@ class ProductionList:
         for (komponent, mm_str, farge), total in sorted(
             groups.items(), key=sort_key
         ):
+            key = (komponent, mm_str, farge)
             rows.append({
                 'profilnavn': komponent,
                 'stk': total,
                 'mm': mm_str,
                 'slagretning': '',
                 'farge': farge,
+                'ordre': self._format_ordre_refs(ordre_counts[key]),
                 'merknad': '',
             })
 

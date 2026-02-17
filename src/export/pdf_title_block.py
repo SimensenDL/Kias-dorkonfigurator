@@ -98,7 +98,7 @@ def draw_title_block(c: canvas.Canvas, x: float, y: float,
     # RAD 3: KUNDE | PROSJEKT-ID
     c.line(x + half_w, row_y[2], x + half_w, row_y[1])
     _draw_label_value_row(c, x, row_y[2], half_w, info_row_h,
-                          "Kunde:", door.customer or "-",
+                          "Ordre Ref.:", door.customer or "-",
                           pad, value_size=11)
     _draw_label_value_row(c, x + half_w, row_y[2], half_w, info_row_h,
                           "Prosjekt-ID:", door.project_id or "-",

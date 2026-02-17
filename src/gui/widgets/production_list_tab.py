@@ -29,7 +29,8 @@ class ProductionListTab(QWidget):
     COL_MM = 2
     COL_SLAG = 3
     COL_FARGE = 4
-    COL_MERKNAD = 5
+    COL_ORDRE = 5
+    COL_MERKNAD = 6
 
     # Diverse-tabell-kolonner
     DIV_COL_FORKL = 0
@@ -37,7 +38,8 @@ class ProductionListTab(QWidget):
     DIV_COL_B = 2
     DIV_COL_H = 3
     DIV_COL_FARGE = 4
-    DIV_COL_MERKNAD = 5
+    DIV_COL_ORDRE = 5
+    DIV_COL_MERKNAD = 6
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -75,9 +77,9 @@ class ProductionListTab(QWidget):
 
         # --- Hovedtabell (karm + dørramme) ---
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "PROFILNAVN", "STK", "MM", "SLAGRETNING", "FARGE", "MERKNAD"
+            "PROFILNAVN", "STK", "MM", "SLAGRETNING", "FARGE", "ORDRE", "MERKNAD"
         ])
         self._setup_table(self.table, stretch_col=self.COL_PROFIL)
         self.table.setVerticalScrollBarPolicy(
@@ -93,9 +95,9 @@ class ProductionListTab(QWidget):
 
         # --- Diverse-tabell ---
         self.diverse_table = QTableWidget()
-        self.diverse_table.setColumnCount(6)
+        self.diverse_table.setColumnCount(7)
         self.diverse_table.setHorizontalHeaderLabels([
-            "FORKLARING", "STK", "B MM", "H MM", "FARGE", "MERKNAD"
+            "FORKLARING", "STK", "B MM", "H MM", "FARGE", "ORDRE", "MERKNAD"
         ])
         self._setup_table(self.diverse_table, stretch_col=self.DIV_COL_FORKL)
         self.diverse_table.setVerticalScrollBarPolicy(
@@ -218,7 +220,7 @@ class ProductionListTab(QWidget):
 
     def _insert_section_header(self, row: int, title: str):
         """Setter inn en seksjon-overskrift som span over alle kolonner."""
-        self.table.setSpan(row, 0, 1, 6)
+        self.table.setSpan(row, 0, 1, 7)
         label = QLabel(f"  {title}")
         label.setStyleSheet(_SECTION_HEADER_STYLE)
         self.table.setCellWidget(row, 0, label)
@@ -238,6 +240,7 @@ class ProductionListTab(QWidget):
         self._set_readonly_cell(self.table, row, self.COL_SLAG,
                                 data['slagretning'], center=True)
         self._set_readonly_cell(self.table, row, self.COL_FARGE, data['farge'])
+        self._set_readonly_cell(self.table, row, self.COL_ORDRE, data.get('ordre', ''))
 
         # Merknad (redigerbar)
         merknad_key = (section_title, data['profilnavn'], data['mm'])
@@ -262,6 +265,8 @@ class ProductionListTab(QWidget):
                                 data['h_mm'], center=True)
         self._set_readonly_cell(self.diverse_table, row, self.DIV_COL_FARGE,
                                 data['farge'])
+        self._set_readonly_cell(self.diverse_table, row, self.DIV_COL_ORDRE,
+                                data.get('ordre', ''))
 
         # Merknad (redigerbar)
         merknad_key = (data['forklaring'], data['b_mm'], data['h_mm'])

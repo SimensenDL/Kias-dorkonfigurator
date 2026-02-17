@@ -90,9 +90,9 @@ class DoorForm(QWidget):
         project_layout.addRow("Dør-ID:", self.project_id_edit)
 
         self.customer_edit = QLineEdit()
-        self.customer_edit.setPlaceholderText("Kundenavn")
+        self.customer_edit.setPlaceholderText("F.eks. 1000")
         self.customer_edit.textChanged.connect(self._on_changed)
-        project_layout.addRow("Kunde:", self.customer_edit)
+        project_layout.addRow("Ordre Referanse:", self.customer_edit)
 
         self.notes_edit = QLineEdit()
         self.notes_edit.setPlaceholderText("Valgfrie merknader...")
