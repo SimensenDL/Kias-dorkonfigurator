@@ -65,9 +65,9 @@ class DoorListTab(QWidget):
 
         # --- Tabell ---
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            "#", "DØR-ID", "NAVN", "STØRRELSE (BM)", "VEGGTYKKELSE",
+            "#", "DØR-ID", "NAVN", "FLØY", "STØRRELSE (BM)", "VEGGTYKKELSE",
             "FARGE", "RETNING", "SLETT"
         ])
         header = self.table.horizontalHeader()
@@ -126,25 +126,36 @@ class DoorListTab(QWidget):
             # Navn
             self.table.setItem(row, 2, QTableWidgetItem(door.label))
 
+            # Fløy
+            if p.floyer == 2:
+                split_a = p.floyer_split
+                split_b = 100 - split_a
+                floy_str = f"2 ({split_a}/{split_b})"
+            else:
+                floy_str = "1"
+            floy_item = QTableWidgetItem(floy_str)
+            floy_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(row, 3, floy_item)
+
             # Størrelse (BM)
             size_str = f"{p.width} x {p.height}"
             size_item = QTableWidgetItem(size_str)
             size_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 3, size_item)
+            self.table.setItem(row, 4, size_item)
 
             # Veggtykkelse
             thick_item = QTableWidgetItem(f"{p.thickness} mm")
             thick_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 4, thick_item)
+            self.table.setItem(row, 5, thick_item)
 
             # Farge
-            self.table.setItem(row, 5, QTableWidgetItem(p.color))
+            self.table.setItem(row, 6, QTableWidgetItem(p.color))
 
             # Retning
             direction = SWING_DIRECTIONS.get(p.swing_direction, p.swing_direction)
             dir_item = QTableWidgetItem(direction)
             dir_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 6, dir_item)
+            self.table.setItem(row, 7, dir_item)
 
             # Slett-knapp
             del_btn = QPushButton("Slett")
@@ -159,7 +170,7 @@ class DoorListTab(QWidget):
                 QPushButton:hover { background-color: #d32f2f; }
             """)
             del_btn.clicked.connect(lambda _, did=door.id: self._delete_door(did))
-            self.table.setCellWidget(row, 7, del_btn)
+            self.table.setCellWidget(row, 8, del_btn)
 
         self.summary_label.setText(f"Antall dører: {len(doors)}")
         self.ordretekst_btn.setEnabled(len(doors) > 0)

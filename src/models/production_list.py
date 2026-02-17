@@ -222,16 +222,31 @@ class ProductionList:
             komponent='Overligger', antall=1, lengde=karm_b,
             farge=p.karm_color, dor_id=door.id, karm_type=karm_type,
         ))
-        items.append(ProductionItem(
-            komponent='Hengselside', antall=1, lengde=karm_h,
-            farge=p.karm_color, side=hengsel_side,
-            dor_id=door.id, karm_type=karm_type,
-        ))
-        items.append(ProductionItem(
-            komponent='Sluttstykkeside', antall=1, lengde=karm_h,
-            farge=p.karm_color, side=sluttstykke_side,
-            dor_id=door.id, karm_type=karm_type,
-        ))
+
+        if floyer == 2:
+            # 2-fløyet: begge sider er hengselsider (én fløy per side)
+            items.append(ProductionItem(
+                komponent='Hengselside', antall=1, lengde=karm_h,
+                farge=p.karm_color, side='V',
+                dor_id=door.id, karm_type=karm_type,
+            ))
+            items.append(ProductionItem(
+                komponent='Hengselside', antall=1, lengde=karm_h,
+                farge=p.karm_color, side='H',
+                dor_id=door.id, karm_type=karm_type,
+            ))
+        else:
+            # 1-fløyet: én hengselside + én sluttstykkeside
+            items.append(ProductionItem(
+                komponent='Hengselside', antall=1, lengde=karm_h,
+                farge=p.karm_color, side=hengsel_side,
+                dor_id=door.id, karm_type=karm_type,
+            ))
+            items.append(ProductionItem(
+                komponent='Sluttstykkeside', antall=1, lengde=karm_h,
+                farge=p.karm_color, side=sluttstykke_side,
+                dor_id=door.id, karm_type=karm_type,
+            ))
 
         # --- Dørramme ---
         db_b_total = dorblad_bredde(karm_type, karm_b, floyer, blade_type)

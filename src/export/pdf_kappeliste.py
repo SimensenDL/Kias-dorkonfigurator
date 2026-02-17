@@ -12,7 +12,8 @@ from reportlab.lib.units import mm
 from reportlab.lib.colors import Color, black, white, HexColor
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph, Image
+    SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph, Image,
+    KeepTogether,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
@@ -71,14 +72,13 @@ def export_kappeliste_pdf(
     sections = prod_list.get_kappeliste_sections()
     for section in sections:
         table = _build_section_table(section, merknader)
-        elements.append(table)
-        elements.append(Spacer(1, 4 * mm))
+        elements.append(KeepTogether([table, Spacer(1, 4 * mm)]))
 
     # Diverse-tabell
     diverse_rows = prod_list.get_diverse_rows()
     if diverse_rows:
         table = _build_diverse_table(diverse_rows, diverse_merknader)
-        elements.append(table)
+        elements.append(KeepTogether([table]))
 
     doc.build(elements, onFirstPage=_draw_footer, onLaterPages=_draw_footer)
 
