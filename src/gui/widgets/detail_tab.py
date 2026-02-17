@@ -158,7 +158,7 @@ class DetailTab(QWidget):
 
         # --- Felles utregninger ---
         karm_type = door.karm_type
-        blade_type = door.blade_type
+        hinge_type = door.hinge_type
         floyer = door.floyer
         luftspalte = door.effective_luftspalte()
         is_2floyet = floyer == 2
@@ -178,8 +178,8 @@ class DetailTab(QWidget):
             self.val_dekklist.setText(fmt(dekklist_lengde(karm_h)))
 
         # --- Dørblad-beregninger ---
-        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, blade_type)
-        db_h = dorblad_hoyde(karm_type, karm_h, floyer, blade_type, luftspalte)
+        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, hinge_type)
+        db_h = dorblad_hoyde(karm_type, karm_h, floyer, hinge_type, luftspalte)
 
         if is_2floyet:
             # Prosentvis oppdeling
@@ -204,7 +204,7 @@ class DetailTab(QWidget):
 
             # Laminat per fløy
             if db1_b and db_h:
-                lam1_b, lam1_h = laminat_mal(karm_type, db1_b, db_h, blade_type)
+                lam1_b, lam1_h = laminat_mal(karm_type, db1_b, db_h, hinge_type)
                 self.val_laminat1_b.setText(fmt(lam1_b))
                 self.val_laminat1_h.setText(fmt(lam1_h))
             else:
@@ -212,7 +212,7 @@ class DetailTab(QWidget):
                 self.val_laminat1_h.setText("—")
 
             if db2_b and db_h:
-                lam2_b, lam2_h = laminat_mal(karm_type, db2_b, db_h, blade_type)
+                lam2_b, lam2_h = laminat_mal(karm_type, db2_b, db_h, hinge_type)
                 self.val_laminat2_b.setText(fmt(lam2_b))
                 self.val_laminat2_h.setText(fmt(lam2_h))
             else:
@@ -228,7 +228,7 @@ class DetailTab(QWidget):
             self.val_dorblad1_h.setText(fmt(db_h) if db_h else "—")
 
             if db_b and db_h:
-                lam_b, lam_h = laminat_mal(karm_type, db_b, db_h, blade_type)
+                lam_b, lam_h = laminat_mal(karm_type, db_b, db_h, hinge_type)
                 self.val_laminat1_b.setText(fmt(lam_b))
                 self.val_laminat1_h.setText(fmt(lam_h))
             else:

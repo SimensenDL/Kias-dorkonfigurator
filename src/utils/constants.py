@@ -49,6 +49,16 @@ KARM_BLADE_TYPES = {}
 for d in DOOR_REGISTRY.values():
     KARM_BLADE_TYPES.update(d['karm_blade_types'])
 
+# Hengseltyper (samlet fra alle dørtyper)
+HINGE_TYPES = {}
+for d in DOOR_REGISTRY.values():
+    HINGE_TYPES.update(d.get('hengsel_typer', {}))
+
+# Kompatible hengseltyper per karmtype
+KARM_HINGE_TYPES = {}
+for d in DOOR_REGISTRY.values():
+    KARM_HINGE_TYPES.update(d.get('karm_hengsel_typer', {}))
+
 # Tillatte fløyer per karmtype
 KARM_FLOYER = {}
 for d in DOOR_REGISTRY.values():

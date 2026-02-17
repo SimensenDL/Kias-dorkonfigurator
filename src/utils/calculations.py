@@ -151,14 +151,14 @@ def transport_hoyde(karm_type: str, karm_h: int, terskel_type: str = 'ingen') ->
 # =============================================================================
 
 def dorblad_bredde(karm_type: str, karm_b: int, floyer: int = 1,
-                   blade_type: Optional[str] = None) -> Optional[int]:
+                   hinge_type: Optional[str] = None) -> Optional[int]:
     """Beregn dørbladbredde fra karmbredde.
 
     Args:
         karm_type: Karmtype (f.eks. 'SD1', 'SD3/ID')
         karm_b: Karmbredde i mm
         floyer: Antall fløyer (1 eller 2)
-        blade_type: Bladtype (f.eks. 'SDI_ROCA'), kun nødvendig for SD3/ID
+        hinge_type: Hengseltype (f.eks. 'ROCA_SF'), kun nødvendig for SD3/ID
 
     Returns:
         Dørbladbredde i mm, eller None hvis ikke støttet
@@ -167,11 +167,11 @@ def dorblad_bredde(karm_type: str, karm_b: int, floyer: int = 1,
     if not offsets:
         return None
 
-    # Sjekk om offsets er per bladtype (SD3/ID-struktur)
-    if blade_type and blade_type in offsets:
-        # SD3/ID-struktur: {bladtype: {floyer: {...}}}
-        blade_offsets = offsets[blade_type]
-        floyer_data = blade_offsets.get(floyer) or blade_offsets.get(1)
+    # Sjekk om offsets er per hengseltype (SD3/ID-struktur)
+    if hinge_type and hinge_type in offsets:
+        # SD3/ID-struktur: {hengseltype: {floyer: {...}}}
+        hinge_offsets = offsets[hinge_type]
+        floyer_data = hinge_offsets.get(floyer) or hinge_offsets.get(1)
     else:
         # Standard struktur: {floyer: {...}}
         floyer_data = offsets.get(floyer) or offsets.get(1)
@@ -184,7 +184,7 @@ def dorblad_bredde(karm_type: str, karm_b: int, floyer: int = 1,
 
 
 def dorblad_hoyde(karm_type: str, karm_h: int, floyer: int = 1,
-                  blade_type: Optional[str] = None,
+                  hinge_type: Optional[str] = None,
                   luftspalte: int = 0) -> Optional[int]:
     """Beregn dørbladhøyde fra karmhøyde.
 
@@ -194,7 +194,7 @@ def dorblad_hoyde(karm_type: str, karm_h: int, floyer: int = 1,
         karm_type: Karmtype (f.eks. 'SD1', 'SD3/ID')
         karm_h: Karmhøyde i mm
         floyer: Antall fløyer (1 eller 2)
-        blade_type: Bladtype (f.eks. 'SDI_ROCA'), kun nødvendig for SD3/ID
+        hinge_type: Hengseltype (f.eks. 'ROCA_SF'), kun nødvendig for SD3/ID
         luftspalte: Luftspalte i mm (brukes kun for karmtyper i DORBLAD_HOYDE_INKL_LUFTSPALTE)
 
     Returns:
@@ -204,11 +204,11 @@ def dorblad_hoyde(karm_type: str, karm_h: int, floyer: int = 1,
     if not offsets:
         return None
 
-    # Sjekk om offsets er per bladtype (SD3/ID-struktur)
-    if blade_type and blade_type in offsets:
-        # SD3/ID-struktur: {bladtype: {floyer: {...}}}
-        blade_offsets = offsets[blade_type]
-        floyer_data = blade_offsets.get(floyer) or blade_offsets.get(1)
+    # Sjekk om offsets er per hengseltype (SD3/ID-struktur)
+    if hinge_type and hinge_type in offsets:
+        # SD3/ID-struktur: {hengseltype: {floyer: {...}}}
+        hinge_offsets = offsets[hinge_type]
+        floyer_data = hinge_offsets.get(floyer) or hinge_offsets.get(1)
         # SD3/ID bruker 'hoyde_base' i stedet for 'hoyde'
         hoyde_offset = floyer_data.get('hoyde_base', 0) if floyer_data else 0
     else:
@@ -263,14 +263,14 @@ def dekklist_lengde(karm_h: int) -> int:
 
 
 def laminat_mal(karm_type: str, dorblad_b: int, dorblad_h: int,
-                blade_type: Optional[str] = None) -> tuple[Optional[int], Optional[int]]:
+                hinge_type: Optional[str] = None) -> tuple[Optional[int], Optional[int]]:
     """Beregn laminatmål fra dørbladmål.
 
     Args:
         karm_type: Karmtype
         dorblad_b: Dørbladbredde i mm
         dorblad_h: Dørbladhøyde i mm
-        blade_type: Bladtype (kun nødvendig for SD3/ID)
+        hinge_type: Hengseltype (kun nødvendig for SD3/ID)
 
     Returns:
         Tuple (laminat_bredde, laminat_høyde) i mm, eller (None, None) hvis ikke støttet
@@ -281,8 +281,8 @@ def laminat_mal(karm_type: str, dorblad_b: int, dorblad_h: int,
         # Bruk default
         offset = LAMINAT_OFFSET_DEFAULT
     elif isinstance(offsets, dict):
-        # SD3/ID-struktur: {bladtype: offset}
-        offset = offsets.get(blade_type, LAMINAT_OFFSET_DEFAULT)
+        # SD3/ID-struktur: {hengseltype: offset}
+        offset = offsets.get(hinge_type, LAMINAT_OFFSET_DEFAULT)
     else:
         # Standard: enkelt tall
         offset = offsets

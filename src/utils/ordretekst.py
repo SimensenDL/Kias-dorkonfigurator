@@ -39,7 +39,6 @@ def generer_ordretekst(door) -> list[str]:
     ordretekst = door_def['ordretekst']
     floyer = door.floyer
     karm_type = door.karm_type
-    blade_type = door.blade_type
 
     # --- Tittel ---
     tittel = ordretekst['tittel'].get(floyer, '')
@@ -62,12 +61,16 @@ def generer_ordretekst(door) -> list[str]:
 
     # --- Hengsler ---
     hengsler_data = door_def.get('hengsler', {})
-    hengsel_info = hengsler_data.get(blade_type, {})
+    hinge_type = door.hinge_type
+    hinge_count = door.hinge_count
+    hengsel_info = hengsler_data.get(hinge_type, {})
     hengsler_tekst = ''
     if hengsel_info:
         navn = hengsel_info['navn']
-        tekst = hengsel_info['tekst'].get(floyer, '')
-        hengsler_tekst = f"{navn} {tekst}".strip()
+        if floyer == 2:
+            hengsler_tekst = f"{navn} ({hinge_count} x 2 stk.)"
+        else:
+            hengsler_tekst = f"{navn} ({hinge_count} stk.)"
 
     # --- Låskasse og beslag (fra DoorParams) ---
     laaskasse = door.lock_case if door.lock_case else ''

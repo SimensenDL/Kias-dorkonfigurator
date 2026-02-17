@@ -10,6 +10,7 @@ from ..utils.constants import (
     DEFAULT_DIMENSIONS, DEFAULT_COLOR, THRESHOLD_LUFTSPALTE,
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, DOOR_KARM_TYPES,
     DOOR_TYPE_BLADE_OVERRIDE,
+    HINGE_TYPES, KARM_HINGE_TYPES,
     DIMENSION_DIFFERENTIALS, KARM_THRESHOLD_TYPES,
     TRANSPORT_WIDTH_OFFSETS, TRANSPORT_HEIGHT_OFFSETS,
     KARM_SIZE_OFFSETS, KARM_SIDESTOLPE_WIDTH, KARM_BLADE_FLUSH
@@ -34,7 +35,7 @@ class DoorParams:
     width: int = 1010    # Utsparingsbredde (BM) i mm
     height: int = 2110   # Utsparingshøyde (HM) i mm
     thickness: int = 100  # Veggtykkelse i mm
-    blade_type: str = "SDI_ROCA"  # Dørbladtype (nøkkel fra DOOR_BLADE_TYPES)
+    blade_type: str = "SDI"  # Dørbladtype (nøkkel fra DOOR_BLADE_TYPES)
     blade_thickness: int = 40  # Dørbladtykkelse i mm
     utforing: str = ""  # Utforing-steg (nøkkel fra UTFORING_RANGES), tom hvis ikke aktuelt
 
@@ -44,7 +45,7 @@ class DoorParams:
     surface_type: str = "glatt"
 
     # Beslag og lås
-    hinge_type: str = "roca_sf"     # Hengseltype (nøkkel fra HINGE_TYPES)
+    hinge_type: str = "ROCA_SF"     # Hengseltype (nøkkel fra HINGE_TYPES)
     hinge_count: int = 2            # Antall hengsler per fløy
     lock_case: str = "3065_316l"    # Låsekasse (nøkkel fra LOCK_CASES)
     handle_type: str = "vrider_sylinder_oval"  # Vrider/skilt (nøkkel fra HANDLE_TYPES)
@@ -92,6 +93,11 @@ class DoorParams:
                 if blade_types:
                     self.blade_type = blade_types[0]
                     self.blade_thickness = DOOR_BLADE_TYPES[self.blade_type]['thicknesses'][0]
+
+        # Sett standard hengseltype basert på karmtype
+        hinge_types = KARM_HINGE_TYPES.get(self.karm_type, [])
+        if hinge_types:
+            self.hinge_type = hinge_types[0]
 
         # Sett standard terskeltype basert på karmtype
         allowed_thresholds = KARM_THRESHOLD_TYPES.get(self.karm_type, ['ingen'])
@@ -231,6 +237,20 @@ class DoorParams:
     @classmethod
     def from_dict(cls, data: dict) -> 'DoorParams':
         """Oppretter DoorParams fra dictionary."""
+        # Migrering av gamle .kdf-filer: blade_type → hinge_type
+        old_blade = data.get('blade_type', '')
+        if old_blade == 'SDI_ROCA':
+            data['blade_type'] = 'SDI'
+            if data.get('hinge_type', '') in ('roca_sf', 'ROCA_SF', ''):
+                data['hinge_type'] = 'ROCA_SF'
+        elif old_blade == 'SDI_SNAPIN':
+            data['blade_type'] = 'SDI'
+            data['hinge_type'] = 'ARGENTA_100_86A'
+
+        # Migrering av gammel lowercase hinge_type
+        if data.get('hinge_type') == 'roca_sf':
+            data['hinge_type'] = 'ROCA_SF'
+
         # Filtrer ut ukjente nøkler for fremoverkompatibilitet
         valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in data.items() if k in valid_keys}

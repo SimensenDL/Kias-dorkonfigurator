@@ -29,21 +29,30 @@ INNERDOR = {
 
     # Dørbladtyper
     'blade_types': {
-        'SDI_ROCA': {
-            'name': 'Innerdørblad m/ROCA',
-            'thicknesses': [40],
-        },
-        'SDI_SNAPIN': {
-            'name': 'Innerdørblad m/Snap-in',
+        'SDI': {
+            'name': 'Innerdørblad',
             'thicknesses': [40],
         },
     },
 
     # Kompatible dørbladtyper per karmtype
     'karm_blade_types': {
-        'SD1':     ['SDI_ROCA'],
-        'SD2':     ['SDI_ROCA'],
-        'SD3/ID': ['SDI_ROCA', 'SDI_SNAPIN'],
+        'SD1':     ['SDI'],
+        'SD2':     ['SDI'],
+        'SD3/ID': ['SDI'],
+    },
+
+    # Hengseltyper
+    'hengsel_typer': {
+        'ROCA_SF': {'navn': 'Hengsler Roca i SF stål', 'default_antall': 2, 'antall_valg': [2, 3, 4]},
+        'ARGENTA_100_86A': {'navn': 'Hengsler Argenta 100/86A', 'default_antall': 2, 'antall_valg': [2, 3, 4]},
+    },
+
+    # Kompatible hengseltyper per karmtype
+    'karm_hengsel_typer': {
+        'SD1':     ['ROCA_SF'],
+        'SD2':     ['ROCA_SF'],
+        'SD3/ID': ['ROCA_SF', 'ARGENTA_100_86A'],
     },
 
     # Terskeltyper per karmtype
@@ -90,13 +99,13 @@ INNERDOR = {
 
     # Produksjons-offsets: dørblad (karm → dørblad)
     # Struktur: {karmtype: {floyer: {'bredde': offset, 'hoyde': offset}}}
-    # For SD3/ID: {karmtype: {bladtype: {floyer: {'bredde': offset, 'hoyde_base': offset}}}}
+    # For SD3/ID: {karmtype: {hengseltype: {floyer: {'bredde': offset, 'hoyde_base': offset}}}}
     'dorblad_offsets': {
         'SD1': {1: {'bredde': 128, 'hoyde': 85}, 2: {'bredde': 132, 'hoyde': 85}},
         'SD2': {1: {'bredde': 128, 'hoyde': 85}, 2: {'bredde': 132, 'hoyde': 85}},
         'SD3/ID': {
-            'SDI_ROCA':   {1: {'bredde': 63, 'hoyde_base': 32}},
-            'SDI_SNAPIN': {1: {'bredde': 62, 'hoyde_base': 32}},
+            'ROCA_SF':         {1: {'bredde': 63, 'hoyde_base': 32}},
+            'ARGENTA_100_86A': {1: {'bredde': 62, 'hoyde_base': 32}},
         },
     },
 
@@ -113,31 +122,23 @@ INNERDOR = {
     },
 
     # Laminat-offsets (dørblad → laminat)
-    # For SD3/ID: avhenger av bladtype
+    # For SD3/ID: avhenger av hengseltype
     'laminat_offsets': {
         'SD1': 8,
         'SD2': 8,
         'SD3/ID': {
-            'SDI_ROCA': 8,
-            'SDI_SNAPIN': 10,
+            'ROCA_SF': 8,
+            'ARGENTA_100_86A': 10,
         },
     },
 
     # Dekklist for 2-fløyet (lengde = karmhøyde - offset)
     'dekklist_2floyet_offset': 102,
 
-    # Hengsler (styrt av dørbladtype, ikke bruker-dropdown)
+    # Hengsler (nøkkel = hengseltype, antall styres av brukeren)
     'hengsler': {
-        'SDI_ROCA': {
-            'navn': 'Hengsler Roca i SF stål',
-            'antall': {1: 2, 2: 4},
-            'tekst': {1: '(2 stk.)', 2: '(2 x 2 stk.)'},
-        },
-        'SDI_SNAPIN': {
-            'navn': 'Hengsler Snap-in 6540 kvit',
-            'antall': {1: 2},
-            'tekst': {1: '2 stk.'},
-        },
+        'ROCA_SF': {'navn': 'Hengsler Roca i SF stål'},
+        'ARGENTA_100_86A': {'navn': 'Hengsler Argenta 100/86A'},
     },
 
     # Karmbeskrivelse per karmtype (med {farge}-placeholder)

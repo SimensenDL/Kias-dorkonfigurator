@@ -201,7 +201,7 @@ class ProductionList:
         """Beregner alle produksjonskomponenter for en enkelt dør."""
         p = door.params
         karm_type = p.karm_type
-        blade_type = p.blade_type
+        hinge_type = p.hinge_type
         floyer = p.floyer
         luftspalte = p.effective_luftspalte()
 
@@ -255,8 +255,8 @@ class ProductionList:
             ))
 
         # --- Dørramme ---
-        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, blade_type)
-        db_h = dorblad_hoyde(karm_type, karm_h, floyer, blade_type, luftspalte)
+        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, hinge_type)
+        db_h = dorblad_hoyde(karm_type, karm_h, floyer, hinge_type, luftspalte)
 
         if floyer == 2 and db_b_total:
             split_pct = p.floyer_split / 100.0
@@ -285,7 +285,7 @@ class ProductionList:
         # Laminat (2 per fløy: front + bak)
         for bw in blade_widths:
             if bw and db_h:
-                lam_b, lam_h = laminat_mal(karm_type, bw, db_h, blade_type)
+                lam_b, lam_h = laminat_mal(karm_type, bw, db_h, hinge_type)
                 if lam_b and lam_h:
                     items.append(ProductionItem(
                         komponent='Laminat', antall=2,

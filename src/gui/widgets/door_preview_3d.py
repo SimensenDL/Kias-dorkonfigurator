@@ -364,8 +364,8 @@ class DoorPreview3D(QWidget):
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
         if door.floyer == 1:
-            db_b = dorblad_bredde(door.karm_type, kb, 1, door.blade_type)
-            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.blade_type, luftspalte_mm)
+            db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type)
+            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm)
             if db_b and db_h:
                 blade_x = -db_b / 2
                 # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
@@ -377,8 +377,8 @@ class DoorPreview3D(QWidget):
                     blade_color, s, pivot=pivot
                 )
         else:
-            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.blade_type)
-            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.blade_type, luftspalte_mm)
+            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type)
+            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm)
             if db_b_total and db_h:
                 db1_b = round(db_b_total * door.floyer_split / 100)
                 db2_b = db_b_total - db1_b
@@ -454,7 +454,9 @@ class DoorPreview3D(QWidget):
             if count == 2:
                 positions = [0.20, 0.80]
             elif count == 3:
-                positions = [0.15, 0.50, 0.85]
+                positions = [0.20, 0.60, 0.80]
+            elif count == 4:
+                positions = [0.20, 0.40, 0.60, 0.80]
             else:
                 positions = [i / (count + 1) for i in range(1, count + 1)]
 
@@ -481,18 +483,11 @@ class DoorPreview3D(QWidget):
                 mesh.setVisible(self._show_blades)
 
     def _get_hinge_count(self, door) -> int:
-        """Hent hengselantall fra DOOR_REGISTRY, med fallback."""
-        try:
-            reg = DOOR_REGISTRY.get(door.door_type, {})
-            hengsler = reg.get('hengsler', {})
-            blade_data = hengsler.get(door.blade_type, {})
-            antall = blade_data.get('antall', {})
-            count = antall.get(door.floyer)
-            if count:
-                return count
-        except (KeyError, TypeError):
-            pass
-        return door.hinge_count if door.hinge_count > 0 else 2
+        """Hent hengselantall fra DoorParams."""
+        count = door.hinge_count
+        if door.floyer == 2:
+            count *= 2  # Per fløy → totalt
+        return count if count > 0 else 2
 
     def _get_blade_geometries(self, door, kb, kh, luftspalte_mm, total_hinges):
         """Returnerer liste av (senter_x, bredde, høyde, hengsler_per_blad, hengselside) for hvert blad.
@@ -500,14 +495,15 @@ class DoorPreview3D(QWidget):
         hengselside er 'left' eller 'right' — angir hvilken kant hengselet sitter på.
         """
         if door.floyer == 1:
-            db_b = dorblad_bredde(door.karm_type, kb, 1, door.blade_type) or (kb - 128)
-            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.blade_type, luftspalte_mm) or (kh - 85)
+            db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type) or (kb - 128)
+            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm) or (kh - 85)
             # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
             hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
-            return [(0, db_b, db_h, total_hinges, hinge_3d)]
+            per_blade = max(1, total_hinges)
+            return [(0, db_b, db_h, per_blade, hinge_3d)]
         else:
-            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.blade_type) or (kb - 132)
-            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.blade_type, luftspalte_mm) or (kh - 85)
+            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type) or (kb - 132)
+            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm) or (kh - 85)
             db1_b = round(db_b_total * door.floyer_split / 100)
             db2_b = db_b_total - db1_b
             per_blade = max(1, total_hinges // 2)
