@@ -44,7 +44,6 @@ class ProductionListTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._prod_list = get_production_list()
-        self._merknader: dict = {}
         self._diverse_merknader: dict = {}
         self._init_ui()
 
@@ -140,7 +139,6 @@ class ProductionListTab(QWidget):
 
     def refresh(self):
         """Oppdaterer kappelisten fra produksjonslisten."""
-        self._save_merknader()
         self._save_diverse_merknader()
 
         sections = self._prod_list.get_kappeliste_sections()
@@ -242,10 +240,9 @@ class ProductionListTab(QWidget):
         self._set_readonly_cell(self.table, row, self.COL_FARGE, data['farge'])
         self._set_readonly_cell(self.table, row, self.COL_ORDRE, data.get('ordre', ''))
 
-        # Merknad (redigerbar)
-        merknad_key = (section_title, data['profilnavn'], data['mm'])
-        merknad_text = self._merknader.get(merknad_key, '')
-        self.table.setItem(row, self.COL_MERKNAD, QTableWidgetItem(merknad_text))
+        # Merknad (read-only, fra modellen)
+        self._set_readonly_cell(self.table, row, self.COL_MERKNAD,
+                                data.get('merknad', ''))
 
     # ------------------------------------------------------------------
     # Diverse-tabell — rad-rendering
@@ -315,7 +312,6 @@ class ProductionListTab(QWidget):
 
     def _export_kappeliste_pdf(self):
         """Eksporterer kappelisten til PDF."""
-        self._save_merknader()
         self._save_diverse_merknader()
 
         filepath, _ = QFileDialog.getSaveFileName(
@@ -329,7 +325,6 @@ class ProductionListTab(QWidget):
         try:
             export_kappeliste_pdf(
                 self._prod_list, filepath,
-                merknader=self._merknader,
                 diverse_merknader=self._diverse_merknader,
             )
             QMessageBox.information(
@@ -345,32 +340,6 @@ class ProductionListTab(QWidget):
     # ------------------------------------------------------------------
     # Merknad-lagring
     # ------------------------------------------------------------------
-
-    def _save_merknader(self):
-        """Lagrer merknader fra hovedtabellen."""
-        self._merknader.clear()
-        current_section = ''
-        current_profil = ''
-
-        for row in range(self.table.rowCount()):
-            if self.table.columnSpan(row, 0) > 1:
-                widget = self.table.cellWidget(row, 0)
-                if widget and isinstance(widget, QLabel):
-                    current_section = widget.text().strip()
-                current_profil = ''
-                continue
-
-            profil_item = self.table.item(row, self.COL_PROFIL)
-            mm_item = self.table.item(row, self.COL_MM)
-            merknad_item = self.table.item(row, self.COL_MERKNAD)
-
-            if profil_item and profil_item.text():
-                current_profil = profil_item.text()
-
-            if current_profil and merknad_item and merknad_item.text():
-                key = (current_section, current_profil,
-                       mm_item.text() if mm_item else '')
-                self._merknader[key] = merknad_item.text()
 
     def _save_diverse_merknader(self):
         """Lagrer merknader fra diverse-tabellen."""

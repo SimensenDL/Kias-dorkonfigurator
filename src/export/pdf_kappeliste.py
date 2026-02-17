@@ -37,7 +37,6 @@ _GREY_ALT = HexColor('#F5F5F5')
 def export_kappeliste_pdf(
     prod_list: ProductionList,
     filepath: str,
-    merknader: Optional[dict] = None,
     diverse_merknader: Optional[dict] = None,
 ) -> None:
     """Eksporterer kappeliste til PDF.
@@ -45,12 +44,9 @@ def export_kappeliste_pdf(
     Args:
         prod_list: ProductionList med dørene
         filepath: Filsti for PDF-filen
-        merknader: Dict med merknader for hovedtabellen
-                   {(section_title, profilnavn, mm): tekst}
         diverse_merknader: Dict med merknader for diverse-tabellen
                            {(forklaring, b_mm, h_mm): tekst}
     """
-    merknader = merknader or {}
     diverse_merknader = diverse_merknader or {}
 
     doc = SimpleDocTemplate(
@@ -71,7 +67,7 @@ def export_kappeliste_pdf(
     # Kappeliste-seksjoner
     sections = prod_list.get_kappeliste_sections()
     for section in sections:
-        table = _build_section_table(section, merknader)
+        table = _build_section_table(section)
         elements.append(KeepTogether([table, Spacer(1, 4 * mm)]))
 
     # Diverse-tabell
@@ -143,7 +139,7 @@ def _build_header(prod_list: ProductionList) -> list:
     return elements
 
 
-def _build_section_table(section: dict, merknader: dict) -> Table:
+def _build_section_table(section: dict) -> Table:
     """Bygger en platypus-tabell for en kappeliste-seksjon."""
     title = section['title']
     rows = section['rows']
@@ -169,16 +165,13 @@ def _build_section_table(section: dict, merknader: dict) -> Table:
         show_name = row['profilnavn'] != prev_profil
         prev_profil = row['profilnavn']
 
-        merknad_key = (title, row['profilnavn'], row['mm'])
-        merknad = merknader.get(merknad_key, '')
-
         data.append([
             row['profilnavn'] if show_name else '',
             str(row['stk']),
             row['mm'],
             row['slagretning'],
             row['farge'],
-            merknad,
+            row.get('merknad', ''),
         ])
 
     table = Table(data, colWidths=col_widths, repeatRows=2)

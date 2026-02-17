@@ -13,7 +13,7 @@ from .door import DoorParams
 from ..utils.calculations import (
     karm_bredde, karm_hoyde,
     dorblad_bredde, dorblad_hoyde,
-    terskel_lengde, laminat_mal, dekklist_lengde,
+    terskel_lengde, dekklist_lengde,
 )
 from ..utils.constants import DOOR_TYPES
 
@@ -31,6 +31,9 @@ class ProductionItem:
     dor_id: str = ''           # Referanse til hvilken dør
     karm_type: str = ''        # Karmtype for gruppering
     ordre_ref: str = ''        # Ordre-referanse fra customer-feltet
+    hinge_type: str = ''       # Hengseltype (for karmhylser-sporing)
+    hinge_count: int = 0       # Hengsler per fløy (for pseudo-linje)
+    notes: str = ''            # Bruker-merknad fra GUI (DoorParams.notes)
 
 
 @dataclass
@@ -71,7 +74,7 @@ KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID']
 
 KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
 DORRAMME_KOMPONENT_ORDER = ['DR40 over-/underdel', 'DR40 sidedel']
-DIVERSE_KOMPONENT_ORDER = ['Laminat', 'Terskel', 'Dekklist']
+DIVERSE_KOMPONENT_ORDER = ['Terskel', 'Dekklist']
 
 
 class ProductionList:
@@ -218,11 +221,18 @@ class ProductionList:
 
         items: List[ProductionItem] = []
 
+        # Felles karm-felter for hengsel/merknad-sporing
+        karm_extra = dict(
+            hinge_type=hinge_type,
+            hinge_count=p.hinge_count,
+            notes=p.notes,
+        )
+
         # --- Karm ---
         items.append(ProductionItem(
             komponent='Overligger', antall=1, lengde=karm_b,
             farge=p.karm_color, dor_id=door.id, karm_type=karm_type,
-            ordre_ref=p.customer,
+            ordre_ref=p.customer, **karm_extra,
         ))
 
         if floyer == 2:
@@ -231,13 +241,13 @@ class ProductionList:
                 komponent='Hengselside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side='V',
                 dor_id=door.id, karm_type=karm_type,
-                ordre_ref=p.customer,
+                ordre_ref=p.customer, **karm_extra,
             ))
             items.append(ProductionItem(
                 komponent='Hengselside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side='H',
                 dor_id=door.id, karm_type=karm_type,
-                ordre_ref=p.customer,
+                ordre_ref=p.customer, **karm_extra,
             ))
         else:
             # 1-fløyet: én hengselside + én sluttstykkeside
@@ -245,13 +255,13 @@ class ProductionList:
                 komponent='Hengselside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side=hengsel_side,
                 dor_id=door.id, karm_type=karm_type,
-                ordre_ref=p.customer,
+                ordre_ref=p.customer, **karm_extra,
             ))
             items.append(ProductionItem(
                 komponent='Sluttstykkeside', antall=1, lengde=karm_h,
                 farge=p.karm_color, side=sluttstykke_side,
                 dor_id=door.id, karm_type=karm_type,
-                ordre_ref=p.customer,
+                ordre_ref=p.customer, **karm_extra,
             ))
 
         # --- Dørramme ---
@@ -282,18 +292,6 @@ class ProductionList:
                 ))
 
         # --- Tilbehør ---
-        # Laminat (2 per fløy: front + bak)
-        for bw in blade_widths:
-            if bw and db_h:
-                lam_b, lam_h = laminat_mal(karm_type, bw, db_h, hinge_type)
-                if lam_b and lam_h:
-                    items.append(ProductionItem(
-                        komponent='Laminat', antall=2,
-                        bredde=lam_b, hoyde=lam_h,
-                        farge=p.color, dor_id=door.id, karm_type=karm_type,
-                        ordre_ref=p.customer,
-                    ))
-
         # Terskel (kun hvis type ≠ 'ingen')
         if p.threshold_type != 'ingen':
             t_lengde = terskel_lengde(karm_type, karm_b, floyer)
@@ -658,7 +656,7 @@ class ProductionList:
         if not items:
             return []
 
-        diverse_komps = {'Laminat', 'Terskel', 'Dekklist'}
+        diverse_komps = {'Terskel', 'Dekklist'}
         diverse_items = [i for i in items if i.komponent in diverse_komps]
         if not diverse_items:
             return []
@@ -697,18 +695,40 @@ class ProductionList:
 
         return rows
 
+    @staticmethod
+    def _format_vh(side_counts: Dict[str, int]) -> str:
+        """Formaterer V/H-telling for parentes, f.eks. '1V, 2H'."""
+        parts = []
+        if side_counts.get('V', 0):
+            parts.append(f"{side_counts['V']}V")
+        if side_counts.get('H', 0):
+            parts.append(f"{side_counts['H']}H")
+        return ', '.join(parts)
+
     def _accumulate_karm_items(self, items: List[ProductionItem]) -> List[dict]:
         """Akkumulerer karm-items med V/H-telling.
 
         Grupperer på (komponent, lengde, farge) og teller V/H separat.
+        Merknad viser:
+        - Karmhylser (xV, yH) på Hengselside/Sluttstykkeside ved Argenta
+        - X hengsler (xV, yH) på Hengselside ved hinge_count > 2
+        - GUI-merknader (notes) på alle karm-items
         """
         groups: Dict[tuple, Dict[str, int]] = defaultdict(
             lambda: {'V': 0, 'H': 0, 'none': 0}
         )
         ordre_counts: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        notes_per_group: Dict[tuple, list] = defaultdict(list)
+        # Argenta-sporing per gruppe: {key → {side → antall}}
+        argenta_sides: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        # Hengsel-antall sporing: {key → {hinge_count → {side → antall}}}
+        hinge_count_sides: Dict[tuple, Dict[int, Dict[str, int]]] = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(int))
+        )
 
         for item in items:
             key = (item.komponent, item.lengde, item.farge)
+            side_key = item.side or 'none'
             if item.side == 'V':
                 groups[key]['V'] += item.antall
             elif item.side == 'H':
@@ -716,6 +736,15 @@ class ProductionList:
             else:
                 groups[key]['none'] += item.antall
             ordre_counts[key][item.ordre_ref] += item.antall
+            if item.notes and item.notes not in notes_per_group[key]:
+                notes_per_group[key].append(item.notes)
+            # Spor Argenta (for Hengselside og Sluttstykkeside)
+            if item.komponent in ('Hengselside', 'Sluttstykkeside'):
+                if 'ARGENTA' in item.hinge_type.upper():
+                    argenta_sides[key][side_key] += item.antall
+            # Spor hengsler > 2 (kun Hengselside)
+            if item.komponent == 'Hengselside' and item.hinge_count > 2:
+                hinge_count_sides[key][item.hinge_count][side_key] += item.antall
 
         def sort_key(entry):
             (komponent, lengde, farge) = entry[0]
@@ -736,6 +765,25 @@ class ProductionList:
                 parts.append(f"{counts['H']}H")
             slagretning = ', '.join(parts)
 
+            # Bygg merknad
+            merknad_parts = []
+
+            # Karmhylser (Hengselside + Sluttstykkeside, ikke Overligger)
+            if key in argenta_sides:
+                vh = self._format_vh(argenta_sides[key])
+                merknad_parts.append(f'Karmhylser ({vh})')
+
+            # Hengsler > 2 (kun Hengselside)
+            if key in hinge_count_sides:
+                for hc in sorted(hinge_count_sides[key]):
+                    vh = self._format_vh(hinge_count_sides[key][hc])
+                    merknad_parts.append(f'{hc} hengsler ({vh})')
+
+            # GUI-merknader
+            merknad_parts.extend(notes_per_group[key])
+
+            merknad = ', '.join(merknad_parts)
+
             rows.append({
                 'profilnavn': komponent,
                 'stk': total,
@@ -743,7 +791,7 @@ class ProductionList:
                 'slagretning': slagretning,
                 'farge': farge or '',
                 'ordre': self._format_ordre_refs(ordre_counts[key]),
-                'merknad': '',
+                'merknad': merknad,
             })
 
         return rows
