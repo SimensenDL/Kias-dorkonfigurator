@@ -25,18 +25,22 @@ from .constants import (
 # KARMMÅL (fra utsparing)
 # =============================================================================
 
-def karm_bredde(karm_type: str, utsparing_bredde: int) -> int:
+def karm_bredde(karm_type: str, utsparing_bredde: int, adjufix: bool = False) -> int:
     """Beregn karmbredde fra utsparingsbredde.
 
     Args:
         karm_type: Karmtype (f.eks. 'SD1', 'KD2')
         utsparing_bredde: Utsparingsbredde i mm (BM)
+        adjufix: Adjufix karmhylser (reduserer bredde med 10mm)
 
     Returns:
         Karmbredde i mm
     """
     offset = KARM_SIZE_OFFSETS.get(karm_type, {}).get('width', 0)
-    return utsparing_bredde + offset
+    base = utsparing_bredde + offset
+    if adjufix:
+        base -= 10
+    return base
 
 
 def karm_hoyde(karm_type: str, utsparing_hoyde: int) -> int:

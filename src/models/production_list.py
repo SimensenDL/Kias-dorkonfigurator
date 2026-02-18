@@ -33,6 +33,7 @@ class ProductionItem:
     ordre_ref: str = ''        # Ordre-referanse fra customer-feltet
     hinge_type: str = ''       # Hengseltype (for karmhylser-sporing)
     hinge_count: int = 0       # Hengsler per fløy (for pseudo-linje)
+    adjufix: bool = False      # Adjufix karmhylser
     notes: str = ''            # Bruker-merknad fra GUI (DoorParams.notes)
 
 
@@ -208,7 +209,7 @@ class ProductionList:
         floyer = p.floyer
         luftspalte = p.effective_luftspalte()
 
-        karm_b = karm_bredde(karm_type, p.width)
+        karm_b = karm_bredde(karm_type, p.width, adjufix=p.adjufix)
         karm_h = karm_hoyde(karm_type, p.height)
 
         # Slagretning: left → hengsler på venstre side
@@ -225,6 +226,7 @@ class ProductionList:
         karm_extra = dict(
             hinge_type=hinge_type,
             hinge_count=p.hinge_count,
+            adjufix=p.adjufix,
             notes=p.notes,
         )
 
@@ -719,8 +721,8 @@ class ProductionList:
         )
         ordre_counts: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
         notes_per_group: Dict[tuple, list] = defaultdict(list)
-        # Argenta-sporing per gruppe: {key → {side → antall}}
-        argenta_sides: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        # Adjufix-sporing per gruppe: {key → {side → antall}}
+        adjufix_sides: Dict[tuple, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
         # Hengsel-antall sporing: {key → {hinge_count → {side → antall}}}
         hinge_count_sides: Dict[tuple, Dict[int, Dict[str, int]]] = defaultdict(
             lambda: defaultdict(lambda: defaultdict(int))
@@ -738,10 +740,10 @@ class ProductionList:
             ordre_counts[key][item.ordre_ref] += item.antall
             if item.notes and item.notes not in notes_per_group[key]:
                 notes_per_group[key].append(item.notes)
-            # Spor Argenta (for Hengselside og Sluttstykkeside)
+            # Spor Adjufix (for Hengselside og Sluttstykkeside)
             if item.komponent in ('Hengselside', 'Sluttstykkeside'):
-                if 'ARGENTA' in item.hinge_type.upper():
-                    argenta_sides[key][side_key] += item.antall
+                if item.adjufix:
+                    adjufix_sides[key][side_key] += item.antall
             # Spor hengsler > 2 (kun Hengselside)
             if item.komponent == 'Hengselside' and item.hinge_count > 2:
                 hinge_count_sides[key][item.hinge_count][side_key] += item.antall
@@ -769,8 +771,8 @@ class ProductionList:
             merknad_parts = []
 
             # Karmhylser (Hengselside + Sluttstykkeside, ikke Overligger)
-            if key in argenta_sides:
-                vh = self._format_vh(argenta_sides[key])
+            if key in adjufix_sides:
+                vh = self._format_vh(adjufix_sides[key])
                 merknad_parts.append(f'Karmhylser ({vh})')
 
             # Hengsler > 2 (kun Hengselside)

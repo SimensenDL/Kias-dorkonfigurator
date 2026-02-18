@@ -163,7 +163,7 @@ class DetailTab(QWidget):
         luftspalte = door.effective_luftspalte()
         is_2floyet = floyer == 2
 
-        karm_b = karm_bredde(karm_type, door.width)
+        karm_b = karm_bredde(karm_type, door.width, adjufix=door.adjufix)
         karm_h = karm_hoyde(karm_type, door.height)
         self.val_karm_b.setText(fmt(karm_b))
         self.val_karm_h.setText(fmt(karm_h))

@@ -244,6 +244,13 @@ class DoorForm(QWidget):
 
         door_layout.addRow("Hengsler:", hinge_widget)
 
+        # Adjufix karmhylser
+        self.adjufix_combo = QComboBox()
+        self.adjufix_combo.addItem("Nei", False)
+        self.adjufix_combo.addItem("Ja", True)
+        self.adjufix_combo.currentIndexChanged.connect(self._on_dimension_changed)
+        door_layout.addRow("Adjufix:", self.adjufix_combo)
+
         # Terskeltype + luftspalte på samme rad
         threshold_widget = QWidget()
         threshold_layout = QHBoxLayout(threshold_widget)
@@ -403,6 +410,7 @@ class DoorForm(QWidget):
             width=self.width_spin.value(),
             height=self.height_spin.value(),
             threshold_type=self.threshold_combo.currentData() or "ingen",
+            adjufix=self.adjufix_combo.currentData() or False,
         )
 
         # Karmmål
@@ -753,6 +761,7 @@ class DoorForm(QWidget):
         door.handle_type = self.beslag_combo.currentText()
 
         # Tillegg
+        door.adjufix = self.adjufix_combo.currentData() or False
         door.threshold_type = self.threshold_combo.currentData() or "standard"
         if door.threshold_type == 'ingen':
             door.luftspalte = self.luftspalte_spin.value()
@@ -840,6 +849,11 @@ class DoorForm(QWidget):
             self.threshold_combo.setCurrentIndex(idx)
         if door.threshold_type == 'ingen':
             self.luftspalte_spin.setValue(door.luftspalte)
+
+        # Adjufix
+        idx = self.adjufix_combo.findData(door.adjufix)
+        if idx >= 0:
+            self.adjufix_combo.setCurrentIndex(idx)
 
         # Farge
         idx = self.color_combo.findData(door.color)

@@ -265,7 +265,7 @@ class DoorPreview3D(QWidget):
         wall_t = door.thickness
 
         # Karmmål (mm)
-        kb = karm_bredde(door.karm_type, bm)
+        kb = karm_bredde(door.karm_type, bm, adjufix=door.adjufix)
         kh = karm_hoyde(door.karm_type, hm)
 
         # Karm-profil

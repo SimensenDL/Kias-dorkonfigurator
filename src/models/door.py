@@ -54,6 +54,7 @@ class DoorParams:
     # Tilleggsutstyr
     threshold_type: str = "ingen"
     luftspalte: int = 0   # Luftspalte i mm, kun redigerbar for terskeltype 'ingen'
+    adjufix: bool = False  # Adjufix karmhylser (Ja/Nei)
     lock_type: str = ""    # Fritekst, bakoverkompatibilitet (erstattes av lock_case)
     swing_direction: str = "left"
 
@@ -170,9 +171,12 @@ class DoorParams:
         return None
 
     def karm_width(self) -> int:
-        """Karmbredde = Utsparing + offset."""
+        """Karmbredde = Utsparing + offset (- 10mm ved Adjufix)."""
         offsets = KARM_SIZE_OFFSETS.get(self.karm_type, {'width': 0})
-        return self.width + offsets['width']
+        base = self.width + offsets['width']
+        if self.adjufix:
+            base -= 10
+        return base
 
     def karm_height(self) -> int:
         """Karmhøyde = Utsparing + offset."""
@@ -224,6 +228,7 @@ class DoorParams:
             'espagnolett': self.espagnolett,
             'threshold_type': self.threshold_type,
             'luftspalte': self.luftspalte,
+            'adjufix': self.adjufix,
             'lock_type': self.lock_type,
             'swing_direction': self.swing_direction,
             'fire_rating': self.fire_rating,
