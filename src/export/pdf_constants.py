@@ -27,6 +27,44 @@ COLOR_TITLE_BG = white                            # Hvit bakgrunn for tittelfelt
 COLOR_HINGE = Color(0.3, 0.3, 0.3)              # Mørk for hengsler
 COLOR_HANDLE = Color(0.15, 0.15, 0.15)          # Mørk for håndtak
 
+# Vegg- og snittfarger
+COLOR_WALL_FILL = Color(0.88, 0.88, 0.88)       # Lys grå veggfylling
+COLOR_WALL_HATCH = Color(0.55, 0.55, 0.55)      # Mørkere grå for skraveringslinjer
+COLOR_SECTION_CUT = Color(0.45, 0.45, 0.45)     # Grå for snitt-kuttflater
+COLOR_SWING_ARC = Color(0, 0, 0)                # Svart stiplet slagbue
+COLOR_SECTION_LINE = Color(0, 0, 0.7)           # Blå for snittlinje A-A
+
+# Karmprofil-dimensjoner for horisontalsnitt (mm)
+KARM_SECTION_PROFILES = {
+    'SD1': {
+        'listverk_w': 60, 'listverk_t': 7,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 44,
+        'blade_t': 40,
+        'both_sides': True,
+        'no_listverk': False,
+        'kobling_depth_fixed': None,  # Bruker wall_t
+    },
+    'SD2': {
+        'listverk_w': 60, 'listverk_t': 7,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 44,
+        'blade_t': 40,
+        'both_sides': False,
+        'no_listverk': False,
+        'kobling_depth_fixed': 77,
+    },
+    'SD3/ID': {
+        'body_w': 24,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 52,
+        'blade_t': 40,
+        'karm_depth': 92,
+        'both_sides': False,
+        'no_listverk': True,
+    },
+}
+
 # Sidedimensjoner (A3 liggende for dør-tegninger)
 A3_WIDTH, A3_HEIGHT = landscape(A3)
 A4_WIDTH, A4_HEIGHT = landscape(A4)

@@ -1,20 +1,39 @@
 """
 Tittelfelt-tegning for PDF-eksport.
-Profesjonelt stående tittelfelt med logo, prosjektdata og tegningsinformasjon.
+Kompakt tittelfelt i nedre høyre hjørne med all produksjonsrelevant data.
 """
 from datetime import datetime
 
-from reportlab.lib.colors import Color, black
+from reportlab.lib.colors import Color, black, white
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
 
 from ..models.door import DoorParams
-from .pdf_constants import (
-    COLOR_TITLE_BG, COMPANY_ADDRESS, DRAWING_STATUS, LOGO_PATH
+from .pdf_constants import COLOR_TITLE_BG, COMPANY_ADDRESS, LOGO_PATH
+from ..utils.constants import (
+    DOOR_TYPES, SWING_DIRECTIONS, HINGE_TYPES, THRESHOLD_TYPES,
 )
-from ..utils.constants import DOOR_TYPES
+
+# Tittelfelt-dimensjoner (brukes av pdf_exporter for layout)
+TITLE_BLOCK_WIDTH = 80 * mm
+
+# Beregnet innholdshøyde
+_ROW_H = 10 * mm
+_NUM_ROWS = 6
+_DIM_SECTION_H = 32 * mm
+_BOTTOM_ROW_H = 8 * mm
+_LOGO_H = 14 * mm
+_CONTACT_H = 4 * mm
+
+TITLE_BLOCK_HEIGHT = (
+    _NUM_ROWS * _ROW_H +
+    _DIM_SECTION_H +
+    _BOTTOM_ROW_H +
+    _LOGO_H +
+    _CONTACT_H
+)
 
 
 def draw_title_block(c: canvas.Canvas, x: float, y: float,
@@ -23,20 +42,8 @@ def draw_title_block(c: canvas.Canvas, x: float, y: float,
                      drawing_title: str, sheet_id: str,
                      scale: float,
                      show_scale: bool = True) -> None:
-    """
-    Tegner profesjonelt stående tittelfelt med prosjektdata.
-
-    Args:
-        c: Canvas å tegne på
-        x, y: Nedre venstre hjørne av tittelfeltet
-        width, height: Dimensjoner på tittelfeltet
-        door: DoorParams for prosjektdata
-        drawing_title: Tittel på tegningen
-        sheet_id: Ark-ID (f.eks. "D.01")
-        scale: Målestokk (f.eks. 10 for 1:10)
-        show_scale: Om målestokk skal vises
-    """
-    pad = 5
+    """Tegner kompakt tittelfelt med produksjonsdata."""
+    pad = 4
 
     # Bakgrunn og ramme
     c.setFillColor(COLOR_TITLE_BG)
@@ -44,179 +51,174 @@ def draw_title_block(c: canvas.Canvas, x: float, y: float,
     c.setLineWidth(0.5)
     c.rect(x, y, width, height, fill=1, stroke=1)
 
-    # --- LAYOUT-BEREGNINGER (fra topp til bunn) ---
-    info_row_h = 12 * mm
-    upper_section_top = y + height
-    upper_section_h = info_row_h * 3
-    upper_section_bottom = upper_section_top - upper_section_h
-
-    four_box_h = info_row_h
-    four_box_top = upper_section_bottom
-    four_box_bottom = four_box_top - four_box_h
-
-    contact_box_h = 6 * mm
-    contact_box_bottom = y
-    contact_box_top = y + contact_box_h
-
-    logo_section_h = 35 * mm
-    logo_section_bottom = contact_box_top
-
-    # Y-posisjoner for info-radene
-    row_y = []
-    current_y = upper_section_top
-    for _ in range(3):
-        row_y.append(current_y - info_row_h)
-        current_y -= info_row_h
-
-    # Horisontale skillelinjer
-    for ry in row_y:
-        c.line(x, ry, x + width, ry)
-    c.line(x, four_box_top, x + width, four_box_top)
-    c.line(x, four_box_bottom, x + width, four_box_bottom)
-
     half_w = width / 2
 
-    # RAD 1: PROSJEKT | ID
-    c.line(x + half_w, row_y[0], x + half_w, upper_section_top)
+    # ================================================================
+    # LAYOUT: fra bunn og oppover
+    # ================================================================
+
+    # --- BUNN: Kontaktinfo ---
+    c.setFillColor(black)
+    c.setFont("Helvetica", 5.5)
+    c.drawCentredString(x + width / 2, y + 1, COMPANY_ADDRESS)
+    contact_top = y + _CONTACT_H
+    c.line(x, contact_top, x + width, contact_top)
+
+    # --- LOGO (kompakt) ---
+    logo_y = contact_top
+    logo_top = logo_y + _LOGO_H
+    _draw_logo(c, x, logo_y, width, _LOGO_H, pad)
+    c.line(x, logo_top, x + width, logo_top)
+
+    # --- 3-RUTERS RAD: Dato | Målestokk | Format ---
+    br_y = logo_top
+    br_top = br_y + _BOTTOM_ROW_H
+    c.line(x, br_top, x + width, br_top)
+
+    third_w = width / 3
+    for i in range(1, 3):
+        c.line(x + i * third_w, br_y, x + i * third_w, br_top)
+
+    _draw_cell(c, x, br_y, third_w, _BOTTOM_ROW_H,
+               "Dato:", datetime.now().strftime("%d.%m.%y"), pad, val_size=8)
+    scale_text = f"1:{int(scale)}" if show_scale else "-"
+    _draw_cell(c, x + third_w, br_y, third_w, _BOTTOM_ROW_H,
+               "Målestokk:", scale_text, pad, val_size=8)
+    _draw_cell(c, x + 2 * third_w, br_y, third_w, _BOTTOM_ROW_H,
+               "Format:", "A3", pad, val_size=8)
+
+    # --- MÅL-SEKSJON ---
+    dim_y = br_top
+    dim_top = dim_y + _DIM_SECTION_H
+    c.line(x, dim_top, x + width, dim_top)
+    _draw_dimension_section(c, door, x, dim_y, width, _DIM_SECTION_H, pad)
+
+    # --- INFO-RADER (fra toppen nedover) ---
     door_type_name = DOOR_TYPES.get(door.door_type, door.door_type)
-    _draw_label_value_row(c, x, row_y[0], half_w, info_row_h,
-                          "Produkt:", door_type_name,
-                          pad, value_size=12)
-    _draw_label_value_row(c, x + half_w, row_y[0], half_w, info_row_h,
-                          "ID:", sheet_id or "-",
-                          pad, value_size=12)
+    swing_text = SWING_DIRECTIONS.get(door.swing_direction, door.swing_direction)
+    hinge_info = HINGE_TYPES.get(door.hinge_type, {})
+    hinge_name = hinge_info.get('navn', door.hinge_type) if isinstance(hinge_info, dict) else door.hinge_type
+    hinge_short = hinge_name.replace('Hengsler ', '').replace('i SF stål', 'SF')
+    hinge_text = f"{hinge_short} ({door.hinge_count})"
+    threshold_text = THRESHOLD_TYPES.get(door.threshold_type, door.threshold_type)
 
-    # RAD 2: STATUS | TEGNING
-    c.line(x + half_w, row_y[1], x + half_w, row_y[0])
-    _draw_label_value_row(c, x, row_y[1], half_w, info_row_h,
-                          "Status:", DRAWING_STATUS,
-                          pad, value_size=12)
-    _draw_label_value_row(c, x + half_w, row_y[1], half_w, info_row_h,
-                          "Tegning:", drawing_title,
-                          pad, value_size=12)
+    rows = [
+        ("Produkt:", door_type_name, "Tegning:", sheet_id or "D.01"),
+        ("Karmtype:", door.karm_type, "Fløyer:", f"{door.floyer}-fløyet"),
+        ("Slagretning:", swing_text, "Vegg:", f"{door.thickness} mm"),
+        ("Farge blad:", door.color, "Farge karm:", door.karm_color),
+        ("Hengsler:", hinge_text, "Terskel:", threshold_text),
+        ("Ordre Ref.:", door.customer or "-", "Prosjekt:", door.project_id or "-"),
+    ]
 
-    # RAD 3: KUNDE | PROSJEKT-ID
-    c.line(x + half_w, row_y[2], x + half_w, row_y[1])
-    _draw_label_value_row(c, x, row_y[2], half_w, info_row_h,
-                          "Ordre Ref.:", door.customer or "-",
-                          pad, value_size=11)
-    _draw_label_value_row(c, x + half_w, row_y[2], half_w, info_row_h,
-                          "Prosjekt-ID:", door.project_id or "-",
-                          pad, value_size=11)
+    current_top = y + height
+    for i, (ll, vl, lr, vr) in enumerate(rows):
+        row_bottom = current_top - (i + 1) * _ROW_H
+        if row_bottom < dim_top:
+            break
+        c.line(x, row_bottom, x + width, row_bottom)
+        c.line(x + half_w, row_bottom, x + half_w, row_bottom + _ROW_H)
 
-    # 4-RUTERS RAD
-    box_w = width / 4
-    box_h = four_box_h
+        _draw_cell(c, x, row_bottom, half_w, _ROW_H,
+                   ll, vl, pad, val_size=9)
+        _draw_cell(c, x + half_w, row_bottom, half_w, _ROW_H,
+                   lr, vr, pad, val_size=9)
 
-    for i in range(1, 4):
-        c.line(x + i * box_w, four_box_bottom, x + i * box_w, four_box_top)
 
-    _draw_bottom_box(c, x, four_box_bottom, box_w, box_h,
-                     "Tegn. dato:",
-                     datetime.now().strftime("%d.%m.%y"), pad)
+def _draw_dimension_section(c: canvas.Canvas, door: DoorParams,
+                            x: float, y: float,
+                            width: float, height: float,
+                            pad: float) -> None:
+    """Tegner mål-seksjonen med alle produksjonsmål."""
+    c.setFillColor(Color(0.3, 0.3, 0.3))
+    c.setFont("Helvetica-Bold", 6.5)
+    c.drawString(x + pad, y + height - 9, "MÅL (mm)")
 
-    # Bygg transportmål-tekst med 90° og 180° bredde
-    bt_90 = door.transport_width_90()
-    bt_180 = door.transport_width_180()
+    bm_w, bm_h = door.width, door.height
+    kw, kh = door.karm_width(), door.karm_height()
+    bw, bh = door.blade_width(), door.blade_height()
+    bt90 = door.transport_width_90()
+    bt180 = door.transport_width_180()
     ht = door.transport_height_by_threshold()
 
-    bt_90_str = str(bt_90) if bt_90 is not None else "—"
-    bt_180_str = str(bt_180) if bt_180 is not None else "—"
-    ht_str = str(ht) if ht is not None else "—"
+    lines = [
+        f"BM  {bm_w} × {bm_h}",
+        f"KB  {kw} × {kh}",
+        f"BB  {bw} × {bh}",
+    ]
 
-    # Format: BM: 1010×2110 / BT90°: 890 / BT180°: 920 / H: 2060
-    dim_text = f"BM:{door.width}×{door.height} BT90°:{bt_90_str} BT180°:{bt_180_str} H:{ht_str}"
-    _draw_bottom_box(c, x + box_w, four_box_bottom, box_w, box_h,
-                     "Mål:",
-                     dim_text, pad)
-
-    scale_text = f"1 : {int(scale)}" if show_scale else "-"
-    _draw_bottom_box(c, x + 2 * box_w, four_box_bottom, box_w, box_h,
-                     "Målestokk:",
-                     scale_text, pad)
-
-    _draw_bottom_box(c, x + 3 * box_w, four_box_bottom, box_w, box_h,
-                     "Arkformat:",
-                     "A3", pad)
-
-    # LOGO-SEKSJON
-    c.line(x, contact_box_top, x + width, contact_box_top)
-
-    logo_area_h = logo_section_bottom + logo_section_h - logo_section_bottom
-
-    if LOGO_PATH.exists():
-        try:
-            drawing = svg2rlg(str(LOGO_PATH))
-            if drawing:
-                logo_max_w = width - 2 * pad
-                logo_max_h = logo_area_h * 0.75
-                scale_x = logo_max_w / drawing.width
-                scale_y = logo_max_h / drawing.height
-                scale = min(scale_x, scale_y)
-                scaled_w = drawing.width * scale
-                scaled_h = drawing.height * scale
-                drawing.width = scaled_w
-                drawing.height = scaled_h
-                drawing.scale(scale, scale)
-                logo_img_x = x + pad + (logo_max_w - scaled_w) / 2
-                logo_img_y = logo_section_bottom + (logo_area_h - scaled_h) / 2
-                renderPDF.draw(drawing, c, logo_img_x, logo_img_y)
-        except Exception:
-            pass
-
-    # Kontaktinfo
-    c.setFillColor(black)
-    c.setFont("Helvetica-Bold", 7)
-    contact_y = contact_box_bottom + (contact_box_h / 2) - 3
-    c.drawCentredString(x + width / 2, contact_y, COMPANY_ADDRESS)
-
-
-def _draw_label_value_row(c: canvas.Canvas, x: float, y: float,
-                          width: float, height: float,
-                          label: str, value: str,
-                          pad: float, value_size: int = 12) -> None:
-    """Tegner en rad med label og verdi med auto-skalering."""
-    c.setFillColor(Color(0.4, 0.4, 0.4))
-    c.setFont("Helvetica", 7)
-    c.drawString(x + pad, y + height - 10, label)
+    bt_parts = []
+    if bt90 is not None:
+        bt_parts.append(f"BT90° {bt90}")
+    if bt180 is not None:
+        bt_parts.append(f"BT180° {bt180}")
+    if ht is not None:
+        bt_parts.append(f"HT {ht}")
+    if bt_parts:
+        lines.append("  ".join(bt_parts))
 
     c.setFillColor(black)
-    available_width = width - 2 * pad
-    font_size = value_size
-    min_font_size = 6
-
-    while font_size >= min_font_size:
-        c.setFont("Helvetica-Bold", font_size)
-        text_width = c.stringWidth(value, "Helvetica-Bold", font_size)
-        if text_width <= available_width:
+    c.setFont("Helvetica-Bold", 7.5)
+    line_h = 8
+    start_y = y + height - 18
+    for i, line in enumerate(lines):
+        ly = start_y - i * line_h
+        if ly < y + 1:
             break
-        font_size -= 0.5
-
-    c.drawString(x + pad, y + height - 10 - font_size - 2, value)
+        c.drawString(x + pad + 1, ly, line)
 
 
-def _draw_bottom_box(c: canvas.Canvas, x: float, y: float,
-                     width: float, height: float,
-                     label: str, value: str, pad: float) -> None:
-    """Tegner en boks i 4-ruters raden med label og verdi."""
-    c.setFillColor(Color(0.4, 0.4, 0.4))
-    c.setFont("Helvetica", 6)
-    c.drawString(x + pad, y + height - 9, label)
+def _draw_cell(c: canvas.Canvas, x: float, y: float,
+               width: float, height: float,
+               label: str, value: str,
+               pad: float, val_size: float = 9) -> None:
+    """Tegner en celle med label øverst og verdi under."""
+    c.setFillColor(Color(0.45, 0.45, 0.45))
+    c.setFont("Helvetica", 5.5)
+    c.drawString(x + pad, y + height - 7, label)
 
     c.setFillColor(black)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(x + pad, y + height / 2 - 6, value)
+    available = width - 2 * pad
+    fs = val_size
+    while fs >= 5:
+        c.setFont("Helvetica-Bold", fs)
+        if c.stringWidth(value, "Helvetica-Bold", fs) <= available:
+            break
+        fs -= 0.5
+
+    c.drawString(x + pad, y + height - 7 - fs - 1, value)
+
+
+def _draw_logo(c: canvas.Canvas, x: float, y: float,
+               width: float, height: float, pad: float) -> None:
+    """Tegner KIAS-logoen kompakt."""
+    if not LOGO_PATH.exists():
+        return
+    try:
+        drawing = svg2rlg(str(LOGO_PATH))
+        if not drawing:
+            return
+        logo_max_w = width - 2 * pad
+        logo_max_h = height - 2
+        sx = logo_max_w / drawing.width
+        sy = logo_max_h / drawing.height
+        s = min(sx, sy)
+        sw = drawing.width * s
+        sh = drawing.height * s
+        drawing.width = sw
+        drawing.height = sh
+        drawing.scale(s, s)
+        renderPDF.draw(drawing, c, x + pad + (logo_max_w - sw) / 2,
+                       y + (height - sh) / 2)
+    except Exception:
+        pass
 
 
 def draw_drawing_frame(c: canvas.Canvas, page_width: float, page_height: float,
-                       margin: float, title_block_x: float,
-                       gap: float = 5 * mm) -> None:
-    """Tegner ramme rundt tegneområdet (venstre del av arket)."""
-    frame_x = margin / 2
-    frame_y = margin / 2
-    frame_width = title_block_x - gap - frame_x
-    frame_height = page_height - margin
-
+                       margin: float) -> None:
+    """Tegner ytre ramme rundt hele siden."""
     c.setStrokeColor(black)
     c.setLineWidth(0.5)
-    c.rect(frame_x, frame_y, frame_width, frame_height, fill=0, stroke=1)
+    c.rect(margin / 2, margin / 2,
+           page_width - margin, page_height - margin,
+           fill=0, stroke=1)
