@@ -483,19 +483,10 @@ class DoorPreview3D(QWidget):
                 pivot = self._get_open_pivot(blade_x, b_w, blade_y_pos, blade_t_mm, hinge_side, s)
                 tr = self._build_open_transform(pivot)
 
-                if count <= 0:
-                    count = 2
-                if count == 2:
-                    positions = [0.20, 0.80]
-                elif count == 3:
-                    positions = [0.20, 0.60, 0.80]
-                elif count == 4:
-                    positions = [0.20, 0.40, 0.60, 0.80]
-                else:
-                    positions = [i / (count + 1) for i in range(1, count + 1)]
+                z_positions = self._hinge_z_positions(b_h, max(count, 2))
 
-                for p in positions:
-                    hz = luftspalte_mm + b_h * p - hh / 2
+                for z_center in z_positions:
+                    hz = luftspalte_mm + z_center - hh / 2
                     if hinge_side == 'left':
                         hx = bcx - b_w / 2 - hw
                     else:
@@ -532,17 +523,7 @@ class DoorPreview3D(QWidget):
             else:
                 px = bcx + b_w / 2 + overhang - pw
 
-            # Samme høydefordeling som vanlige hengsler
-            if count <= 0:
-                count = 2
-            if count == 2:
-                positions = [0.20, 0.80]
-            elif count == 3:
-                positions = [0.20, 0.60, 0.80]
-            elif count == 4:
-                positions = [0.20, 0.40, 0.60, 0.80]
-            else:
-                positions = [i / (count + 1) for i in range(1, count + 1)]
+            z_positions = self._hinge_z_positions(b_h, max(count, 2))
 
             # Skruehull-dimensjoner og 2×2 mønster (relativt til hengselets hjørne)
             hole_size = 8   # mm
@@ -550,8 +531,8 @@ class DoorPreview3D(QWidget):
             hole_offsets_x = [pw * 0.25 - hole_size / 2, pw * 0.75 - hole_size / 2]
             hole_offsets_z = [ph * 0.25 - hole_size / 2, ph * 0.75 - hole_size / 2]
 
-            for p in positions:
-                pz = luftspalte_mm + b_h * p - ph / 2
+            for z_center in z_positions:
+                pz = luftspalte_mm + z_center - ph / 2
 
                 # Hengselkropp
                 verts, faces = self._make_box(
@@ -593,6 +574,28 @@ class DoorPreview3D(QWidget):
         if door.floyer == 2:
             count *= 2  # Per fløy → totalt
         return count if count > 0 else 2
+
+    HINGE_EDGE_OFFSET = 200  # mm fra bunn/topp av dørblad til nærmeste hengsel (senter)
+
+    def _hinge_z_positions(self, blade_h, count):
+        """Returnerer hengsel-senterposisjoner (mm fra bunn av dørblad)."""
+        d = self.HINGE_EDGE_OFFSET
+        bottom = d
+        top = blade_h - d
+        if count == 2:
+            return [bottom, top]
+        elif count == 3:
+            return [bottom, top, blade_h - 2 * d]
+        elif count == 4:
+            return [bottom, top, blade_h - 2 * d, 2 * d]
+        else:
+            positions = [bottom, top]
+            inner_start = 2 * d
+            inner_end = blade_h - 2 * d
+            extras = count - 2
+            for i in range(extras):
+                positions.append(inner_start + (inner_end - inner_start) * i / max(extras - 1, 1))
+            return positions
 
     def _get_blade_geometries(self, door, kb, kh, luftspalte_mm, total_hinges):
         """Returnerer liste av (senter_x, bredde, høyde, hengsler_per_blad, hengselside) for hvert blad.
