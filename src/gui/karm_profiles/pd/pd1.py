@@ -1,16 +1,16 @@
-"""PD1 karm-profil: Plassholder basert på SD1-mønster med 100mm sidestolpe.
+"""PD1 karm-profil: Pendeldørkarm med listverk på begge sider.
 
-TODO: Korrekt geometri for pendeldørkarm PD1.
+Bladet er sentrert i veggen (pendeldører svinger begge veier).
+Anslaget dekker full vegdybde. Kobling gjennom veggen.
 """
 
 from ..base import KarmProfile
 
 
 class PD1Profile(KarmProfile):
-    """PD1: Pendeldørkarm med listverk på begge sider (plassholder).
+    """PD1: Pendeldørkarm med listverk på begge sider, sentrert blad.
 
-    Bruker forenklet geometri basert på SD1/KD1-mønsteret.
-    Sidestolpe 100mm, list 60mm × 7mm.
+    Sidestolpe 100mm, list 60mm × 7mm. Blad sentrert ved Y=0 (veggmidten).
     """
 
     def build_frame_parts(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w):
@@ -18,7 +18,6 @@ class PD1Profile(KarmProfile):
         list_t = 7
         kobling_t = 5
         anslag_w = 20
-        blade_t = door.blade_thickness
 
         front_y = wall_t / 2
         back_y = -wall_t / 2 - list_t
@@ -44,9 +43,10 @@ class PD1Profile(KarmProfile):
         parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
                        kb - 2 * list_w, kobling_d, kobling_t))
 
-        # Anslag — bak dørbladet
-        anslag_d = max(1, karm_depth - list_t - blade_t)
-        anslag_front_y = wall_t / 2 + list_t - blade_t
+        # Anslag — fast 77mm dybde, starter bak framlisten
+        pd1_depth = 77
+        anslag_d = pd1_depth
+        anslag_front_y = wall_t / 2
         anslag_back_y = anslag_front_y - anslag_d
 
         parts.append((-kb / 2 + list_w, anslag_back_y, 0,
@@ -59,13 +59,21 @@ class PD1Profile(KarmProfile):
         return parts
 
     def blade_y(self, wall_t, blade_t, karm_depth):
-        return wall_t / 2 + 7 - blade_t
+        # Sentrert i 77mm-kanalen bak framlisten
+        pd1_depth = 77
+        channel_center = wall_t / 2 - pd1_depth / 2
+        return channel_center - blade_t / 2
 
     def hinge_y(self, wall_t, blade_t, karm_depth, hinge_depth):
-        return wall_t / 2 + 7 - hinge_depth / 2
+        pd1_depth = 77
+        channel_center = wall_t / 2 - pd1_depth / 2
+        return channel_center - hinge_depth / 2
 
     def handle_y(self, wall_t, blade_t, karm_depth):
-        return wall_t / 2 + 7
+        pd1_depth = 77
+        channel_center = wall_t / 2 - pd1_depth / 2
+        return channel_center + blade_t / 2
 
     def threshold_y(self, wall_t, blade_t, karm_depth, threshold_depth):
-        return wall_t / 2 - threshold_depth - blade_t
+        # Terskel starter rett bak framlisten, går innover
+        return wall_t / 2 - threshold_depth

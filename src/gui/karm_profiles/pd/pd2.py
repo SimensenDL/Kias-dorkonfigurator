@@ -1,16 +1,17 @@
-"""PD2 karm-profil: Plassholder basert på SD2-mønster med 100mm sidestolpe.
+"""PD2 karm-profil: Pendeldørkarm med listverk kun på framside.
 
-TODO: Korrekt geometri for pendeldørkarm PD2.
+Fast dybde 84mm (77mm karm + 7mm list). Bladet er sentrert i
+77mm-kanalen bak listen (pendeldører svinger begge veier).
 """
 
 from ..base import KarmProfile
 
 
 class PD2Profile(KarmProfile):
-    """PD2: Pendeldørkarm med listverk kun på framside (plassholder).
+    """PD2: Pendeldørkarm med listverk kun på framside, sentrert blad.
 
-    Bruker forenklet geometri basert på SD2/KD2-mønsteret.
-    Sidestolpe 100mm, list 60mm × 7mm, fast dybde.
+    Sidestolpe 100mm, list 60mm × 7mm. Fast 84mm total dybde.
+    Blad sentrert i 77mm-kanalen bak listen.
     """
 
     def build_frame_parts(self, door, kb, kh, wall_t, karm_depth, sidestolpe_w):
@@ -18,11 +19,11 @@ class PD2Profile(KarmProfile):
         list_t = 7
         kobling_t = 5
         anslag_w = 20
-        blade_t = door.blade_thickness
+        pd2_depth = 77  # Fast karmdybde bak listen
 
         front_y = wall_t / 2
-        kobling_y = front_y + list_t - karm_depth + list_t
-        kobling_d = karm_depth - 2 * list_t
+        kobling_y = front_y - pd2_depth
+        kobling_d = pd2_depth
 
         parts = []
 
@@ -34,7 +35,7 @@ class PD2Profile(KarmProfile):
             kb - 2 * list_w, list_t, list_w
         ))
 
-        # Kobling — fast dybde
+        # Kobling — fast 77mm dybde
         parts.append((-kb / 2 + list_w - kobling_t, kobling_y, 0,
                        kobling_t, kobling_d, kh - list_w + kobling_t))
         parts.append((kb / 2 - list_w, kobling_y, 0,
@@ -42,9 +43,9 @@ class PD2Profile(KarmProfile):
         parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
                        kb - 2 * list_w, kobling_d, kobling_t))
 
-        # Anslag — bak dørbladet
-        anslag_d = max(1, karm_depth - list_t - blade_t)
-        anslag_front_y = wall_t / 2 + list_t - blade_t
+        # Anslag — full 77mm dybde (pendeldør svinger begge veier)
+        anslag_d = pd2_depth
+        anslag_front_y = wall_t / 2
         anslag_back_y = anslag_front_y - anslag_d
 
         parts.append((-kb / 2 + list_w, anslag_back_y, 0,
@@ -57,13 +58,21 @@ class PD2Profile(KarmProfile):
         return parts
 
     def blade_y(self, wall_t, blade_t, karm_depth):
-        return wall_t / 2 + 7 - blade_t
+        # Sentrert i 77mm-kanalen bak listen
+        pd2_depth = 77
+        channel_center = wall_t / 2 - pd2_depth / 2
+        return channel_center - blade_t / 2
 
     def hinge_y(self, wall_t, blade_t, karm_depth, hinge_depth):
-        return wall_t / 2 + 7 - hinge_depth / 2
+        pd2_depth = 77
+        channel_center = wall_t / 2 - pd2_depth / 2
+        return channel_center - hinge_depth / 2
 
     def handle_y(self, wall_t, blade_t, karm_depth):
-        return wall_t / 2 + 7
+        pd2_depth = 77
+        channel_center = wall_t / 2 - pd2_depth / 2
+        return channel_center + blade_t / 2
 
     def threshold_y(self, wall_t, blade_t, karm_depth, threshold_depth):
-        return wall_t / 2 - threshold_depth - blade_t
+        # Terskel starter rett bak listen (wall_t/2), går innover
+        return wall_t / 2 - threshold_depth
