@@ -235,11 +235,13 @@ class DoorForm(QWidget):
         hinge_layout.setContentsMargins(0, 0, 0, 0)
 
         self.hinge_type_combo = QComboBox()
-        self.hinge_type_combo.currentIndexChanged.connect(self._on_hinge_type_changed)
+        self.hinge_type_combo.currentIndexChanged.connect(self._on_changed)
         hinge_layout.addWidget(self.hinge_type_combo, stretch=1)
 
         self.hinge_count_combo = QComboBox()
         self.hinge_count_combo.setMinimumWidth(100)
+        for n in [2, 3, 4]:
+            self.hinge_count_combo.addItem(f"{n} stk.", n)
         self.hinge_count_combo.currentIndexChanged.connect(self._on_changed)
         hinge_layout.addWidget(self.hinge_count_combo)
 
@@ -583,13 +585,6 @@ class DoorForm(QWidget):
         self._update_blade_thickness_for_karm()
         self._update_hinge_for_karm()
 
-    def _on_hinge_type_changed(self):
-        """Oppdaterer hengseltall-valg basert på valgt hengseltype."""
-        if self._block_signals:
-            return
-        self._update_hinge_count_for_type()
-        self._on_changed()
-
     def _update_blade_thickness_for_karm(self):
         """Oppdaterer dørblad-tykkelse basert på første tilgjengelige bladtype for karmtypen."""
         door_type = self.door_type_combo.currentData()
@@ -650,29 +645,6 @@ class DoorForm(QWidget):
             self.hinge_type_combo.setCurrentIndex(idx)
         self.hinge_type_combo.blockSignals(False)
 
-        self._update_hinge_count_for_type()
-
-    def _update_hinge_count_for_type(self):
-        """Fyller hengseltall-dropdown basert på valgt hengseltype."""
-        hinge_key = self.hinge_type_combo.currentData()
-        info = HINGE_TYPES.get(hinge_key, {})
-        antall_valg = info.get('antall_valg', [2, 3, 4])
-        default_antall = info.get('default_antall', 2)
-
-        old_count = self.hinge_count_combo.currentData()
-        self.hinge_count_combo.blockSignals(True)
-        self.hinge_count_combo.clear()
-        for n in antall_valg:
-            self.hinge_count_combo.addItem(f"{n} stk.", n)
-        # Forsøk å beholde forrige valg
-        idx = self.hinge_count_combo.findData(old_count)
-        if idx >= 0:
-            self.hinge_count_combo.setCurrentIndex(idx)
-        else:
-            idx = self.hinge_count_combo.findData(default_antall)
-            if idx >= 0:
-                self.hinge_count_combo.setCurrentIndex(idx)
-        self.hinge_count_combo.blockSignals(False)
 
     def _update_floyer_for_karm(self):
         """Oppdaterer fløyer-dropdown basert på tillatte fløyer for valgt karmtype."""
@@ -883,7 +855,6 @@ class DoorForm(QWidget):
         idx = self.hinge_type_combo.findData(door.hinge_type)
         if idx >= 0:
             self.hinge_type_combo.setCurrentIndex(idx)
-        self._update_hinge_count_for_type()
         idx = self.hinge_count_combo.findData(door.hinge_count)
         if idx >= 0:
             self.hinge_count_combo.setCurrentIndex(idx)

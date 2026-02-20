@@ -44,8 +44,8 @@ INNERDOR = {
 
     # Hengseltyper
     'hengsel_typer': {
-        'ROCA_SF': {'navn': 'Hengsler Roca i SF stål', 'default_antall': 2, 'antall_valg': [2, 3, 4]},
-        'ARGENTA_100_86A': {'navn': 'Hengsler Argenta 100/86A', 'default_antall': 2, 'antall_valg': [2, 3, 4]},
+        'ROCA_SF': {'navn': 'Hengsler Roca i SF stål'},
+        'ARGENTA_100_86A': {'navn': 'Hengsler Argenta 100/86A'},
     },
 
     # Kompatible hengseltyper per karmtype

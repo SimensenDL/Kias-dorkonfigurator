@@ -42,7 +42,7 @@ KJOLEROMDOR = {
 
     # Hengseltyper
     'hengsel_typer': {
-        'ROCA_SF': {'navn': 'Hengsler Roca i SF stål', 'default_antall': 2, 'antall_valg': [2, 3, 4]},
+        'ROCA_SF': {'navn': 'Hengsler Roca i SF stål'},
     },
 
     # Kompatible hengseltyper per karmtype

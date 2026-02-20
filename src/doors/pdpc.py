@@ -43,7 +43,7 @@ PDPC_DOR = {
 
     # Hengseltyper
     'hengsel_typer': {
-        'KIAS_92_STOP': {'navn': 'Hengsler KIAS 92 stop', 'default_antall': 2, 'antall_valg': [2]},
+        'KIAS_92_STOP': {'navn': 'Hengsler KIAS 92 stop'},
     },
 
     # Kompatible hengseltyper per karmtype
