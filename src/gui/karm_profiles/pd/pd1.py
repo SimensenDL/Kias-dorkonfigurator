@@ -43,12 +43,9 @@ class PD1Profile(KarmProfile):
         parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
                        kb - 2 * list_w, kobling_d, kobling_t))
 
-        # Anslag — 40mm dybde, sentrert rundt bladet i 77mm-kanalen
-        pd1_depth = 77
-        anslag_d = 40
-        channel_center = wall_t / 2 - pd1_depth / 2
-        anslag_front_y = channel_center + anslag_d / 2
-        anslag_back_y = channel_center - anslag_d / 2
+        # Anslag — full dybde, maks 77mm (aldri større uansett veggtykkelse)
+        anslag_d = min(wall_t, 77)
+        anslag_back_y = front_y - anslag_d
 
         parts.append((-kb / 2 + list_w, anslag_back_y, 0,
                        anslag_w, anslag_d, kh - list_w))

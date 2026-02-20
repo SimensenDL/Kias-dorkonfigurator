@@ -1,7 +1,7 @@
 """PD2 karm-profil: Pendeldørkarm med listverk kun på framside.
 
-Fast dybde 84mm (77mm karm + 7mm list). Bladet er sentrert i
-77mm-kanalen bak listen (pendeldører svinger begge veier).
+Fast dybde 84mm (77mm karm + 7mm list). Anslag full 77mm dybde.
+Bladet sentrert i kanalen (pendeldører svinger begge veier).
 """
 
 from ..base import KarmProfile
@@ -43,11 +43,9 @@ class PD2Profile(KarmProfile):
         parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
                        kb - 2 * list_w, kobling_d, kobling_t))
 
-        # Anslag — 40mm dybde, sentrert rundt bladet i 77mm-kanalen
-        anslag_d = 40
-        channel_center = wall_t / 2 - pd2_depth / 2
-        anslag_front_y = channel_center + anslag_d / 2
-        anslag_back_y = channel_center - anslag_d / 2
+        # Anslag — full 77mm dybde (helt til koblingens bakside)
+        anslag_d = pd2_depth
+        anslag_back_y = front_y - pd2_depth
 
         parts.append((-kb / 2 + list_w, anslag_back_y, 0,
                        anslag_w, anslag_d, kh - list_w))
