@@ -111,6 +111,10 @@ PDPC_DOR = {
         'KIAS_92_STOP': {'navn': 'Hengsler KIAS 92 stop'},
     },
 
+    # Klemsikring (svart silikonpakning i karm)
+    'klemsikring': True,
+    'klemsikring_bredde': 30,  # mm
+
     # Pendeldør-spesifikke egenskaper
     'pendeldor': True,        # Skjuler slagretning, låser 50/50 split
     'har_dorramme': False,    # Ingen DR-ramme for 5mm polykarbonat
