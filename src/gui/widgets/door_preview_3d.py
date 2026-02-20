@@ -512,7 +512,7 @@ class DoorPreview3D(QWidget):
         # Dimensjoner (mm)
         pw = 80   # Bredde (X)
         pd = blade_t_mm + 2 + 2  # Dybde (Y): bladtykkelse + 2mm plate på hver side
-        ph = 100  # Høyde (Z)
+        ph = 60   # Høyde (Z)
 
         py = blade_y_pos - 2  # Starter 2mm bak bladets bakside
 
