@@ -118,6 +118,7 @@ KJOLEROMDOR = {
     },
 
     # Dekklist for 2-fløyet (lengde = karmhøyde - offset)
+    #Mangler kalkyle for
     'dekklist_2floyet_offset': 102,
 
     # Hengsler (nøkkel = hengseltype, antall styres av brukeren)

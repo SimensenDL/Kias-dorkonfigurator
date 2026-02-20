@@ -141,6 +141,10 @@ INNERDOR = {
         'ARGENTA_100_86A': {'navn': 'Hengsler Argenta 100/86A'},
     },
 
+    #######################################################
+    # alt under dette er bare ordretekst, dette er ikke noe vi trengr foreløbing og var mest for testing
+    #######################################################
+
     # Karmbeskrivelse per karmtype (med {farge}-placeholder)
     'karm_beskrivelse': {
         'SD1': 'Aluminiumskarm SD1, dybde 77 mm, forberedt for KIAS alu-utforinger, pulverlakkert {farge}',

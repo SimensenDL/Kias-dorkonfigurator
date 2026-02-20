@@ -328,8 +328,8 @@ class ProductionList:
                     ordre_ref=p.customer,
                 ))
 
-        # Dekklist (kun 2-fløyet, ikke KD)
-        if floyer == 2 and p.door_type != 'KD':
+        # Dekklist (kun SDI 2-fløyet)
+        if floyer == 2 and p.door_type == 'SDI':
             dk_lengde = dekklist_lengde(karm_h)
             items.append(ProductionItem(
                 komponent='Dekklist', antall=1, lengde=dk_lengde,

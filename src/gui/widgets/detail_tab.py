@@ -187,8 +187,8 @@ class DetailTab(QWidget):
         terskel = terskel_lengde(karm_type, karm_b, floyer)
         self.val_terskel.setText(fmt(terskel) if terskel else "—")
 
-        # Dekklist kun synlig ved 2-fløyet, ikke for KD
-        show_dekklist = is_2floyet and door.door_type != 'KD'
+        # Dekklist kun for SDI 2-fløyet
+        show_dekklist = is_2floyet and door.door_type == 'SDI'
         self.lbl_dekklist.setVisible(show_dekklist)
         self.val_dekklist.setVisible(show_dekklist)
         if show_dekklist:
