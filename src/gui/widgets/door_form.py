@@ -329,14 +329,6 @@ class DoorForm(QWidget):
         look_layout.addRow(self.beslag_label, self.beslag_combo)
 
         # Pendeldør-felter (inne i Produktdetaljer, skjules for andre dørtyper)
-        self.sparkeplate_hoyde_spin = QSpinBox()
-        self.sparkeplate_hoyde_spin.setRange(100, 1500)
-        self.sparkeplate_hoyde_spin.setSuffix(" mm")
-        self.sparkeplate_hoyde_spin.setValue(400)
-        self.sparkeplate_hoyde_spin.valueChanged.connect(self._on_changed)
-        self.sparkeplate_hoyde_label = QLabel("Sparkeplate H:")
-        look_layout.addRow(self.sparkeplate_hoyde_label, self.sparkeplate_hoyde_spin)
-
         self.avviserboyler_combo = QComboBox()
         self.avviserboyler_combo.addItem("Ja", True)
         self.avviserboyler_combo.addItem("Nei", False)
@@ -767,8 +759,6 @@ class DoorForm(QWidget):
         self.beslag_combo.setVisible(not is_pendel)
 
         # Pendeldør-felter i Produktdetaljer
-        self.sparkeplate_hoyde_label.setVisible(is_pendel)
-        self.sparkeplate_hoyde_spin.setVisible(is_pendel)
         self.avviserboyler_label.setVisible(is_pendel)
         self.avviserboyler_combo.setVisible(is_pendel)
 
@@ -821,7 +811,7 @@ class DoorForm(QWidget):
         door.handle_type = self.beslag_combo.currentText()
 
         # Pendeldør-felter
-        door.sparkeplate_hoyde = self.sparkeplate_hoyde_spin.value()
+        door.sparkeplate_hoyde = 1000  # Hardkodet
         door.avviserboyler = self.avviserboyler_combo.currentData()
         if door.avviserboyler is None:
             door.avviserboyler = True
@@ -945,7 +935,6 @@ class DoorForm(QWidget):
             self.sound_rating_combo.setCurrentIndex(idx)
 
         # Pendeldør-felter
-        self.sparkeplate_hoyde_spin.setValue(door.sparkeplate_hoyde)
         idx = self.avviserboyler_combo.findData(door.avviserboyler)
         if idx >= 0:
             self.avviserboyler_combo.setCurrentIndex(idx)

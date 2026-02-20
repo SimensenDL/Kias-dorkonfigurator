@@ -59,7 +59,7 @@ class DoorParams:
     swing_direction: str = "left"
 
     # Pendeldør-spesifikke felter
-    sparkeplate_hoyde: int = 400   # Sparkeplate høyde i mm (default 400)
+    sparkeplate_hoyde: int = 1000  # Sparkeplate høyde i mm (hardkodet)
     avviserboyler: bool = True     # Avviserbøyler Ja/Nei
 
     # Spesielle egenskaper (avhenger av dørtype)
