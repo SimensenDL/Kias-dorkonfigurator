@@ -122,6 +122,11 @@ for d in DOOR_REGISTRY.values():
 
 LAMINAT_OFFSET_DEFAULT = 8
 
+# Laminat 2-offsets (laminat 2 = laminat 1 - offset)
+LAMINAT_2_OFFSETS = {}
+for d in DOOR_REGISTRY.values():
+    LAMINAT_2_OFFSETS.update(d.get('laminat_2_offsets', {}))
+
 # Dekklist for 2-fløyet
 DEKKLIST_2FLOYET_OFFSET = 102
 

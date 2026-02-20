@@ -26,7 +26,7 @@ except ImportError:
 # --- Konstanter ---
 WALL_COLOR = (0.55, 0.55, 0.52, 1)
 WALL_MARGIN = 800                        # mm synlig vegg rundt åpning
-KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92}
+KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92, 'KD1': 97, 'KD2': 104}
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
 

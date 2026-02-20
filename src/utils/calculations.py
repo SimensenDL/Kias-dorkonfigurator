@@ -17,6 +17,7 @@ from .constants import (
     TERSKEL_OFFSETS,
     LAMINAT_OFFSETS,
     LAMINAT_OFFSET_DEFAULT,
+    LAMINAT_2_OFFSETS,
     DEKKLIST_2FLOYET_OFFSET,
 )
 
@@ -292,6 +293,25 @@ def laminat_mal(karm_type: str, dorblad_b: int, dorblad_h: int,
         offset = offsets
 
     return (dorblad_b - offset, dorblad_h - offset)
+
+
+def laminat_2_mal(karm_type: str, laminat_1_b: int, laminat_1_h: int) -> tuple[Optional[int], Optional[int]]:
+    """Beregn laminat 2-mål fra laminat 1-mål.
+
+    Laminat 2 er mindre enn laminat 1, typisk for kjøleromsdører.
+
+    Args:
+        karm_type: Karmtype (f.eks. 'KD1', 'KD2')
+        laminat_1_b: Laminat 1-bredde i mm
+        laminat_1_h: Laminat 1-høyde i mm
+
+    Returns:
+        Tuple (laminat_2_bredde, laminat_2_høyde) i mm, eller (None, None) hvis ikke aktuelt
+    """
+    offset = LAMINAT_2_OFFSETS.get(karm_type)
+    if offset is None:
+        return (None, None)
+    return (laminat_1_b - offset, laminat_1_h - offset)
 
 
 # =============================================================================

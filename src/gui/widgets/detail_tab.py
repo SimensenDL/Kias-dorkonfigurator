@@ -11,7 +11,7 @@ from ...models.door import DoorParams
 from ...utils.calculations import (
     karm_bredde, karm_hoyde,
     dorblad_bredde, dorblad_hoyde,
-    terskel_lengde, laminat_mal,
+    terskel_lengde, laminat_mal, laminat_2_mal,
     dekklist_lengde
 )
 from ...utils.ordretekst import generer_ordretekst
@@ -92,13 +92,21 @@ class DetailTab(QWidget):
 
         self.val_dorblad1_b = self._make_value()
         self.val_dorblad1_h = self._make_value()
+        self.lbl_laminat1_b = self._make_label("Laminat B:")
         self.val_laminat1_b = self._make_value()
+        self.lbl_laminat1_h = self._make_label("Laminat H:")
         self.val_laminat1_h = self._make_value()
+        self.lbl_laminat1_2_b = self._make_label("Laminat 2 B:")
+        self.val_laminat1_2_b = self._make_value()
+        self.lbl_laminat1_2_h = self._make_label("Laminat 2 H:")
+        self.val_laminat1_2_h = self._make_value()
 
         blade1_layout.addRow(self._make_label("Dørblad B:"), self.val_dorblad1_b)
         blade1_layout.addRow(self._make_label("Dørblad H:"), self.val_dorblad1_h)
-        blade1_layout.addRow(self._make_label("Laminat B:"), self.val_laminat1_b)
-        blade1_layout.addRow(self._make_label("Laminat H:"), self.val_laminat1_h)
+        blade1_layout.addRow(self.lbl_laminat1_b, self.val_laminat1_b)
+        blade1_layout.addRow(self.lbl_laminat1_h, self.val_laminat1_h)
+        blade1_layout.addRow(self.lbl_laminat1_2_b, self.val_laminat1_2_b)
+        blade1_layout.addRow(self.lbl_laminat1_2_h, self.val_laminat1_2_h)
 
         # --- Dørblad 2 (kun synlig ved 2-fløyet) ---
         self.blade2_group = QGroupBox("Dørblad 2")
@@ -106,13 +114,21 @@ class DetailTab(QWidget):
 
         self.val_dorblad2_b = self._make_value()
         self.val_dorblad2_h = self._make_value()
+        self.lbl_laminat2_b = self._make_label("Laminat B:")
         self.val_laminat2_b = self._make_value()
+        self.lbl_laminat2_h = self._make_label("Laminat H:")
         self.val_laminat2_h = self._make_value()
+        self.lbl_laminat2_2_b = self._make_label("Laminat 2 B:")
+        self.val_laminat2_2_b = self._make_value()
+        self.lbl_laminat2_2_h = self._make_label("Laminat 2 H:")
+        self.val_laminat2_2_h = self._make_value()
 
         blade2_layout.addRow(self._make_label("Dørblad B:"), self.val_dorblad2_b)
         blade2_layout.addRow(self._make_label("Dørblad H:"), self.val_dorblad2_h)
-        blade2_layout.addRow(self._make_label("Laminat B:"), self.val_laminat2_b)
-        blade2_layout.addRow(self._make_label("Laminat H:"), self.val_laminat2_h)
+        blade2_layout.addRow(self.lbl_laminat2_b, self.val_laminat2_b)
+        blade2_layout.addRow(self.lbl_laminat2_h, self.val_laminat2_h)
+        blade2_layout.addRow(self.lbl_laminat2_2_b, self.val_laminat2_2_b)
+        blade2_layout.addRow(self.lbl_laminat2_2_h, self.val_laminat2_2_h)
 
         # Dørblad 1 og 2 side om side
         blade_row = QHBoxLayout()
@@ -171,15 +187,27 @@ class DetailTab(QWidget):
         terskel = terskel_lengde(karm_type, karm_b, floyer)
         self.val_terskel.setText(fmt(terskel) if terskel else "—")
 
-        # Dekklist kun synlig ved 2-fløyet
-        self.lbl_dekklist.setVisible(is_2floyet)
-        self.val_dekklist.setVisible(is_2floyet)
-        if is_2floyet:
+        # Dekklist kun synlig ved 2-fløyet, ikke for KD
+        show_dekklist = is_2floyet and door.door_type != 'KD'
+        self.lbl_dekklist.setVisible(show_dekklist)
+        self.val_dekklist.setVisible(show_dekklist)
+        if show_dekklist:
             self.val_dekklist.setText(fmt(dekklist_lengde(karm_h)))
+
+        # Har denne dørtypen laminat 2?
+        has_lam2 = laminat_2_mal(karm_type, 100, 100) != (None, None)
 
         # --- Dørblad-beregninger ---
         db_b_total = dorblad_bredde(karm_type, karm_b, floyer, hinge_type)
         db_h = dorblad_hoyde(karm_type, karm_h, floyer, hinge_type, luftspalte)
+
+        # Oppdater laminat-labels basert på om laminat 2 finnes
+        lam_label = "Laminat 1 B:" if has_lam2 else "Laminat B:"
+        lam_h_label = "Laminat 1 H:" if has_lam2 else "Laminat H:"
+        self.lbl_laminat1_b.setText(lam_label)
+        self.lbl_laminat1_h.setText(lam_h_label)
+        self.lbl_laminat2_b.setText(lam_label)
+        self.lbl_laminat2_h.setText(lam_h_label)
 
         if is_2floyet:
             # Prosentvis oppdeling
@@ -207,17 +235,36 @@ class DetailTab(QWidget):
                 lam1_b, lam1_h = laminat_mal(karm_type, db1_b, db_h, hinge_type)
                 self.val_laminat1_b.setText(fmt(lam1_b))
                 self.val_laminat1_h.setText(fmt(lam1_h))
+                if has_lam2:
+                    l2b, l2h = laminat_2_mal(karm_type, lam1_b, lam1_h)
+                    self.val_laminat1_2_b.setText(fmt(l2b))
+                    self.val_laminat1_2_h.setText(fmt(l2h))
             else:
                 self.val_laminat1_b.setText("—")
                 self.val_laminat1_h.setText("—")
+                self.val_laminat1_2_b.setText("—")
+                self.val_laminat1_2_h.setText("—")
 
             if db2_b and db_h:
                 lam2_b, lam2_h = laminat_mal(karm_type, db2_b, db_h, hinge_type)
                 self.val_laminat2_b.setText(fmt(lam2_b))
                 self.val_laminat2_h.setText(fmt(lam2_h))
+                if has_lam2:
+                    l2b, l2h = laminat_2_mal(karm_type, lam2_b, lam2_h)
+                    self.val_laminat2_2_b.setText(fmt(l2b))
+                    self.val_laminat2_2_h.setText(fmt(l2h))
             else:
                 self.val_laminat2_b.setText("—")
                 self.val_laminat2_h.setText("—")
+                self.val_laminat2_2_b.setText("—")
+                self.val_laminat2_2_h.setText("—")
+
+            # Vis/skjul laminat 2-felter
+            for w in (self.lbl_laminat1_2_b, self.val_laminat1_2_b,
+                      self.lbl_laminat1_2_h, self.val_laminat1_2_h,
+                      self.lbl_laminat2_2_b, self.val_laminat2_2_b,
+                      self.lbl_laminat2_2_h, self.val_laminat2_2_h):
+                w.setVisible(has_lam2)
         else:
             # 1-fløyet: én gruppe
             self.blade1_group.setTitle("Dørblad")
@@ -231,9 +278,23 @@ class DetailTab(QWidget):
                 lam_b, lam_h = laminat_mal(karm_type, db_b, db_h, hinge_type)
                 self.val_laminat1_b.setText(fmt(lam_b))
                 self.val_laminat1_h.setText(fmt(lam_h))
+                if has_lam2:
+                    l2b, l2h = laminat_2_mal(karm_type, lam_b, lam_h)
+                    self.val_laminat1_2_b.setText(fmt(l2b))
+                    self.val_laminat1_2_h.setText(fmt(l2h))
+                else:
+                    self.val_laminat1_2_b.setText("—")
+                    self.val_laminat1_2_h.setText("—")
             else:
                 self.val_laminat1_b.setText("—")
                 self.val_laminat1_h.setText("—")
+                self.val_laminat1_2_b.setText("—")
+                self.val_laminat1_2_h.setText("—")
+
+            # Vis/skjul laminat 2-felter
+            for w in (self.lbl_laminat1_2_b, self.val_laminat1_2_b,
+                      self.lbl_laminat1_2_h, self.val_laminat1_2_h):
+                w.setVisible(has_lam2)
 
         # --- Ordretekst ---
         linjer = generer_ordretekst(door)

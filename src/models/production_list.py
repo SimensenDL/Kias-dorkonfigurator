@@ -14,6 +14,7 @@ from ..utils.calculations import (
     karm_bredde, karm_hoyde,
     dorblad_bredde, dorblad_hoyde,
     terskel_lengde, dekklist_lengde,
+    laminat_mal, laminat_2_mal,
 )
 from ..utils.constants import DOOR_TYPES
 
@@ -64,17 +65,19 @@ KARM_FAMILY_GROUPS = {
     'SD1': 'SD1_SD2',
     'SD2': 'SD1_SD2',
     'SD3/ID': 'SD3_ID',
+    'KD1': 'KD1_KD2',
+    'KD2': 'KD1_KD2',
 }
 
 KARM_FAMILY_TITLES = {
     'SD1_SD2': 'Slagdørkarm Justerbar (SD1 og SD2)',
     'SD3_ID': 'Slagdørkarm Justerbar (SD3/ID)',
+    'KD1_KD2': 'Kjøleromskarm (KD1 og KD2)',
 }
 
-KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID']
+KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID', 'KD1_KD2']
 
 KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
-DORRAMME_KOMPONENT_ORDER = ['DR40 over-/underdel', 'DR40 sidedel']
 DIVERSE_KOMPONENT_ORDER = ['Terskel', 'Dekklist']
 
 
@@ -280,18 +283,39 @@ class ProductionList:
         else:
             blade_widths = []
 
+        dr_prefix = f'DR{p.blade_thickness}'
         for bw in blade_widths:
             items.append(ProductionItem(
-                komponent='DR40 over-/underdel', antall=2, lengde=bw,
+                komponent=f'{dr_prefix} over-/underdel', antall=2, lengde=bw,
                 farge=p.color, dor_id=door.id, karm_type=karm_type,
                 ordre_ref=p.customer,
             ))
             if db_h:
                 items.append(ProductionItem(
-                    komponent='DR40 sidedel', antall=2, lengde=db_h,
+                    komponent=f'{dr_prefix} sidedel', antall=2, lengde=db_h,
                     farge=p.color, dor_id=door.id, karm_type=karm_type,
                     ordre_ref=p.customer,
                 ))
+
+        # --- Laminat ---
+        for bw in blade_widths:
+            if db_h:
+                lam_b, lam_h = laminat_mal(karm_type, bw, db_h, hinge_type)
+                if lam_b and lam_h:
+                    items.append(ProductionItem(
+                        komponent='Laminat 1', antall=2,
+                        bredde=lam_b, hoyde=lam_h,
+                        farge=p.color, dor_id=door.id, karm_type=karm_type,
+                        ordre_ref=p.customer,
+                    ))
+                    lam2_b, lam2_h = laminat_2_mal(karm_type, lam_b, lam_h)
+                    if lam2_b and lam2_h:
+                        items.append(ProductionItem(
+                            komponent='Laminat 2', antall=2,
+                            bredde=lam2_b, hoyde=lam2_h,
+                            farge=p.color, dor_id=door.id, karm_type=karm_type,
+                            ordre_ref=p.customer,
+                        ))
 
         # --- Tilbehør ---
         # Terskel (kun hvis type ≠ 'ingen')
@@ -304,8 +328,8 @@ class ProductionList:
                     ordre_ref=p.customer,
                 ))
 
-        # Dekklist (kun 2-fløyet)
-        if floyer == 2:
+        # Dekklist (kun 2-fløyet, ikke KD)
+        if floyer == 2 and p.door_type != 'KD':
             dk_lengde = dekklist_lengde(karm_h)
             items.append(ProductionItem(
                 komponent='Dekklist', antall=1, lengde=dk_lengde,
@@ -609,10 +633,9 @@ class ProductionList:
 
         # Kategoriser items (kun karm + dørramme i hovedtabellen)
         karm_komps = {'Overligger', 'Hengselside', 'Sluttstykkeside'}
-        dorramme_komps = {'DR40 over-/underdel', 'DR40 sidedel'}
 
         karm_items = [i for i in items if i.komponent in karm_komps]
-        dorramme_items = [i for i in items if i.komponent in dorramme_komps]
+        dorramme_items = [i for i in items if i.komponent.startswith('DR')]
 
         # Grupper karm etter familie
         karm_by_family: Dict[str, List[ProductionItem]] = defaultdict(list)
@@ -630,11 +653,10 @@ class ProductionList:
                 'rows': rows,
             })
 
-        # Dørramme (alle karmtyper samlet)
+        # Dørramme (alle karmtyper samlet, sortert etter komponentnavn)
         if dorramme_items:
-            rows = self._accumulate_standard_items(
-                dorramme_items, DORRAMME_KOMPONENT_ORDER
-            )
+            dr_order = sorted({i.komponent for i in dorramme_items})
+            rows = self._accumulate_standard_items(dorramme_items, dr_order)
             sections.append({'title': 'Dørrammer', 'rows': rows})
 
         return sections

@@ -63,6 +63,24 @@ KARM_SECTION_PROFILES = {
         'both_sides': False,
         'no_listverk': True,
     },
+    'KD1': {
+        'listverk_w': 80, 'listverk_t': 7,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 24,
+        'blade_t': 60,
+        'both_sides': True,
+        'no_listverk': False,
+        'kobling_depth_fixed': None,
+    },
+    'KD2': {
+        'listverk_w': 80, 'listverk_t': 7,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 24,
+        'blade_t': 60,
+        'both_sides': False,
+        'no_listverk': False,
+        'kobling_depth_fixed': 97,
+    },
 }
 
 # Sidedimensjoner (A3 liggende for dør-tegninger)
