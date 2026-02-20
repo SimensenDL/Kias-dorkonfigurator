@@ -11,7 +11,7 @@ from PyQt6.QtGui import QMouseEvent, QSurfaceFormat, QMatrix4x4
 
 from ...models.door import DoorParams
 from ...utils.constants import RAL_COLORS, KARM_SIDESTOLPE_WIDTH
-from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, terskel_lengde, sparkeplate_bredde
+from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, sparkeplate_bredde
 from ...doors import DOOR_REGISTRY
 from ..karm_profiles import KARM_PROFILES
 from . import graphics_settings as gfx
@@ -29,7 +29,6 @@ WALL_MARGIN = 800                        # mm synlig vegg rundt åpning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92, 'KD1': 97, 'KD2': 104,
                'PD1': 77, 'PD2': 84}
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
-TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
 SPARKEPLATE_THICKNESS = 1                # mm tykkelse
 SPARKEPLATE_COLOR = (0.0, 0.0, 0.0, 1.0)  # Svart
 KLEMSIKRING_COLOR = (0.05, 0.05, 0.05, 1.0)  # Svart silikon
@@ -299,17 +298,17 @@ class DoorPreview3D(QWidget):
         if door_def.get('klemsikring', False):
             self._add_klemsikring(door, profile, kb, kh, wall_t, karm_depth, s)
 
-        # 3. Terskel (bare hvis det er valgt en terskeltype)
-        if door.threshold_type != 'ingen':
-            self._add_threshold(door, profile, kb, wall_t, karm_depth, blade_t_mm, s)
-
         # 4. Dørblad
         self._add_door_blades(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
-        # 5. Hengsler
+        # 5. Slepelist (terskel under dørblad)
+        if door.threshold_type == 'slepelist':
+            self._add_slepelist(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
+
+        # 6. Hengsler
         self._add_hinges(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
-        # 6. Håndtak (ikke for pendeldører)
+        # 7. Håndtak (ikke for pendeldører)
         if not door_def.get('pendeldor', False):
             self._add_handle(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
@@ -346,27 +345,39 @@ class DoorPreview3D(QWidget):
             mesh.setVisible(self._show_wall)
 
     # =========================================================================
-    # TERSKEL
+    # SLEPELIST (TERSKEL)
     # =========================================================================
 
-    def _add_threshold(self, door, profile, kb, wall_t, karm_depth, blade_t_mm, s):
-        """Terskel i bunnen av døråpningen."""
-        karm_color = np.array(self._ral_to_rgba(door.karm_color))
-        t_len = terskel_lengde(door.karm_type, kb, door.floyer)
-        if t_len is None:
-            return
+    def _add_slepelist(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
+        """Slepelist under hvert dørblad — følger bladet ved åpning."""
+        sl_color = np.array(SPARKEPLATE_COLOR)  # Svart
+        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
+        sl_h = 22  # mm, samme som luftspalte
+        sl_depth = blade_t_mm  # Like tykk som dørbladet
 
-        t_h = TERSKEL_HEIGHT
-        t_depth = karm_depth
-        t_x = -t_len / 2
-        t_y = profile.threshold_y(wall_t, blade_t_mm, karm_depth, t_depth)
+        total_hinges = self._get_hinge_count(door)
+        blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
 
-        mesh = self._add_mesh(
-            t_x * s, t_y * s, 0,
-            t_len * s, t_depth * s, t_h * s,
-            karm_color, is_frame=True
-        )
-        mesh.setVisible(self._show_frame)
+        for (bcx, b_w, b_h, _count, hinge_side) in blades:
+            blade_x = bcx - b_w / 2
+            pivot = self._get_open_pivot(blade_x, b_w, blade_y, blade_t_mm, hinge_side, s)
+
+            verts, faces = self._make_box(
+                blade_x * s, blade_y * s, 0,
+                b_w * s, sl_depth * s, sl_h * s
+            )
+            face_colors = self._lit_face_colors(sl_color)
+            mesh = gl.GLMeshItem(
+                vertexes=verts, faces=faces, faceColors=face_colors,
+                smooth=False, drawEdges=False
+            )
+            tr = self._build_open_transform(pivot)
+            if tr is not None:
+                mesh.setTransform(tr)
+            self._gl_widget.addItem(mesh)
+            self._mesh_items.append(mesh)
+            self._blade_items.append(mesh)
+            mesh.setVisible(self._show_blades)
 
     # =========================================================================
     # DØRBLAD
@@ -829,33 +840,6 @@ class DoorPreview3D(QWidget):
                     ks_color, is_frame=True
                 )
                 mesh.setVisible(self._show_frame)
-
-        # Bunn-klemsikring under hvert dørblad (kun ved slepelist-terskel)
-        if door.threshold_type == 'slepelist':
-            bunn_h = 22  # mm, samme som luftspalte
-            luftspalte_mm = profile.luftspalte(door)
-            total_hinges = self._get_hinge_count(door)
-            blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
-
-            for (bcx, b_w, b_h, _count, hinge_side) in blades:
-                blade_x = bcx - b_w / 2
-                pivot = self._get_open_pivot(blade_x, b_w, ks_y, ks_depth, hinge_side, s)
-                verts, faces = self._make_box(
-                    blade_x * s, ks_y * s, 0,
-                    b_w * s, ks_depth * s, bunn_h * s
-                )
-                face_colors = self._lit_face_colors(ks_color)
-                mesh = gl.GLMeshItem(
-                    vertexes=verts, faces=faces, faceColors=face_colors,
-                    smooth=False, drawEdges=False
-                )
-                tr = self._build_open_transform(pivot)
-                if tr is not None:
-                    mesh.setTransform(tr)
-                self._gl_widget.addItem(mesh)
-                self._mesh_items.append(mesh)
-                self._blade_items.append(mesh)
-                mesh.setVisible(self._show_blades)
 
     # =========================================================================
     # HJELPEMETODER
