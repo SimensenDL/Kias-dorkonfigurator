@@ -9,6 +9,8 @@ from .sdi.sd2 import SD2Profile
 from .sdi.sd3id import SD3IDProfile
 from .kd.kd1 import KD1Profile
 from .kd.kd2 import KD2Profile
+from .pd.pd1 import PD1Profile
+from .pd.pd2 import PD2Profile
 
 KARM_PROFILES = {
     'SD1': SD1Profile(),
@@ -16,4 +18,6 @@ KARM_PROFILES = {
     'SD3/ID': SD3IDProfile(),
     'KD1': KD1Profile(),
     'KD2': KD2Profile(),
+    'PD1': PD1Profile(),
+    'PD2': PD2Profile(),
 }

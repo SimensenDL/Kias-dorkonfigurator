@@ -12,8 +12,11 @@ from ...utils.calculations import (
     karm_bredde, karm_hoyde,
     dorblad_bredde, dorblad_hoyde,
     terskel_lengde, laminat_mal, laminat_2_mal,
-    dekklist_lengde
+    dekklist_lengde,
+    sparkeplate_bredde, avviserboyler_lengde,
+    ryggforsterkning_hoyde, ryggforsterkning_overdel,
 )
+from ...doors import DOOR_REGISTRY
 from ...utils.ordretekst import generer_ordretekst
 
 
@@ -137,6 +140,29 @@ class DetailTab(QWidget):
         blade_row.addWidget(self.blade2_group)
         layout.addLayout(blade_row)
 
+        # --- Pendeldør-spesifikke felt ---
+        self.pendel_group = QGroupBox("Pendeldør-komponenter")
+        pendel_layout = self._make_form_layout(self.pendel_group)
+
+        self.lbl_sparkeplate = self._make_label("Sparkeplate B:")
+        self.val_sparkeplate = self._make_value()
+        self.lbl_sparkeplate_h = self._make_label("Sparkeplate H:")
+        self.val_sparkeplate_h = self._make_value()
+        self.lbl_avviserboyler = self._make_label("Avviserbøyler:")
+        self.val_avviserboyler = self._make_value()
+        self.lbl_ryggforst_h = self._make_label("Ryggforst. H:")
+        self.val_ryggforst_h = self._make_value()
+        self.lbl_ryggforst_overdel = self._make_label("Ryggforst. overdel:")
+        self.val_ryggforst_overdel = self._make_value()
+
+        pendel_layout.addRow(self.lbl_sparkeplate, self.val_sparkeplate)
+        pendel_layout.addRow(self.lbl_sparkeplate_h, self.val_sparkeplate_h)
+        pendel_layout.addRow(self.lbl_avviserboyler, self.val_avviserboyler)
+        pendel_layout.addRow(self.lbl_ryggforst_h, self.val_ryggforst_h)
+        pendel_layout.addRow(self.lbl_ryggforst_overdel, self.val_ryggforst_overdel)
+
+        layout.addWidget(self.pendel_group)
+
         # --- Ordretekst ---
         self.ordretekst_group = QGroupBox("Ordretekst")
         ordretekst_layout = QVBoxLayout(self.ordretekst_group)
@@ -194,12 +220,14 @@ class DetailTab(QWidget):
         if show_dekklist:
             self.val_dekklist.setText(fmt(dekklist_lengde(karm_h)))
 
+        # Har denne dørtypen laminat?
+        has_laminat = laminat_mal(karm_type, 100, 100, door_type=door.door_type) != (None, None)
         # Har denne dørtypen laminat 2?
-        has_lam2 = laminat_2_mal(karm_type, 100, 100) != (None, None)
+        has_lam2 = has_laminat and laminat_2_mal(karm_type, 100, 100) != (None, None)
 
         # --- Dørblad-beregninger ---
-        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, hinge_type)
-        db_h = dorblad_hoyde(karm_type, karm_h, floyer, hinge_type, luftspalte)
+        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, hinge_type, door_type=door.door_type)
+        db_h = dorblad_hoyde(karm_type, karm_h, floyer, hinge_type, luftspalte, door_type=door.door_type)
 
         # Oppdater laminat-labels basert på om laminat 2 finnes
         lam_label = "Laminat 1 B:" if has_lam2 else "Laminat B:"
@@ -208,6 +236,11 @@ class DetailTab(QWidget):
         self.lbl_laminat1_h.setText(lam_h_label)
         self.lbl_laminat2_b.setText(lam_label)
         self.lbl_laminat2_h.setText(lam_h_label)
+
+        # Vis/skjul laminat 1-felter basert på om dørtypen har laminat
+        for w in (self.lbl_laminat1_b, self.val_laminat1_b,
+                  self.lbl_laminat1_h, self.val_laminat1_h):
+            w.setVisible(has_laminat)
 
         if is_2floyet:
             # Prosentvis oppdeling
@@ -232,7 +265,7 @@ class DetailTab(QWidget):
 
             # Laminat per fløy
             if db1_b and db_h:
-                lam1_b, lam1_h = laminat_mal(karm_type, db1_b, db_h, hinge_type)
+                lam1_b, lam1_h = laminat_mal(karm_type, db1_b, db_h, hinge_type, door_type=door.door_type)
                 self.val_laminat1_b.setText(fmt(lam1_b))
                 self.val_laminat1_h.setText(fmt(lam1_h))
                 if has_lam2:
@@ -246,7 +279,7 @@ class DetailTab(QWidget):
                 self.val_laminat1_2_h.setText("—")
 
             if db2_b and db_h:
-                lam2_b, lam2_h = laminat_mal(karm_type, db2_b, db_h, hinge_type)
+                lam2_b, lam2_h = laminat_mal(karm_type, db2_b, db_h, hinge_type, door_type=door.door_type)
                 self.val_laminat2_b.setText(fmt(lam2_b))
                 self.val_laminat2_h.setText(fmt(lam2_h))
                 if has_lam2:
@@ -259,7 +292,10 @@ class DetailTab(QWidget):
                 self.val_laminat2_2_b.setText("—")
                 self.val_laminat2_2_h.setText("—")
 
-            # Vis/skjul laminat 2-felter
+            # Vis/skjul laminat-felter
+            for w in (self.lbl_laminat2_b, self.val_laminat2_b,
+                      self.lbl_laminat2_h, self.val_laminat2_h):
+                w.setVisible(has_laminat)
             for w in (self.lbl_laminat1_2_b, self.val_laminat1_2_b,
                       self.lbl_laminat1_2_h, self.val_laminat1_2_h,
                       self.lbl_laminat2_2_b, self.val_laminat2_2_b,
@@ -275,7 +311,7 @@ class DetailTab(QWidget):
             self.val_dorblad1_h.setText(fmt(db_h) if db_h else "—")
 
             if db_b and db_h:
-                lam_b, lam_h = laminat_mal(karm_type, db_b, db_h, hinge_type)
+                lam_b, lam_h = laminat_mal(karm_type, db_b, db_h, hinge_type, door_type=door.door_type)
                 self.val_laminat1_b.setText(fmt(lam_b))
                 self.val_laminat1_h.setText(fmt(lam_h))
                 if has_lam2:
@@ -295,6 +331,64 @@ class DetailTab(QWidget):
             for w in (self.lbl_laminat1_2_b, self.val_laminat1_2_b,
                       self.lbl_laminat1_2_h, self.val_laminat1_2_h):
                 w.setVisible(has_lam2)
+
+        # --- Pendeldør-komponenter ---
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        has_sparkeplate = 'sparkeplate_offset' in door_def
+        has_avviserboyler = 'avviserboyler_offset' in door_def
+        has_ryggforst_h = 'ryggforsterkning_hoyde_offset' in door_def
+        has_ryggforst_overdel = 'ryggforsterkning_overdel_offset' in door_def
+        show_pendel = has_sparkeplate or has_avviserboyler or has_ryggforst_h or has_ryggforst_overdel
+
+        self.pendel_group.setVisible(show_pendel)
+
+        if show_pendel:
+            # Bruk første blad-bredde for beregning
+            ref_db_b = db_b_total
+            if is_2floyet and db_b_total:
+                split_pct = door.floyer_split / 100.0
+                ref_db_b = round(db_b_total * split_pct)
+
+            # Sparkeplate
+            self.lbl_sparkeplate.setVisible(has_sparkeplate)
+            self.val_sparkeplate.setVisible(has_sparkeplate)
+            self.lbl_sparkeplate_h.setVisible(has_sparkeplate)
+            self.val_sparkeplate_h.setVisible(has_sparkeplate)
+            if has_sparkeplate and ref_db_b:
+                sp_b = sparkeplate_bredde(door.door_type, ref_db_b)
+                self.val_sparkeplate.setText(fmt(sp_b))
+                self.val_sparkeplate_h.setText(fmt(door.sparkeplate_hoyde))
+            elif has_sparkeplate:
+                self.val_sparkeplate.setText("—")
+                self.val_sparkeplate_h.setText(fmt(door.sparkeplate_hoyde))
+
+            # Avviserbøyler
+            show_avviserboyler = has_avviserboyler and door.avviserboyler
+            self.lbl_avviserboyler.setVisible(show_avviserboyler)
+            self.val_avviserboyler.setVisible(show_avviserboyler)
+            if show_avviserboyler and ref_db_b:
+                av_l = avviserboyler_lengde(door.door_type, ref_db_b)
+                self.val_avviserboyler.setText(fmt(av_l))
+            elif show_avviserboyler:
+                self.val_avviserboyler.setText("—")
+
+            # Ryggforsterkning høyde
+            self.lbl_ryggforst_h.setVisible(has_ryggforst_h)
+            self.val_ryggforst_h.setVisible(has_ryggforst_h)
+            if has_ryggforst_h and db_h:
+                rf_h = ryggforsterkning_hoyde(door.door_type, db_h)
+                self.val_ryggforst_h.setText(fmt(rf_h))
+            elif has_ryggforst_h:
+                self.val_ryggforst_h.setText("—")
+
+            # Ryggforsterkning overdel
+            self.lbl_ryggforst_overdel.setVisible(has_ryggforst_overdel)
+            self.val_ryggforst_overdel.setVisible(has_ryggforst_overdel)
+            if has_ryggforst_overdel and ref_db_b:
+                rfo = ryggforsterkning_overdel(door.door_type, ref_db_b)
+                self.val_ryggforst_overdel.setText(fmt(rfo))
+            elif has_ryggforst_overdel:
+                self.val_ryggforst_overdel.setText("—")
 
         # --- Ordretekst ---
         linjer = generer_ordretekst(door)

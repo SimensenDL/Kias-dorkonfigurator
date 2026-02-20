@@ -81,6 +81,25 @@ KARM_SECTION_PROFILES = {
         'no_listverk': False,
         'kobling_depth_fixed': 97,
     },
+    # TODO: Korrekte snittprofil-verdier for pendeldørkarm
+    'PD1': {
+        'listverk_w': 60, 'listverk_t': 7,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 44,
+        'blade_t': 40,
+        'both_sides': True,
+        'no_listverk': False,
+        'kobling_depth_fixed': None,
+    },
+    'PD2': {
+        'listverk_w': 60, 'listverk_t': 7,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 44,
+        'blade_t': 40,
+        'both_sides': False,
+        'no_listverk': False,
+        'kobling_depth_fixed': 97,
+    },
 }
 
 # Sidedimensjoner (A3 liggende for dør-tegninger)

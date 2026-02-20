@@ -26,7 +26,8 @@ except ImportError:
 # --- Konstanter ---
 WALL_COLOR = (0.55, 0.55, 0.52, 1)
 WALL_MARGIN = 800                        # mm synlig vegg rundt åpning
-KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92, 'KD1': 97, 'KD2': 104}
+KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92, 'KD1': 97, 'KD2': 104,
+               'PD1': 97, 'PD2': 104}  # PD plassholder-verdier
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
 
@@ -300,8 +301,10 @@ class DoorPreview3D(QWidget):
         # 5. Hengsler
         self._add_hinges(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
-        # 6. Håndtak
-        self._add_handle(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
+        # 6. Håndtak (ikke for pendeldører)
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        if not door_def.get('pendeldor', False):
+            self._add_handle(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
     # =========================================================================
     # VEGG
@@ -364,8 +367,8 @@ class DoorPreview3D(QWidget):
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
         if door.floyer == 1:
-            db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type)
-            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm)
+            db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type, door_type=door.door_type)
+            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm, door_type=door.door_type)
             if db_b and db_h:
                 blade_x = -db_b / 2
                 # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
@@ -377,8 +380,8 @@ class DoorPreview3D(QWidget):
                     blade_color, s, pivot=pivot
                 )
         else:
-            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type)
-            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm)
+            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type, door_type=door.door_type)
+            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm, door_type=door.door_type)
             if db_b_total and db_h:
                 db1_b = round(db_b_total * door.floyer_split / 100)
                 db2_b = db_b_total - db1_b
@@ -495,15 +498,15 @@ class DoorPreview3D(QWidget):
         hengselside er 'left' eller 'right' — angir hvilken kant hengselet sitter på.
         """
         if door.floyer == 1:
-            db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type) or (kb - 128)
-            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm) or (kh - 85)
+            db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type, door_type=door.door_type) or (kb - 128)
+            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm, door_type=door.door_type) or (kh - 85)
             # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
             hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
             per_blade = max(1, total_hinges)
             return [(0, db_b, db_h, per_blade, hinge_3d)]
         else:
-            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type) or (kb - 132)
-            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm) or (kh - 85)
+            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type, door_type=door.door_type) or (kb - 132)
+            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm, door_type=door.door_type) or (kh - 85)
             db1_b = round(db_b_total * door.floyer_split / 100)
             db2_b = db_b_total - db1_b
             per_blade = max(1, total_hinges // 2)

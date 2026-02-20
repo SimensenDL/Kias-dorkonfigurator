@@ -8,6 +8,7 @@ Alle mål i millimeter (mm).
 """
 from typing import Optional
 
+from ..doors import DOOR_REGISTRY
 from .constants import (
     KARM_SIZE_OFFSETS,
     TRANSPORT_WIDTH_OFFSETS,
@@ -156,19 +157,27 @@ def transport_hoyde(karm_type: str, karm_h: int, terskel_type: str = 'ingen') ->
 # =============================================================================
 
 def dorblad_bredde(karm_type: str, karm_b: int, floyer: int = 1,
-                   hinge_type: Optional[str] = None) -> Optional[int]:
+                   hinge_type: Optional[str] = None,
+                   door_type: Optional[str] = None) -> Optional[int]:
     """Beregn dørbladbredde fra karmbredde.
 
     Args:
-        karm_type: Karmtype (f.eks. 'SD1', 'SD3/ID')
+        karm_type: Karmtype (f.eks. 'SD1', 'PD1')
         karm_b: Karmbredde i mm
         floyer: Antall fløyer (1 eller 2)
         hinge_type: Hengseltype (f.eks. 'ROCA_SF'), kun nødvendig for SD3/ID
+        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDI'). Slår opp direkte
+                   fra DOOR_REGISTRY for å unngå kollisjon ved delte karmtyper.
 
     Returns:
         Dørbladbredde i mm, eller None hvis ikke støttet
     """
-    offsets = DORBLAD_OFFSETS.get(karm_type)
+    # Dørtype-bevisst oppslag (unngår kollisjon ved delte karmtyper som PD1/PD2)
+    if door_type and door_type in DOOR_REGISTRY:
+        offsets = DOOR_REGISTRY[door_type].get('dorblad_offsets', {}).get(karm_type)
+    else:
+        offsets = DORBLAD_OFFSETS.get(karm_type)
+
     if not offsets:
         return None
 
@@ -190,22 +199,30 @@ def dorblad_bredde(karm_type: str, karm_b: int, floyer: int = 1,
 
 def dorblad_hoyde(karm_type: str, karm_h: int, floyer: int = 1,
                   hinge_type: Optional[str] = None,
-                  luftspalte: int = 0) -> Optional[int]:
+                  luftspalte: int = 0,
+                  door_type: Optional[str] = None) -> Optional[int]:
     """Beregn dørbladhøyde fra karmhøyde.
 
     For SD3/ID trekkes luftspalte fra i tillegg til fast offset.
 
     Args:
-        karm_type: Karmtype (f.eks. 'SD1', 'SD3/ID')
+        karm_type: Karmtype (f.eks. 'SD1', 'PD1')
         karm_h: Karmhøyde i mm
         floyer: Antall fløyer (1 eller 2)
         hinge_type: Hengseltype (f.eks. 'ROCA_SF'), kun nødvendig for SD3/ID
         luftspalte: Luftspalte i mm (brukes kun for karmtyper i DORBLAD_HOYDE_INKL_LUFTSPALTE)
+        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDI'). Slår opp direkte
+                   fra DOOR_REGISTRY for å unngå kollisjon ved delte karmtyper.
 
     Returns:
         Dørbladhøyde i mm, eller None hvis ikke støttet
     """
-    offsets = DORBLAD_OFFSETS.get(karm_type)
+    # Dørtype-bevisst oppslag
+    if door_type and door_type in DOOR_REGISTRY:
+        offsets = DOOR_REGISTRY[door_type].get('dorblad_offsets', {}).get(karm_type)
+    else:
+        offsets = DORBLAD_OFFSETS.get(karm_type)
+
     if not offsets:
         return None
 
@@ -268,7 +285,8 @@ def dekklist_lengde(karm_h: int) -> int:
 
 
 def laminat_mal(karm_type: str, dorblad_b: int, dorblad_h: int,
-                hinge_type: Optional[str] = None) -> tuple[Optional[int], Optional[int]]:
+                hinge_type: Optional[str] = None,
+                door_type: Optional[str] = None) -> tuple[Optional[int], Optional[int]]:
     """Beregn laminatmål fra dørbladmål.
 
     Args:
@@ -276,11 +294,20 @@ def laminat_mal(karm_type: str, dorblad_b: int, dorblad_h: int,
         dorblad_b: Dørbladbredde i mm
         dorblad_h: Dørbladhøyde i mm
         hinge_type: Hengseltype (kun nødvendig for SD3/ID)
+        door_type: Dørtype-nøkkel for dørtype-bevisst oppslag
 
     Returns:
         Tuple (laminat_bredde, laminat_høyde) i mm, eller (None, None) hvis ikke støttet
     """
-    offsets = LAMINAT_OFFSETS.get(karm_type)
+    # Dørtype-bevisst oppslag (unngår kollisjon ved delte karmtyper)
+    if door_type and door_type in DOOR_REGISTRY:
+        door_laminat = DOOR_REGISTRY[door_type].get('laminat_offsets', {})
+        offsets = door_laminat.get(karm_type)
+        # Hvis dørtypen har tom laminat_offsets og karmtypen ikke finnes → ingen laminat
+        if not door_laminat:
+            return (None, None)
+    else:
+        offsets = LAMINAT_OFFSETS.get(karm_type)
 
     if offsets is None:
         # Bruk default
@@ -317,6 +344,74 @@ def laminat_2_mal(karm_type: str, laminat_1_b: int, laminat_1_h: int) -> tuple[O
 # =============================================================================
 # AREAL
 # =============================================================================
+
+def sparkeplate_bredde(door_type: str, dorblad_b: int) -> Optional[int]:
+    """Beregn sparkeplatebredde fra dørbladbredde.
+
+    Args:
+        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDI')
+        dorblad_b: Dørbladbredde i mm
+
+    Returns:
+        Sparkeplatebredde i mm, eller None hvis dørtypen ikke har sparkeplate
+    """
+    door_def = DOOR_REGISTRY.get(door_type, {})
+    offset = door_def.get('sparkeplate_offset')
+    if offset is None:
+        return None
+    return dorblad_b + offset
+
+
+def avviserboyler_lengde(door_type: str, dorblad_b: int) -> Optional[int]:
+    """Beregn avviserbøyler-lengde fra dørbladbredde.
+
+    Args:
+        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDI')
+        dorblad_b: Dørbladbredde i mm
+
+    Returns:
+        Avviserbøyler-lengde i mm, eller None hvis dørtypen ikke har avviserbøyler
+    """
+    door_def = DOOR_REGISTRY.get(door_type, {})
+    offset = door_def.get('avviserboyler_offset')
+    if offset is None:
+        return None
+    return dorblad_b + offset
+
+
+def ryggforsterkning_hoyde(door_type: str, dorblad_h: int) -> Optional[int]:
+    """Beregn ryggforsterkning-høyde fra dørbladhøyde.
+
+    Args:
+        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDPO')
+        dorblad_h: Dørbladhøyde i mm
+
+    Returns:
+        Ryggforsterkning-høyde i mm, eller None hvis dørtypen ikke har ryggforsterkning
+    """
+    door_def = DOOR_REGISTRY.get(door_type, {})
+    offset = door_def.get('ryggforsterkning_hoyde_offset')
+    if offset is None:
+        return None
+    return dorblad_h + offset
+
+
+def ryggforsterkning_overdel(door_type: str, dorblad_b: int) -> Optional[int]:
+    """Beregn ryggforsterkning overdel-lengde fra dørbladbredde.
+
+    Args:
+        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDPO')
+        dorblad_b: Dørbladbredde i mm
+
+    Returns:
+        Ryggforsterkning overdel-lengde i mm, eller None hvis ikke aktuelt
+    """
+    door_def = DOOR_REGISTRY.get(door_type, {})
+    offset = door_def.get('ryggforsterkning_overdel_offset')
+    if offset is None:
+        return None
+    return dorblad_b + offset
+
 
 def areal_m2(bredde: int, hoyde: int) -> float:
     """Beregn areal i kvadratmeter.

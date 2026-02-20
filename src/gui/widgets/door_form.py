@@ -20,6 +20,7 @@ from ...utils.constants import (
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
     UTFORING_RANGES, KARM_HAS_UTFORING, UTFORING_MAX_THICKNESS
 )
+from ...doors import DOOR_REGISTRY
 from ...models.door import DoorParams
 
 
@@ -293,7 +294,8 @@ class DoorForm(QWidget):
         for key, name in SWING_DIRECTIONS.items():
             self.hinge_combo.addItem(name, key)
         self.hinge_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Slagretning:", self.hinge_combo)
+        self.swing_label = QLabel("Slagretning:")
+        look_layout.addRow(self.swing_label, self.hinge_combo)
 
         self.laaskasse_combo = QComboBox()
         laaskasse_typer = [
@@ -306,7 +308,8 @@ class DoorForm(QWidget):
         self.laaskasse_combo.addItems(laaskasse_typer)
         self.laaskasse_combo.setCurrentText("3065/316L i SF/rustfritt stål")
         self.laaskasse_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Låskasse:", self.laaskasse_combo)
+        self.laaskasse_label = QLabel("Låskasse:")
+        look_layout.addRow(self.laaskasse_label, self.laaskasse_combo)
 
         self.beslag_combo = QComboBox()
         beslag_typer = [
@@ -322,7 +325,24 @@ class DoorForm(QWidget):
         self.beslag_combo.addItems(beslag_typer)
         self.beslag_combo.setCurrentText("Vrider 519U/Sylinderskilt oval 530C i SF stål")
         self.beslag_combo.currentIndexChanged.connect(self._on_changed)
-        look_layout.addRow("Beslagstype:", self.beslag_combo)
+        self.beslag_label = QLabel("Beslagstype:")
+        look_layout.addRow(self.beslag_label, self.beslag_combo)
+
+        # Pendeldør-felter (inne i Produktdetaljer, skjules for andre dørtyper)
+        self.sparkeplate_hoyde_spin = QSpinBox()
+        self.sparkeplate_hoyde_spin.setRange(100, 1500)
+        self.sparkeplate_hoyde_spin.setSuffix(" mm")
+        self.sparkeplate_hoyde_spin.setValue(400)
+        self.sparkeplate_hoyde_spin.valueChanged.connect(self._on_changed)
+        self.sparkeplate_hoyde_label = QLabel("Sparkeplate H:")
+        look_layout.addRow(self.sparkeplate_hoyde_label, self.sparkeplate_hoyde_spin)
+
+        self.avviserboyler_combo = QComboBox()
+        self.avviserboyler_combo.addItem("Ja", True)
+        self.avviserboyler_combo.addItem("Nei", False)
+        self.avviserboyler_combo.currentIndexChanged.connect(self._on_changed)
+        self.avviserboyler_label = QLabel("Avviserbøyler:")
+        look_layout.addRow(self.avviserboyler_label, self.avviserboyler_combo)
 
         layout.addWidget(look_group)
 
@@ -581,14 +601,20 @@ class DoorForm(QWidget):
     def _update_blade_thickness_for_karm(self):
         """Oppdaterer dørblad-tykkelse basert på første tilgjengelige bladtype for karmtypen."""
         door_type = self.door_type_combo.currentData()
-        blade_keys = DOOR_TYPE_BLADE_OVERRIDE.get(door_type)
-        if blade_keys is None:
-            karm = self.karm_combo.currentData()
-            blade_keys = KARM_BLADE_TYPES.get(karm, [])
+        karm = self.karm_combo.currentData()
+
+        # Bruk DOOR_REGISTRY for korrekt oppslag (unngår kollisjon ved delte karmtyper)
+        door_def = DOOR_REGISTRY.get(door_type, {})
+        blade_keys = door_def.get('karm_blade_types', {}).get(karm, [])
+        if not blade_keys:
+            blade_keys = DOOR_TYPE_BLADE_OVERRIDE.get(door_type) or KARM_BLADE_TYPES.get(karm, [])
 
         if blade_keys:
             blade_key = blade_keys[0]
-            info = DOOR_BLADE_TYPES.get(blade_key, {})
+            # Slå opp bladtype fra dørtype-definisjonen først
+            info = door_def.get('blade_types', {}).get(blade_key)
+            if info is None:
+                info = DOOR_BLADE_TYPES.get(blade_key, {})
             thicknesses = info.get('thicknesses', [40])
         else:
             thicknesses = [40]
@@ -611,8 +637,14 @@ class DoorForm(QWidget):
 
     def _update_hinge_for_karm(self):
         """Fyller hengsel-dropdown basert på valgt karmtype."""
+        door_type = self.door_type_combo.currentData()
         karm = self.karm_combo.currentData()
-        hinge_keys = KARM_HINGE_TYPES.get(karm, [])
+
+        # Bruk DOOR_REGISTRY for korrekt oppslag (unngår kollisjon ved delte karmtyper)
+        door_def = DOOR_REGISTRY.get(door_type, {})
+        hinge_keys = door_def.get('karm_hengsel_typer', {}).get(karm)
+        if hinge_keys is None:
+            hinge_keys = KARM_HINGE_TYPES.get(karm, [])
 
         old_hinge = self.hinge_type_combo.currentData()
         self.hinge_type_combo.blockSignals(True)
@@ -714,11 +746,38 @@ class DoorForm(QWidget):
         is_2floyet = (self.floyer_combo.currentData() or 1) == 2
         self.split_spin.setVisible(is_2floyet)
 
+    def _is_pendeldor(self) -> bool:
+        """Sjekker om valgt dørtype er en pendeldør."""
+        door_type = self.door_type_combo.currentData()
+        door_def = DOOR_REGISTRY.get(door_type, {})
+        return door_def.get('pendeldor', False)
+
     def _update_type_dependent_fields(self):
         """Viser/skjuler felt basert på valgt dørtype."""
+        is_pendel = self._is_pendeldor()
 
-        # Fordeling-synlighet
-        self._update_split_visibility()
+        # Slagretning: skjul for pendeldører (svinger begge veier)
+        self.swing_label.setVisible(not is_pendel)
+        self.hinge_combo.setVisible(not is_pendel)
+
+        # Låskasse og beslagstype: skjul for pendeldører
+        self.laaskasse_label.setVisible(not is_pendel)
+        self.laaskasse_combo.setVisible(not is_pendel)
+        self.beslag_label.setVisible(not is_pendel)
+        self.beslag_combo.setVisible(not is_pendel)
+
+        # Pendeldør-felter i Produktdetaljer
+        self.sparkeplate_hoyde_label.setVisible(is_pendel)
+        self.sparkeplate_hoyde_spin.setVisible(is_pendel)
+        self.avviserboyler_label.setVisible(is_pendel)
+        self.avviserboyler_combo.setVisible(is_pendel)
+
+        # Fordeling: lås til 50% for pendeldører
+        if is_pendel:
+            self.split_spin.setValue(50)
+            self.split_spin.setVisible(False)
+        else:
+            self._update_split_visibility()
 
         # Terskel/luftspalte aktivering
         threshold_key = self.threshold_combo.currentData()
@@ -745,10 +804,11 @@ class DoorForm(QWidget):
         door.thickness = self.thickness_spin.value()
         # Dørblad: type settes fra første tilgjengelige bladtype for karmtypen
         door_type = self.door_type_combo.currentData()
-        blade_keys = DOOR_TYPE_BLADE_OVERRIDE.get(door_type)
-        if blade_keys is None:
-            karm = self.karm_combo.currentData()
-            blade_keys = KARM_BLADE_TYPES.get(karm, [])
+        karm = self.karm_combo.currentData()
+        door_def = DOOR_REGISTRY.get(door_type, {})
+        blade_keys = door_def.get('karm_blade_types', {}).get(karm, [])
+        if not blade_keys:
+            blade_keys = DOOR_TYPE_BLADE_OVERRIDE.get(door_type) or KARM_BLADE_TYPES.get(karm, [])
         door.blade_type = blade_keys[0] if blade_keys else "SDI"
         door.blade_thickness = self.blade_thickness_spin.value()
         door.hinge_type = self.hinge_type_combo.currentData() or "ROCA_SF"
@@ -759,6 +819,12 @@ class DoorForm(QWidget):
         door.swing_direction = self.hinge_combo.currentData() or "left"
         door.lock_case = self.laaskasse_combo.currentText()
         door.handle_type = self.beslag_combo.currentText()
+
+        # Pendeldør-felter
+        door.sparkeplate_hoyde = self.sparkeplate_hoyde_spin.value()
+        door.avviserboyler = self.avviserboyler_combo.currentData()
+        if door.avviserboyler is None:
+            door.avviserboyler = True
 
         # Tillegg
         door.adjufix = self.adjufix_combo.currentData() or False
@@ -877,6 +943,12 @@ class DoorForm(QWidget):
         idx = self.sound_rating_combo.findData(door.sound_rating)
         if idx >= 0:
             self.sound_rating_combo.setCurrentIndex(idx)
+
+        # Pendeldør-felter
+        self.sparkeplate_hoyde_spin.setValue(door.sparkeplate_hoyde)
+        idx = self.avviserboyler_combo.findData(door.avviserboyler)
+        if idx >= 0:
+            self.avviserboyler_combo.setCurrentIndex(idx)
 
         # Merknader
         self.notes_edit.setText(door.notes)

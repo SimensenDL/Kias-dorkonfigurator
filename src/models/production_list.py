@@ -10,6 +10,7 @@ from collections import defaultdict
 import uuid
 
 from .door import DoorParams
+from ..doors import DOOR_REGISTRY
 from ..utils.calculations import (
     karm_bredde, karm_hoyde,
     dorblad_bredde, dorblad_hoyde,
@@ -67,18 +68,25 @@ KARM_FAMILY_GROUPS = {
     'SD3/ID': 'SD3_ID',
     'KD1': 'KD1_KD2',
     'KD2': 'KD1_KD2',
+    'PD1': 'PD1_PD2',
+    'PD2': 'PD1_PD2',
 }
 
 KARM_FAMILY_TITLES = {
     'SD1_SD2': 'Slagdørkarm Justerbar (SD1 og SD2)',
     'SD3_ID': 'Slagdørkarm Justerbar (SD3/ID)',
     'KD1_KD2': 'Kjøleromskarm (KD1 og KD2)',
+    'PD1_PD2': 'Pendeldørkarm (PD1 og PD2)',
 }
 
-KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID', 'KD1_KD2']
+KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID', 'KD1_KD2', 'PD1_PD2']
 
 KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
-DIVERSE_KOMPONENT_ORDER = ['Terskel', 'Dekklist']
+DIVERSE_KOMPONENT_ORDER = [
+    'Terskel', 'Dekklist',
+    'Sparkeplate', 'Avviserbøyler',
+    'Ryggforsterkning', 'Ryggforst. overdel',
+]
 
 
 class ProductionList:
@@ -269,9 +277,10 @@ class ProductionList:
                 ordre_ref=p.customer, **karm_extra,
             ))
 
-        # --- Dørramme ---
-        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, hinge_type)
-        db_h = dorblad_hoyde(karm_type, karm_h, floyer, hinge_type, luftspalte)
+        # --- Dørblad-mål ---
+        door_def = DOOR_REGISTRY.get(p.door_type, {})
+        db_b_total = dorblad_bredde(karm_type, karm_b, floyer, hinge_type, door_type=p.door_type)
+        db_h = dorblad_hoyde(karm_type, karm_h, floyer, hinge_type, luftspalte, door_type=p.door_type)
 
         if floyer == 2 and db_b_total:
             split_pct = p.floyer_split / 100.0
@@ -283,24 +292,27 @@ class ProductionList:
         else:
             blade_widths = []
 
-        dr_prefix = f'DR{p.blade_thickness}'
-        for bw in blade_widths:
-            items.append(ProductionItem(
-                komponent=f'{dr_prefix} over-/underdel', antall=2, lengde=bw,
-                farge=p.color, dor_id=door.id, karm_type=karm_type,
-                ordre_ref=p.customer,
-            ))
-            if db_h:
+        # --- Dørramme (betinget på har_dorramme) ---
+        har_dorramme = door_def.get('har_dorramme', True)
+        if har_dorramme:
+            dr_prefix = f'DR{p.blade_thickness}'
+            for bw in blade_widths:
                 items.append(ProductionItem(
-                    komponent=f'{dr_prefix} sidedel', antall=2, lengde=db_h,
+                    komponent=f'{dr_prefix} over-/underdel', antall=2, lengde=bw,
                     farge=p.color, dor_id=door.id, karm_type=karm_type,
                     ordre_ref=p.customer,
                 ))
+                if db_h:
+                    items.append(ProductionItem(
+                        komponent=f'{dr_prefix} sidedel', antall=2, lengde=db_h,
+                        farge=p.color, dor_id=door.id, karm_type=karm_type,
+                        ordre_ref=p.customer,
+                    ))
 
         # --- Laminat ---
         for bw in blade_widths:
             if db_h:
-                lam_b, lam_h = laminat_mal(karm_type, bw, db_h, hinge_type)
+                lam_b, lam_h = laminat_mal(karm_type, bw, db_h, hinge_type, door_type=p.door_type)
                 if lam_b and lam_h:
                     items.append(ProductionItem(
                         komponent='Laminat 1', antall=2,
@@ -316,6 +328,49 @@ class ProductionList:
                             farge=p.color, dor_id=door.id, karm_type=karm_type,
                             ordre_ref=p.customer,
                         ))
+
+        # --- Pendeldør-spesifikke komponenter ---
+        # Sparkeplate (bredde + høyde fra DoorParams)
+        if 'sparkeplate_offset' in door_def:
+            sp_offset = door_def['sparkeplate_offset']
+            for bw in blade_widths:
+                sp_b = bw + sp_offset
+                items.append(ProductionItem(
+                    komponent='Sparkeplate', antall=1,
+                    bredde=sp_b, hoyde=p.sparkeplate_hoyde,
+                    dor_id=door.id, karm_type=karm_type,
+                    ordre_ref=p.customer,
+                ))
+
+        # Avviserbøyler (kun ved avviserboyler=True)
+        if 'avviserboyler_offset' in door_def and p.avviserboyler:
+            av_offset = door_def['avviserboyler_offset']
+            for bw in blade_widths:
+                av_l = bw + av_offset
+                items.append(ProductionItem(
+                    komponent='Avviserbøyler', antall=1, lengde=av_l,
+                    dor_id=door.id, karm_type=karm_type,
+                    ordre_ref=p.customer,
+                ))
+
+        # Ryggforsterkning side (x2 — én per side av dørbladet)
+        if 'ryggforsterkning_hoyde_offset' in door_def and db_h:
+            rf_h = db_h + door_def['ryggforsterkning_hoyde_offset']
+            items.append(ProductionItem(
+                komponent='Ryggforsterkning', antall=2, hoyde=rf_h,
+                dor_id=door.id, karm_type=karm_type,
+                ordre_ref=p.customer,
+            ))
+
+        if 'ryggforsterkning_overdel_offset' in door_def:
+            rfo_offset = door_def['ryggforsterkning_overdel_offset']
+            for bw in blade_widths:
+                rfo = bw + rfo_offset
+                items.append(ProductionItem(
+                    komponent='Ryggforst. overdel', antall=2, lengde=rfo,
+                    dor_id=door.id, karm_type=karm_type,
+                    ordre_ref=p.customer,
+                ))
 
         # --- Tilbehør ---
         # Terskel (kun hvis type ≠ 'ingen')
@@ -680,7 +735,8 @@ class ProductionList:
         if not items:
             return []
 
-        diverse_komps = {'Terskel', 'Dekklist'}
+        diverse_komps = {'Terskel', 'Dekklist', 'Sparkeplate', 'Avviserbøyler',
+                         'Ryggforsterkning', 'Ryggforst. overdel'}
         diverse_items = [i for i in items if i.komponent in diverse_komps]
         if not diverse_items:
             return []

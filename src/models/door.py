@@ -58,6 +58,10 @@ class DoorParams:
     lock_type: str = ""    # Fritekst, bakoverkompatibilitet (erstattes av lock_case)
     swing_direction: str = "left"
 
+    # Pendeldør-spesifikke felter
+    sparkeplate_hoyde: int = 400   # Sparkeplate høyde i mm (default 400)
+    avviserboyler: bool = True     # Avviserbøyler Ja/Nei
+
     # Spesielle egenskaper (avhenger av dørtype)
     fire_rating: str = ""
     sound_rating: int = 0
@@ -231,6 +235,8 @@ class DoorParams:
             'adjufix': self.adjufix,
             'lock_type': self.lock_type,
             'swing_direction': self.swing_direction,
+            'sparkeplate_hoyde': self.sparkeplate_hoyde,
+            'avviserboyler': self.avviserboyler,
             'fire_rating': self.fire_rating,
             'sound_rating': self.sound_rating,
             'lead_thickness': self.lead_thickness,

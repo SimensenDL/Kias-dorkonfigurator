@@ -7,11 +7,17 @@ Nye dørtyper registreres ved å legge dem til i _DOOR_TYPE_MODULES.
 
 from .innerdor import INNERDOR
 from .kjoleromdor import KJOLEROMDOR
+from .pdpc import PDPC_DOR
+from .pdpo import PDPO_DOR
+from .pdi import PDI_DOR
 
 # Liste over alle registrerte dørtyper
 _DOOR_TYPE_MODULES = [
     INNERDOR,
     KJOLEROMDOR,
+    PDPC_DOR,
+    PDPO_DOR,
+    PDI_DOR,
 ]
 
 # Hovedregister: {key: door_def}
