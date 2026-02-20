@@ -113,7 +113,7 @@ PDPC_DOR = {
 
     # Klemsikring (svart silikonpakning i karm)
     'klemsikring': True,
-    'klemsikring_bredde': 30,  # mm
+    'klemsikring_bredde': 35,  # mm
 
     # Pendeldør-spesifikke egenskaper
     'pendeldor': True,        # Skjuler slagretning, låser 50/50 split

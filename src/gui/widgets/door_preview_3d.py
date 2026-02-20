@@ -33,6 +33,7 @@ SPARKEPLATE_THICKNESS = 1                # mm tykkelse
 SPARKEPLATE_COLOR = (0.0, 0.0, 0.0, 1.0)  # Svart
 KLEMSIKRING_COLOR = (0.05, 0.05, 0.05, 1.0)  # Svart silikon
 PIVOT_PLATE_COLOR = (0.75, 0.75, 0.73, 1.0)  # Sølv/aluminium hengsleplate
+PIVOT_HOLE_COLOR = (0.08, 0.08, 0.08, 1.0)   # Mørke skruehull
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
@@ -543,9 +544,16 @@ class DoorPreview3D(QWidget):
             else:
                 positions = [i / (count + 1) for i in range(1, count + 1)]
 
+            # Skruehull-dimensjoner og 2×2 mønster (relativt til hengselets hjørne)
+            hole_size = 8   # mm
+            hole_t = 0.3    # mm tykkelse
+            hole_offsets_x = [pw * 0.25 - hole_size / 2, pw * 0.75 - hole_size / 2]
+            hole_offsets_z = [ph * 0.25 - hole_size / 2, ph * 0.75 - hole_size / 2]
+
             for p in positions:
                 pz = luftspalte_mm + b_h * p - ph / 2
 
+                # Hengselkropp
                 verts, faces = self._make_box(
                     px * s, py * s, pz * s, pw * s, pd * s, ph * s
                 )
@@ -558,6 +566,26 @@ class DoorPreview3D(QWidget):
                 self._mesh_items.append(mesh)
                 self._blade_items.append(mesh)
                 mesh.setVisible(self._show_blades)
+
+                # 4 skruehull på fram- og bakside
+                for hox in hole_offsets_x:
+                    for hoz in hole_offsets_z:
+                        hx = px + hox
+                        hz = pz + hoz
+                        for face_y in (py + pd, py - hole_t):  # fram / bak
+                            verts, faces = self._make_box(
+                                hx * s, face_y * s, hz * s,
+                                hole_size * s, hole_t * s, hole_size * s
+                            )
+                            face_colors = self._normal_lit_face_colors(verts, faces, PIVOT_HOLE_COLOR)
+                            mesh = gl.GLMeshItem(
+                                vertexes=verts, faces=faces, faceColors=face_colors,
+                                smooth=False, drawEdges=False
+                            )
+                            self._gl_widget.addItem(mesh)
+                            self._mesh_items.append(mesh)
+                            self._blade_items.append(mesh)
+                            mesh.setVisible(self._show_blades)
 
     def _get_hinge_count(self, door) -> int:
         """Hent hengselantall fra DoorParams."""
