@@ -58,8 +58,8 @@ PDI_DOR = {
         'PD2': ['ingen', 'slepelist'],
     },
 
-    # Utforing: ingen
-    'karm_has_utforing': set(),
+    # Utforing: PD1 (skifter til PD2 ved vegg > 300mm)
+    'karm_has_utforing': {'PD1'},
 
     # Transportmål-offsets (fra utsparingsmål)
     'transport_width_offsets': {
