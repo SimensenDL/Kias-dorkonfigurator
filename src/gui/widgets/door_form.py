@@ -748,10 +748,6 @@ class DoorForm(QWidget):
         """Viser/skjuler felt basert på valgt dørtype."""
         is_pendel = self._is_pendeldor()
 
-        # Slagretning: skjul for pendeldører (svinger begge veier)
-        self.swing_label.setVisible(not is_pendel)
-        self.hinge_combo.setVisible(not is_pendel)
-
         # Låskasse og beslagstype: skjul for pendeldører
         self.laaskasse_label.setVisible(not is_pendel)
         self.laaskasse_combo.setVisible(not is_pendel)

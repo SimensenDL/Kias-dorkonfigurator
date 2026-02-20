@@ -32,6 +32,7 @@ BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
 SPARKEPLATE_THICKNESS = 1                # mm tykkelse
 SPARKEPLATE_COLOR = (0.0, 0.0, 0.0, 1.0)  # Svart
+KLEMSIKRING_COLOR = (0.05, 0.05, 0.05, 1.0)  # Svart silikon
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
@@ -293,6 +294,11 @@ class DoorPreview3D(QWidget):
             )
             mesh.setVisible(self._show_frame)
 
+        # 2b. Klemsikring (PDI)
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        if door_def.get('klemsikring', False):
+            self._add_klemsikring(door, profile, kb, kh, wall_t, karm_depth, s)
+
         # 3. Terskel (bare hvis det er valgt en terskeltype)
         if door.threshold_type != 'ingen':
             self._add_threshold(door, profile, kb, wall_t, karm_depth, blade_t_mm, s)
@@ -304,7 +310,6 @@ class DoorPreview3D(QWidget):
         self._add_hinges(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
         # 6. Håndtak (ikke for pendeldører)
-        door_def = DOOR_REGISTRY.get(door.door_type, {})
         if not door_def.get('pendeldor', False):
             self._add_handle(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
@@ -376,7 +381,8 @@ class DoorPreview3D(QWidget):
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type, door_type=door.door_type)
             db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm, door_type=door.door_type)
             if db_b and db_h:
-                blade_x = -db_b / 2
+                offset_x = self._klemsikring_blade_offset(door)
+                blade_x = -db_b / 2 + offset_x
                 # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
                 hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
                 pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, hinge_3d, s)
@@ -560,7 +566,8 @@ class DoorPreview3D(QWidget):
             # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
             hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
             per_blade = max(1, total_hinges)
-            return [(0, db_b, db_h, per_blade, hinge_3d)]
+            offset_x = self._klemsikring_blade_offset(door)
+            return [(offset_x, db_b, db_h, per_blade, hinge_3d)]
         else:
             db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type, door_type=door.door_type) or (kb - 132)
             db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm, door_type=door.door_type) or (kh - 85)
@@ -702,7 +709,8 @@ class DoorPreview3D(QWidget):
                 sp_b = sparkeplate_bredde(door.door_type, db_b)
                 if sp_b:
                     sp_h = min(door.sparkeplate_hoyde, db_h)
-                    blade_x = -db_b / 2
+                    offset_x = self._klemsikring_blade_offset(door)
+                    blade_x = -db_b / 2 + offset_x
                     sp_x = blade_x + (db_b - sp_b) / 2
                     hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
                     pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, hinge_3d, s)
@@ -761,6 +769,93 @@ class DoorPreview3D(QWidget):
         self._mesh_items.append(mesh)
         self._blade_items.append(mesh)
         mesh.setVisible(self._show_blades)
+
+    # =========================================================================
+    # KLEMSIKRING
+    # =========================================================================
+
+    def _klemsikring_blade_offset(self, door):
+        """Returnerer X-offset for dørblad pga. klemsikring (kun PDI 1-fløyet)."""
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        if not door_def.get('klemsikring', False) or door.floyer != 1:
+            return 0
+        bredde = door_def.get('klemsikring_bredde', 8)
+        hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
+        if hinge_3d == 'left':
+            return bredde / 2
+        else:
+            return -bredde / 2
+
+    def _add_klemsikring(self, door, profile, kb, kh, wall_t, karm_depth, s):
+        """Tegner svarte klemsikring-striper på innsiden av anslagene."""
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        ks_bredde = door_def.get('klemsikring_bredde', 8)
+        ks_color = np.array(KLEMSIKRING_COLOR)
+
+        list_w = 60    # listverk bredde
+        anslag_w = 20  # anslag bredde
+
+        # Klemsikring-dimensjoner
+        ks_depth = door.blade_thickness  # Dekker hele bladtykkelsen
+        blade_y = profile.blade_y(wall_t, door.blade_thickness, karm_depth)
+        ks_y = blade_y
+        ks_h = kh - list_w  # Full anslagshøyde
+
+        # Anslag innerkant: -kb/2 + list_w + anslag_w = -kb/2 + 80
+        left_x = -kb / 2 + list_w + anslag_w
+        right_x = kb / 2 - list_w - anslag_w - ks_bredde
+
+        if door.floyer == 1:
+            # Kun på hengslesiden
+            hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
+            if hinge_3d == 'left':
+                # Hengsel på negativ X (visuelt høyre) → klemsikring på venstre side
+                x = left_x
+            else:
+                # Hengsel på positiv X (visuelt venstre) → klemsikring på høyre side
+                x = right_x
+            mesh = self._add_mesh(
+                x * s, ks_y * s, 0,
+                ks_bredde * s, ks_depth * s, ks_h * s,
+                ks_color, is_frame=True
+            )
+            mesh.setVisible(self._show_frame)
+        else:
+            # 2-fløyet: begge sider
+            for x in [left_x, right_x]:
+                mesh = self._add_mesh(
+                    x * s, ks_y * s, 0,
+                    ks_bredde * s, ks_depth * s, ks_h * s,
+                    ks_color, is_frame=True
+                )
+                mesh.setVisible(self._show_frame)
+
+        # Bunn-klemsikring under hvert dørblad (kun ved slepelist-terskel)
+        if door.threshold_type == 'slepelist':
+            bunn_h = 22  # mm, samme som luftspalte
+            luftspalte_mm = profile.luftspalte(door)
+            total_hinges = self._get_hinge_count(door)
+            blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
+
+            for (bcx, b_w, b_h, _count, hinge_side) in blades:
+                blade_x = bcx - b_w / 2
+                pivot = self._get_open_pivot(blade_x, b_w, ks_y, ks_depth, hinge_side, s)
+                verts, faces = self._make_box(
+                    blade_x * s, ks_y * s, 0,
+                    b_w * s, ks_depth * s, bunn_h * s
+                )
+                face_colors = self._lit_face_colors(ks_color)
+                mesh = gl.GLMeshItem(
+                    vertexes=verts, faces=faces, faceColors=face_colors,
+                    smooth=False, drawEdges=False
+                )
+                tr = self._build_open_transform(pivot)
+                if tr is not None:
+                    mesh.setTransform(tr)
+                self._gl_widget.addItem(mesh)
+                self._mesh_items.append(mesh)
+                self._blade_items.append(mesh)
+                mesh.setVisible(self._show_blades)
 
     # =========================================================================
     # HJELPEMETODER

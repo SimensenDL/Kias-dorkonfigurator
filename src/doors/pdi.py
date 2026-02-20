@@ -114,6 +114,10 @@ PDI_DOR = {
         'KIAS_92_STOP': {'navn': 'Hengsler KIAS 92 stop'},
     },
 
+    # Klemsikring (svart silikonpakning i karm)
+    'klemsikring': True,
+    'klemsikring_bredde': 30,  # mm
+
     # Pendeldør-spesifikke egenskaper
     'pendeldor': True,        # Skjuler slagretning, låser 50/50 split
     'har_dorramme': True,     # PDI (40mm) HAR dørramme (DR40)
