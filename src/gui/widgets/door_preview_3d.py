@@ -575,7 +575,7 @@ class DoorPreview3D(QWidget):
             count *= 2  # Per fløy → totalt
         return count if count > 0 else 2
 
-    HINGE_EDGE_OFFSET = 200  # mm fra bunn/topp av dørblad til nærmeste hengsel (senter)
+    HINGE_EDGE_OFFSET = 250  # mm fra bunn/topp av dørblad til nærmeste hengsel (senter)
 
     def _hinge_z_positions(self, blade_h, count):
         """Returnerer hengsel-senterposisjoner (mm fra bunn av dørblad)."""
