@@ -79,7 +79,7 @@ def export_kappliste_excel(prod_list: 'ProductionList', filepath: str | Path) ->
     karm_komponenter = ['Overligger', 'Hengselside', 'Sluttstykkeside', 'Sidedel']
     dorblad_komponenter = ['Dørblad', 'Laminat', 'Dekklist']
     tilbehor_komponenter = ['Terskel', 'Løfteterskel', 'Skinne', 'Innerskinne', 'Styreskinne',
-                            'Sparkeplate', 'Ryggforsterkning', 'Ryggforst. overdel', 'Avviserbøyler']
+                            'Sparkeplate', 'Ryggforst. side', 'Ryggforst. overdel', 'Avviserbøyler']
 
     # Iterér gjennom karmtyper
     for karm_type, komponenter in sorted(grouped.items()):

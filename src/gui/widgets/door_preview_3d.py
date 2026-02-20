@@ -11,7 +11,7 @@ from PyQt6.QtGui import QMouseEvent, QSurfaceFormat, QMatrix4x4
 
 from ...models.door import DoorParams
 from ...utils.constants import RAL_COLORS, KARM_SIDESTOLPE_WIDTH
-from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, terskel_lengde
+from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, terskel_lengde, sparkeplate_bredde
 from ...doors import DOOR_REGISTRY
 from ..karm_profiles import KARM_PROFILES
 from . import graphics_settings as gfx
@@ -30,6 +30,8 @@ KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92, 'KD1': 97, 'KD2': 104,
                'PD1': 77, 'PD2': 84}
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 TERSKEL_HEIGHT = 50                      # mm (typisk terskelhøyde)
+SPARKEPLATE_THICKNESS = 1                # mm tykkelse
+SPARKEPLATE_COLOR = (0.0, 0.0, 0.0, 1.0)  # Svart
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
@@ -306,6 +308,10 @@ class DoorPreview3D(QWidget):
         if not door_def.get('pendeldor', False):
             self._add_handle(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
+        # 7. Sparkeplater (kun for pendeldører)
+        if door_def.get('pendeldor', False):
+            self._add_sparkeplater(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
+
     # =========================================================================
     # VEGG
     # =========================================================================
@@ -435,23 +441,80 @@ class DoorPreview3D(QWidget):
 
     def _add_hinges(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
         """Hengsler fra dørtype-data, plassert på riktig side."""
-        hw = self.HINGE_WIDTH
-        hh = self.HINGE_HEIGHT
-        hd = self.HINGE_DEPTH
         hinge_color = np.array([0.478, 0.478, 0.478, 1.0])
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        is_pendel = door_def.get('pendeldor', False)
 
         total_hinges = self._get_hinge_count(door)
-        hy = profile.hinge_y(wall_t, blade_t_mm, karm_depth, hd)
-        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
+        blade_y_pos = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
         # Bygg liste over blad å feste hengsler på
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
 
-        for (bcx, b_w, b_h, count, hinge_side) in blades:
-            blade_x = bcx - b_w / 2
-            pivot = self._get_open_pivot(blade_x, b_w, blade_y, blade_t_mm, hinge_side, s)
-            tr = self._build_open_transform(pivot)
+        if is_pendel:
+            self._add_pivot_hinges(blades, blade_y_pos, blade_t_mm, luftspalte_mm, hinge_color, s)
+        else:
+            hw = self.HINGE_WIDTH
+            hh = self.HINGE_HEIGHT
+            hd = self.HINGE_DEPTH
+            hy = profile.hinge_y(wall_t, blade_t_mm, karm_depth, hd)
 
+            for (bcx, b_w, b_h, count, hinge_side) in blades:
+                blade_x = bcx - b_w / 2
+                pivot = self._get_open_pivot(blade_x, b_w, blade_y_pos, blade_t_mm, hinge_side, s)
+                tr = self._build_open_transform(pivot)
+
+                if count <= 0:
+                    count = 2
+                if count == 2:
+                    positions = [0.20, 0.80]
+                elif count == 3:
+                    positions = [0.20, 0.60, 0.80]
+                elif count == 4:
+                    positions = [0.20, 0.40, 0.60, 0.80]
+                else:
+                    positions = [i / (count + 1) for i in range(1, count + 1)]
+
+                for p in positions:
+                    hz = luftspalte_mm + b_h * p - hh / 2
+                    if hinge_side == 'left':
+                        hx = bcx - b_w / 2 - hw
+                    else:
+                        hx = bcx + b_w / 2
+
+                    verts, faces = self._make_box(
+                        hx * s, hy * s, hz * s, hw * s, hd * s, hh * s
+                    )
+                    face_colors = self._normal_lit_face_colors(verts, faces, hinge_color)
+                    mesh = gl.GLMeshItem(
+                        vertexes=verts, faces=faces, faceColors=face_colors,
+                        smooth=False, drawEdges=False
+                    )
+                    if tr is not None:
+                        mesh.setTransform(tr)
+                    self._gl_widget.addItem(mesh)
+                    self._mesh_items.append(mesh)
+                    self._blade_items.append(mesh)
+                    mesh.setVisible(self._show_blades)
+
+    def _add_pivot_hinges(self, blades, blade_y_pos, blade_t_mm, luftspalte_mm, hinge_color, s):
+        """Pivot-hengsler (KIAS 92 stop) for pendeldører — samme plassering som vanlige, annen form."""
+        # Pivot-hengsel dimensjoner (mm), skalert etter bladtykkelse
+        pw = max(30, round(blade_t_mm * 1.5))  # bredde (X): 30mm for 5mm blad, 60mm for 40mm
+        pd = 30   # dybde (Y)
+        ph = 40   # høyde (Z)
+
+        py = blade_y_pos + blade_t_mm / 2 - pd / 2  # Sentrert på bladets Y
+
+        for (bcx, b_w, b_h, count, hinge_side) in blades:
+            # X-posisjon: brakett som går over dørbladet fra kanten
+            overhang = 5  # mm utenfor bladkanten
+            if hinge_side == 'left':
+                px = bcx - b_w / 2 - overhang
+            else:
+                px = bcx + b_w / 2 + overhang - pw
+
+            # Samme høydefordeling som vanlige hengsler
             if count <= 0:
                 count = 2
             if count == 2:
@@ -464,22 +527,16 @@ class DoorPreview3D(QWidget):
                 positions = [i / (count + 1) for i in range(1, count + 1)]
 
             for p in positions:
-                hz = luftspalte_mm + b_h * p - hh / 2
-                if hinge_side == 'left':
-                    hx = bcx - b_w / 2 - hw
-                else:
-                    hx = bcx + b_w / 2
+                pz = luftspalte_mm + b_h * p - ph / 2
 
                 verts, faces = self._make_box(
-                    hx * s, hy * s, hz * s, hw * s, hd * s, hh * s
+                    px * s, py * s, pz * s, pw * s, pd * s, ph * s
                 )
                 face_colors = self._normal_lit_face_colors(verts, faces, hinge_color)
                 mesh = gl.GLMeshItem(
                     vertexes=verts, faces=faces, faceColors=face_colors,
                     smooth=False, drawEdges=False
                 )
-                if tr is not None:
-                    mesh.setTransform(tr)
                 self._gl_widget.addItem(mesh)
                 self._mesh_items.append(mesh)
                 self._blade_items.append(mesh)
@@ -621,6 +678,83 @@ class DoorPreview3D(QWidget):
             vertexes=verts, faces=faces, faceColors=face_colors,
             smooth=gfx.SMOOTH_CURVED_PARTS, drawEdges=False
         )
+        if tr is not None:
+            mesh.setTransform(tr)
+        self._gl_widget.addItem(mesh)
+        self._mesh_items.append(mesh)
+        self._blade_items.append(mesh)
+        mesh.setVisible(self._show_blades)
+
+    # =========================================================================
+    # SPARKEPLATER
+    # =========================================================================
+
+    def _add_sparkeplater(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
+        """Sparkeplater på begge sider av hvert dørblad (pendeldører)."""
+        sp_color = np.array(SPARKEPLATE_COLOR)
+        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
+        sp_t = SPARKEPLATE_THICKNESS
+
+        if door.floyer == 1:
+            db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type, door_type=door.door_type)
+            db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm, door_type=door.door_type)
+            if db_b and db_h:
+                sp_b = sparkeplate_bredde(door.door_type, db_b)
+                if sp_b:
+                    sp_h = min(door.sparkeplate_hoyde, db_h)
+                    blade_x = -db_b / 2
+                    sp_x = blade_x + (db_b - sp_b) / 2
+                    hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
+                    pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, hinge_3d, s)
+                    # Framside
+                    self._render_sparkeplate(sp_x, blade_y + blade_t_mm, luftspalte_mm, sp_b, sp_t, sp_h, sp_color, s, pivot)
+                    # Bakside
+                    self._render_sparkeplate(sp_x, blade_y - sp_t, luftspalte_mm, sp_b, sp_t, sp_h, sp_color, s, pivot)
+        else:
+            db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type, door_type=door.door_type)
+            db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm, door_type=door.door_type)
+            if db_b_total and db_h:
+                db1_b = round(db_b_total * door.floyer_split / 100)
+                db2_b = db_b_total - db1_b
+
+                if door.swing_direction == 'left':
+                    left_w, right_w = db1_b, db2_b
+                else:
+                    left_w, right_w = db2_b, db1_b
+
+                total_w = left_w + BLADE_GAP + right_w
+                start_x = -total_w / 2
+
+                sp_h = min(door.sparkeplate_hoyde, db_h)
+
+                # Visuelt høyre blad
+                right_x = start_x
+                sp_b_r = sparkeplate_bredde(door.door_type, right_w)
+                if sp_b_r:
+                    sp_x_r = right_x + (right_w - sp_b_r) / 2
+                    pivot_r = self._get_open_pivot(right_x, right_w, blade_y, blade_t_mm, 'left', s)
+                    self._render_sparkeplate(sp_x_r, blade_y + blade_t_mm, luftspalte_mm, sp_b_r, sp_t, sp_h, sp_color, s, pivot_r)
+                    self._render_sparkeplate(sp_x_r, blade_y - sp_t, luftspalte_mm, sp_b_r, sp_t, sp_h, sp_color, s, pivot_r)
+
+                # Visuelt venstre blad
+                left_x = start_x + right_w + BLADE_GAP
+                sp_b_l = sparkeplate_bredde(door.door_type, left_w)
+                if sp_b_l:
+                    sp_x_l = left_x + (left_w - sp_b_l) / 2
+                    pivot_l = self._get_open_pivot(left_x, left_w, blade_y, blade_t_mm, 'right', s)
+                    self._render_sparkeplate(sp_x_l, blade_y + blade_t_mm, luftspalte_mm, sp_b_l, sp_t, sp_h, sp_color, s, pivot_l)
+                    self._render_sparkeplate(sp_x_l, blade_y - sp_t, luftspalte_mm, sp_b_l, sp_t, sp_h, sp_color, s, pivot_l)
+
+    def _render_sparkeplate(self, x, y, z, w, d, h, color, s, pivot=None):
+        """Tegner én sparkeplate med retningsbasert lys."""
+        verts, faces = self._make_box(x * s, y * s, z * s, w * s, d * s, h * s)
+        face_colors = self._lit_face_colors(color)
+
+        mesh = gl.GLMeshItem(
+            vertexes=verts, faces=faces, faceColors=face_colors,
+            smooth=False, drawEdges=False
+        )
+        tr = self._build_open_transform(pivot)
         if tr is not None:
             mesh.setTransform(tr)
         self._gl_widget.addItem(mesh)

@@ -85,7 +85,7 @@ KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
 DIVERSE_KOMPONENT_ORDER = [
     'Terskel', 'Dekklist',
     'Sparkeplate', 'Avviserbøyler',
-    'Ryggforsterkning', 'Ryggforst. overdel',
+    'Ryggforst. side', 'Ryggforst. overdel',
 ]
 
 
@@ -336,7 +336,7 @@ class ProductionList:
             for bw in blade_widths:
                 sp_b = bw + sp_offset
                 items.append(ProductionItem(
-                    komponent='Sparkeplate', antall=1,
+                    komponent='Sparkeplate', antall=2,
                     bredde=sp_b, hoyde=p.sparkeplate_hoyde,
                     dor_id=door.id, karm_type=karm_type,
                     ordre_ref=p.customer,
@@ -348,7 +348,7 @@ class ProductionList:
             for bw in blade_widths:
                 av_l = bw + av_offset
                 items.append(ProductionItem(
-                    komponent='Avviserbøyler', antall=1, lengde=av_l,
+                    komponent='Avviserbøyler', antall=2, lengde=av_l,
                     dor_id=door.id, karm_type=karm_type,
                     ordre_ref=p.customer,
                 ))
@@ -357,7 +357,7 @@ class ProductionList:
         if 'ryggforsterkning_hoyde_offset' in door_def and db_h:
             rf_h = db_h + door_def['ryggforsterkning_hoyde_offset']
             items.append(ProductionItem(
-                komponent='Ryggforsterkning', antall=2, hoyde=rf_h,
+                komponent='Ryggforst. side', antall=2, hoyde=rf_h,
                 dor_id=door.id, karm_type=karm_type,
                 ordre_ref=p.customer,
             ))
@@ -367,7 +367,7 @@ class ProductionList:
             for bw in blade_widths:
                 rfo = bw + rfo_offset
                 items.append(ProductionItem(
-                    komponent='Ryggforst. overdel', antall=2, lengde=rfo,
+                    komponent='Ryggforst. overdel', antall=1, lengde=rfo,
                     dor_id=door.id, karm_type=karm_type,
                     ordre_ref=p.customer,
                 ))
@@ -566,7 +566,7 @@ class ProductionList:
         if 'ryggforsterkning' in mal:
             rf = mal['ryggforsterkning']
             items.append(ProductionItem(
-                komponent='Ryggforsterkning',
+                komponent='Ryggforst. side',
                 antall=rf.get('antall', 1),
                 hoyde=rf.get('hoyde'),
                 dor_id=dor_id,
@@ -736,7 +736,7 @@ class ProductionList:
             return []
 
         diverse_komps = {'Terskel', 'Dekklist', 'Sparkeplate', 'Avviserbøyler',
-                         'Ryggforsterkning', 'Ryggforst. overdel'}
+                         'Ryggforst. side', 'Ryggforst. overdel'}
         diverse_items = [i for i in items if i.komponent in diverse_komps]
         if not diverse_items:
             return []
