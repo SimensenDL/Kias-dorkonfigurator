@@ -32,6 +32,7 @@ BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 SPARKEPLATE_THICKNESS = 1                # mm tykkelse
 SPARKEPLATE_COLOR = (0.0, 0.0, 0.0, 1.0)  # Svart
 KLEMSIKRING_COLOR = (0.05, 0.05, 0.05, 1.0)  # Svart silikon
+PIVOT_PLATE_COLOR = (0.75, 0.75, 0.73, 1.0)  # Sølv/aluminium hengsleplate
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
@@ -515,16 +516,15 @@ class DoorPreview3D(QWidget):
                     mesh.setVisible(self._show_blades)
 
     def _add_pivot_hinges(self, blades, blade_y_pos, blade_t_mm, luftspalte_mm, hinge_color, s):
-        """Pivot-hengsler (KIAS 92 stop) for pendeldører — samme plassering som vanlige, annen form."""
-        # Pivot-hengsel dimensjoner (mm), skalert etter bladtykkelse
-        pw = max(30, round(blade_t_mm * 1.5))  # bredde (X): 30mm for 5mm blad, 60mm for 40mm
-        pd = 30   # dybde (Y)
-        ph = 40   # høyde (Z)
+        """Pivot-hengsler (KIAS 92 stop) for pendeldører — én solid boks per hengsel."""
+        # Dimensjoner (mm)
+        pw = 80   # Bredde (X)
+        pd = blade_t_mm + 2 + 2  # Dybde (Y): bladtykkelse + 2mm plate på hver side
+        ph = 100  # Høyde (Z)
 
-        py = blade_y_pos + blade_t_mm / 2 - pd / 2  # Sentrert på bladets Y
+        py = blade_y_pos - 2  # Starter 2mm bak bladets bakside
 
         for (bcx, b_w, b_h, count, hinge_side) in blades:
-            # X-posisjon: brakett som går over dørbladet fra kanten
             overhang = 5  # mm utenfor bladkanten
             if hinge_side == 'left':
                 px = bcx - b_w / 2 - overhang
@@ -549,7 +549,7 @@ class DoorPreview3D(QWidget):
                 verts, faces = self._make_box(
                     px * s, py * s, pz * s, pw * s, pd * s, ph * s
                 )
-                face_colors = self._normal_lit_face_colors(verts, faces, hinge_color)
+                face_colors = self._normal_lit_face_colors(verts, faces, PIVOT_PLATE_COLOR)
                 mesh = gl.GLMeshItem(
                     vertexes=verts, faces=faces, faceColors=face_colors,
                     smooth=False, drawEdges=False
