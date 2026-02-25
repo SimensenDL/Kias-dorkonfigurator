@@ -35,6 +35,8 @@ SPARKEPLATE_COLOR = (0.0, 0.0, 0.0, 1.0)  # Svart
 KLEMSIKRING_COLOR = (0.05, 0.05, 0.05, 1.0)  # Svart silikon
 PIVOT_PLATE_COLOR = (0.75, 0.75, 0.73, 1.0)  # Sølv/aluminium hengsleplate
 PIVOT_HOLE_COLOR = (0.08, 0.08, 0.08, 1.0)   # Mørke skruehull
+RYGGFORST_DEPTH = 40    # mm — dybde ryggforsterkning (lik PDI-bladtykkelse)
+RYGGFORST_OVERLAP = 10  # mm — sidestolpe overlapper bladkant innover
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
@@ -304,6 +306,10 @@ class DoorPreview3D(QWidget):
         # 4. Dørblad
         self._add_door_blades(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
+        # 4b. Ryggforsterkning (PDPC/PDPO)
+        if door_def.get('ryggforsterkning_hoyde_offset'):
+            self._add_ryggforsterkning(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
+
         # 5. Slepelist (terskel under dørblad)
         if door.threshold_type == 'slepelist':
             self._add_slepelist(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
@@ -363,7 +369,11 @@ class DoorPreview3D(QWidget):
 
         for (bcx, b_w, b_h, _count, hinge_side) in blades:
             blade_x = bcx - b_w / 2
-            pivot = self._get_open_pivot(blade_x, b_w, blade_y, blade_t_mm, hinge_side, s)
+            eff_x, eff_w, eff_y, eff_d = self._effective_pivot_params(
+                door, blade_x, b_w, blade_y, blade_t_mm,
+                kb=kb, hinge_side=hinge_side
+            )
+            pivot = self._get_open_pivot(eff_x, eff_w, eff_y, eff_d, hinge_side, s)
 
             verts, faces = self._make_box(
                 blade_x * s, blade_y * s, 0,
@@ -399,7 +409,10 @@ class DoorPreview3D(QWidget):
                 blade_x = -db_b / 2 + offset_x
                 # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
                 hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
-                pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, hinge_3d, s)
+                eff_x, eff_w, eff_y, eff_d = self._effective_pivot_params(
+                    door, blade_x, db_b, blade_y, blade_t_mm
+                )
+                pivot = self._get_open_pivot(eff_x, eff_w, eff_y, eff_d, hinge_3d, s)
                 self._render_single_blade(
                     blade_x, blade_y, luftspalte_mm,
                     db_b, blade_t_mm, db_h,
@@ -423,7 +436,11 @@ class DoorPreview3D(QWidget):
 
                 # Visuelt høyre blad (negativ X i 3D), hengsler på ytre kant
                 right_x = start_x
-                pivot_r = self._get_open_pivot(right_x, right_w, blade_y, blade_t_mm, 'left', s)
+                eff_rx, eff_rw, eff_ry, eff_rd = self._effective_pivot_params(
+                    door, right_x, right_w, blade_y, blade_t_mm,
+                    kb=kb, hinge_side='left'
+                )
+                pivot_r = self._get_open_pivot(eff_rx, eff_rw, eff_ry, eff_rd, 'left', s)
                 self._render_single_blade(
                     right_x, blade_y, luftspalte_mm,
                     right_w, blade_t_mm, db_h,
@@ -431,7 +448,11 @@ class DoorPreview3D(QWidget):
                 )
                 # Visuelt venstre blad (positiv X i 3D), hengsler på ytre kant
                 left_x = start_x + right_w + BLADE_GAP
-                pivot_l = self._get_open_pivot(left_x, left_w, blade_y, blade_t_mm, 'right', s)
+                eff_lx, eff_lw, eff_ly, eff_ld = self._effective_pivot_params(
+                    door, left_x, left_w, blade_y, blade_t_mm,
+                    kb=kb, hinge_side='right'
+                )
+                pivot_l = self._get_open_pivot(eff_lx, eff_lw, eff_ly, eff_ld, 'right', s)
                 self._render_single_blade(
                     left_x, blade_y, luftspalte_mm,
                     left_w, blade_t_mm, db_h,
@@ -456,6 +477,89 @@ class DoorPreview3D(QWidget):
         mesh.setVisible(self._show_blades)
 
     # =========================================================================
+    # RYGGFORSTERKNING (PDPC/PDPO)
+    # =========================================================================
+
+    def _add_ryggforsterkning(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
+        """U-formet aluminiumsramme (2 sider + overdel) rundt hvert dørblad.
+
+        PDPC/PDPO har 5mm polykarbonat-blad som trenger ryggforsterkning
+        for å gi 40mm total dybde der pivot-hengsler monteres.
+        """
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        h_offset = door_def.get('ryggforsterkning_hoyde_offset', 99)  # 99mm
+        o_offset = door_def.get('ryggforsterkning_overdel_offset', 98)  # 98mm
+        side_w = o_offset / 2  # 49mm
+
+        frame_color = np.array(self._ral_to_rgba(door.karm_color))
+        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
+        # Rammen er 40mm dyp, sentrert rundt 5mm bladet
+        frame_y = blade_y + blade_t_mm / 2 - RYGGFORST_DEPTH / 2
+
+        total_hinges = self._get_hinge_count(door)
+        blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
+
+        is_double = door.floyer == 2
+
+        for (bcx, b_w, b_h, _count, hinge_side) in blades:
+            blade_x = bcx - b_w / 2
+            side_h = b_h + h_offset  # Sidestolpe-høyde
+
+            # Pivot basert på rammens dimensjoner
+            eff_x, eff_w, eff_y, eff_d = self._effective_pivot_params(
+                door, blade_x, b_w, blade_y, blade_t_mm,
+                kb=kb, hinge_side=hinge_side
+            )
+            pivot = self._get_open_pivot(eff_x, eff_w, eff_y, eff_d, hinge_side, s)
+
+            parts = []
+            lap = RYGGFORST_OVERLAP
+
+            if is_double:
+                # 2-fløyet: sidestolpe fra etter klemsikring (35mm) + 5mm margin
+                klem_offset = 120  # anslag(80) + klemsikring(35) + margin(5)
+                if hinge_side == 'left':
+                    outer_x = -kb / 2 + klem_offset
+                    post_w = blade_x + lap - outer_x
+                    parts.append((outer_x, frame_y, luftspalte_mm,
+                                  post_w, RYGGFORST_DEPTH, side_h))
+                    parts.append((outer_x, frame_y, luftspalte_mm + b_h,
+                                  blade_x + b_w - outer_x, RYGGFORST_DEPTH, h_offset))
+                else:
+                    outer_x = kb / 2 - klem_offset
+                    post_w = outer_x - (blade_x + b_w - lap)
+                    parts.append((blade_x + b_w - lap, frame_y, luftspalte_mm,
+                                  post_w, RYGGFORST_DEPTH, side_h))
+                    parts.append((blade_x, frame_y, luftspalte_mm + b_h,
+                                  outer_x - blade_x, RYGGFORST_DEPTH, h_offset))
+            else:
+                # 1-fløyet: sidestolper på begge sider + full overdel
+                overdel_w = b_w + o_offset
+                parts.append((blade_x - side_w, frame_y, luftspalte_mm,
+                              side_w + lap, RYGGFORST_DEPTH, side_h))
+                parts.append((blade_x + b_w - lap, frame_y, luftspalte_mm,
+                              side_w + lap, RYGGFORST_DEPTH, side_h))
+                parts.append((blade_x - side_w, frame_y, luftspalte_mm + b_h,
+                              overdel_w, RYGGFORST_DEPTH, h_offset))
+
+            for (bx, by, bz, dx, dy, dz) in parts:
+                verts, faces = self._make_box(
+                    bx * s, by * s, bz * s, dx * s, dy * s, dz * s
+                )
+                face_colors = self._normal_lit_face_colors(verts, faces, frame_color)
+                mesh = gl.GLMeshItem(
+                    vertexes=verts, faces=faces, faceColors=face_colors,
+                    smooth=False, drawEdges=False
+                )
+                tr = self._build_open_transform(pivot)
+                if tr is not None:
+                    mesh.setTransform(tr)
+                self._gl_widget.addItem(mesh)
+                self._mesh_items.append(mesh)
+                self._blade_items.append(mesh)
+                mesh.setVisible(self._show_blades)
+
+    # =========================================================================
     # HENGSLER
     # =========================================================================
 
@@ -472,7 +576,7 @@ class DoorPreview3D(QWidget):
         blades = self._get_blade_geometries(door, kb, kh, luftspalte_mm, total_hinges)
 
         if is_pendel:
-            self._add_pivot_hinges(blades, blade_y_pos, blade_t_mm, luftspalte_mm, hinge_color, s)
+            self._add_pivot_hinges(door, blades, blade_y_pos, blade_t_mm, luftspalte_mm, hinge_color, s, kb)
         else:
             hw = self.HINGE_WIDTH
             hh = self.HINGE_HEIGHT
@@ -508,23 +612,51 @@ class DoorPreview3D(QWidget):
                     self._blade_items.append(mesh)
                     mesh.setVisible(self._show_blades)
 
-    def _add_pivot_hinges(self, blades, blade_y_pos, blade_t_mm, luftspalte_mm, hinge_color, s):
+    def _add_pivot_hinges(self, door, blades, blade_y_pos, blade_t_mm, luftspalte_mm, hinge_color, s, kb=None):
         """Pivot-hengsler (KIAS 92 stop) for pendeldører — én solid boks per hengsel."""
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        has_rygg = 'ryggforsterkning_hoyde_offset' in door_def
+
         # Dimensjoner (mm)
         pw = 80   # Bredde (X)
-        pd = blade_t_mm + 2 + 2  # Dybde (Y): bladtykkelse + 2mm plate på hver side
+        if has_rygg:
+            pd = RYGGFORST_DEPTH + 2 + 2  # 44mm: rammedybde + 2mm plate på hver side
+            frame_y = blade_y_pos + blade_t_mm / 2 - RYGGFORST_DEPTH / 2
+            py = frame_y - 2
+        else:
+            pd = blade_t_mm + 2 + 2
+            py = blade_y_pos - 2
         ph = 60   # Høyde (Z)
 
-        py = blade_y_pos - 2  # Starter 2mm bak bladets bakside
+        h_offset = door_def.get('ryggforsterkning_hoyde_offset', 0)
+        is_double = door.floyer == 2
 
         for (bcx, b_w, b_h, count, hinge_side) in blades:
-            overhang = 5  # mm utenfor bladkanten
-            if hinge_side == 'left':
-                px = bcx - b_w / 2 - overhang
+            blade_x = bcx - b_w / 2
+            if has_rygg and is_double and kb is not None:
+                # 2-fløyet: hengsler etter klemsikring (35mm) + 5mm margin
+                klem_offset = 120  # anslag(80) + klemsikring(35) + margin(5)
+                if hinge_side == 'left':
+                    px = -kb / 2 + klem_offset
+                else:
+                    px = kb / 2 - klem_offset - pw
+            elif has_rygg:
+                # 1-fløyet: hengsler ved rammens sidekant
+                side_w = door_def.get('ryggforsterkning_overdel_offset', 0) / 2
+                if hinge_side == 'left':
+                    px = blade_x - side_w
+                else:
+                    px = blade_x + b_w + side_w - pw
             else:
-                px = bcx + b_w / 2 + overhang - pw
+                overhang = 5  # mm utenfor bladkanten
+                if hinge_side == 'left':
+                    px = blade_x - overhang
+                else:
+                    px = blade_x + b_w + overhang - pw
 
-            z_positions = self._hinge_z_positions(b_h, max(count, 2))
+            # Hengsel-Z basert på rammehøyde (inkl. ryggforsterkning)
+            ref_h = b_h + h_offset if has_rygg else b_h
+            z_positions = self._hinge_z_positions(ref_h, max(count, 2))
 
             # Skruehull-dimensjoner og 2×2 mønster (relativt til hengselets hjørne)
             hole_size = 8   # mm
@@ -745,6 +877,16 @@ class DoorPreview3D(QWidget):
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
         sp_t = SPARKEPLATE_THICKNESS
 
+        # Sparkeplater monteres på rammens overflate når ryggforsterkning finnes
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        has_rygg = 'ryggforsterkning_hoyde_offset' in door_def
+        if has_rygg:
+            sp_surface_y = blade_y + blade_t_mm / 2 - RYGGFORST_DEPTH / 2
+            sp_surface_depth = RYGGFORST_DEPTH
+        else:
+            sp_surface_y = blade_y
+            sp_surface_depth = blade_t_mm
+
         if door.floyer == 1:
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type, door_type=door.door_type)
             db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm, door_type=door.door_type)
@@ -756,11 +898,14 @@ class DoorPreview3D(QWidget):
                     blade_x = -db_b / 2 + offset_x
                     sp_x = blade_x + (db_b - sp_b) / 2
                     hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
-                    pivot = self._get_open_pivot(blade_x, db_b, blade_y, blade_t_mm, hinge_3d, s)
+                    eff_x, eff_w, eff_y, eff_d = self._effective_pivot_params(
+                        door, blade_x, db_b, blade_y, blade_t_mm
+                    )
+                    pivot = self._get_open_pivot(eff_x, eff_w, eff_y, eff_d, hinge_3d, s)
                     # Framside
-                    self._render_sparkeplate(sp_x, blade_y + blade_t_mm, luftspalte_mm, sp_b, sp_t, sp_h, sp_color, s, pivot)
+                    self._render_sparkeplate(sp_x, sp_surface_y + sp_surface_depth, luftspalte_mm, sp_b, sp_t, sp_h, sp_color, s, pivot)
                     # Bakside
-                    self._render_sparkeplate(sp_x, blade_y - sp_t, luftspalte_mm, sp_b, sp_t, sp_h, sp_color, s, pivot)
+                    self._render_sparkeplate(sp_x, sp_surface_y - sp_t, luftspalte_mm, sp_b, sp_t, sp_h, sp_color, s, pivot)
         else:
             db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type, door_type=door.door_type)
             db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm, door_type=door.door_type)
@@ -783,18 +928,26 @@ class DoorPreview3D(QWidget):
                 sp_b_r = sparkeplate_bredde(door.door_type, right_w)
                 if sp_b_r:
                     sp_x_r = right_x + (right_w - sp_b_r) / 2
-                    pivot_r = self._get_open_pivot(right_x, right_w, blade_y, blade_t_mm, 'left', s)
-                    self._render_sparkeplate(sp_x_r, blade_y + blade_t_mm, luftspalte_mm, sp_b_r, sp_t, sp_h, sp_color, s, pivot_r)
-                    self._render_sparkeplate(sp_x_r, blade_y - sp_t, luftspalte_mm, sp_b_r, sp_t, sp_h, sp_color, s, pivot_r)
+                    eff_rx, eff_rw, eff_ry, eff_rd = self._effective_pivot_params(
+                        door, right_x, right_w, blade_y, blade_t_mm,
+                        kb=kb, hinge_side='left'
+                    )
+                    pivot_r = self._get_open_pivot(eff_rx, eff_rw, eff_ry, eff_rd, 'left', s)
+                    self._render_sparkeplate(sp_x_r, sp_surface_y + sp_surface_depth, luftspalte_mm, sp_b_r, sp_t, sp_h, sp_color, s, pivot_r)
+                    self._render_sparkeplate(sp_x_r, sp_surface_y - sp_t, luftspalte_mm, sp_b_r, sp_t, sp_h, sp_color, s, pivot_r)
 
                 # Visuelt venstre blad
                 left_x = start_x + right_w + BLADE_GAP
                 sp_b_l = sparkeplate_bredde(door.door_type, left_w)
                 if sp_b_l:
                     sp_x_l = left_x + (left_w - sp_b_l) / 2
-                    pivot_l = self._get_open_pivot(left_x, left_w, blade_y, blade_t_mm, 'right', s)
-                    self._render_sparkeplate(sp_x_l, blade_y + blade_t_mm, luftspalte_mm, sp_b_l, sp_t, sp_h, sp_color, s, pivot_l)
-                    self._render_sparkeplate(sp_x_l, blade_y - sp_t, luftspalte_mm, sp_b_l, sp_t, sp_h, sp_color, s, pivot_l)
+                    eff_lx, eff_lw, eff_ly, eff_ld = self._effective_pivot_params(
+                        door, left_x, left_w, blade_y, blade_t_mm,
+                        kb=kb, hinge_side='right'
+                    )
+                    pivot_l = self._get_open_pivot(eff_lx, eff_lw, eff_ly, eff_ld, 'right', s)
+                    self._render_sparkeplate(sp_x_l, sp_surface_y + sp_surface_depth, luftspalte_mm, sp_b_l, sp_t, sp_h, sp_color, s, pivot_l)
+                    self._render_sparkeplate(sp_x_l, sp_surface_y - sp_t, luftspalte_mm, sp_b_l, sp_t, sp_h, sp_color, s, pivot_l)
 
     def _render_sparkeplate(self, x, y, z, w, d, h, color, s, pivot=None):
         """Tegner én sparkeplate med retningsbasert lys."""
@@ -876,6 +1029,36 @@ class DoorPreview3D(QWidget):
     # =========================================================================
     # HJELPEMETODER
     # =========================================================================
+
+    def _effective_pivot_params(self, door, blade_x, blade_w, blade_y, blade_t,
+                                kb=None, hinge_side=None):
+        """Returnerer (eff_x, eff_w, eff_y, eff_d) for pivot-beregning.
+
+        Når ryggforsterkning finnes (PDPC/PDPO), brukes rammens dimensjoner
+        i stedet for bladets for korrekt rotasjon rundt hengselkant.
+        For 2-fløyet strekker rammen seg fra karm innerkant til over bladet.
+        """
+        door_def = DOOR_REGISTRY.get(door.door_type, {})
+        if 'ryggforsterkning_hoyde_offset' in door_def:
+            frame_y = blade_y + blade_t / 2 - RYGGFORST_DEPTH / 2
+            if door.floyer == 2 and kb is not None and hinge_side is not None:
+                # 2-fløyet: ramme fra etter klemsikring (35mm) + 5mm margin
+                klem_offset = 120  # anslag(80) + klemsikring(35) + margin(5)
+                lap = RYGGFORST_OVERLAP
+                if hinge_side == 'left':
+                    outer_x = -kb / 2 + klem_offset
+                    return (outer_x, blade_x + blade_w + lap - outer_x,
+                            frame_y, RYGGFORST_DEPTH)
+                else:
+                    outer_x = kb / 2 - klem_offset
+                    return (blade_x - lap, outer_x - blade_x + lap,
+                            frame_y, RYGGFORST_DEPTH)
+            else:
+                # 1-fløyet: symmetrisk ramme
+                side_w = door_def['ryggforsterkning_overdel_offset'] / 2  # 49mm
+                return (blade_x - side_w, blade_w + 2 * side_w,
+                        frame_y, RYGGFORST_DEPTH)
+        return (blade_x, blade_w, blade_y, blade_t)
 
     def _get_open_pivot(self, blade_x, blade_w, blade_y, blade_d, hinge_side, s):
         """Returnerer (vinkel, pivot_x, pivot_y, y_offset) for open-dør-rotasjon, eller None."""
