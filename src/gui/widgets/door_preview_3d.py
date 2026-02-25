@@ -546,7 +546,7 @@ class DoorPreview3D(QWidget):
                 verts, faces = self._make_box(
                     bx * s, by * s, bz * s, dx * s, dy * s, dz * s
                 )
-                face_colors = self._normal_lit_face_colors(verts, faces, frame_color)
+                face_colors = self._lit_face_colors(frame_color)
                 mesh = gl.GLMeshItem(
                     vertexes=verts, faces=faces, faceColors=face_colors,
                     smooth=False, drawEdges=False
