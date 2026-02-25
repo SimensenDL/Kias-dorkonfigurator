@@ -61,6 +61,9 @@ FJOSDOR = {
         'FD3': ['ingen', 'slepelist', 'anslag_37', 'anslag_kjorbar_25', 'hc20'],
     },
 
+    # Standard terskeltype for fjøsdør
+    'default_threshold': 'anslag_kjorbar_25',
+
     # Utforing: kun FD1
     'karm_has_utforing': {'FD1'},
 
@@ -98,14 +101,16 @@ FJOSDOR = {
 
     # Produksjons-offsets: dørblad (karm → dørblad)
     # Struktur: {karmtype: {floyer: {'bredde': offset, 'hoyde': offset}}}
+    # hoyde er base-offset UTEN luftspalte (96-13=83, 41-13=28)
+    # Luftspalte trekkes fra separat via dorblad_hoyde_inkl_luftspalte
     'dorblad_offsets': {
-        'FD1': {1: {'bredde': 168, 'hoyde': 96}, 2: {'bredde': 172, 'hoyde': 96}},
-        'FD2': {1: {'bredde': 168, 'hoyde': 96}, 2: {'bredde': 172, 'hoyde': 96}},
-        'FD3': {1: {'bredde': 58, 'hoyde': 41}, 2: {'bredde': 62, 'hoyde': 41}},
+        'FD1': {1: {'bredde': 168, 'hoyde': 83}, 2: {'bredde': 172, 'hoyde': 83}},
+        'FD2': {1: {'bredde': 168, 'hoyde': 83}, 2: {'bredde': 172, 'hoyde': 83}},
+        'FD3': {1: {'bredde': 58, 'hoyde': 28}, 2: {'bredde': 62, 'hoyde': 28}},
     },
 
     # Karmtyper der luftspalte trekkes fra i dørblad-høyde
-    'dorblad_hoyde_inkl_luftspalte': set(),
+    'dorblad_hoyde_inkl_luftspalte': {'FD1', 'FD2', 'FD3'},
 
     # Terskel-offsets (karm bredde → terskel lengde)
     # Struktur: {karmtype: {floyer: offset}}

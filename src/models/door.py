@@ -13,7 +13,8 @@ from ..utils.constants import (
     HINGE_TYPES, KARM_HINGE_TYPES,
     DIMENSION_DIFFERENTIALS, KARM_THRESHOLD_TYPES,
     TRANSPORT_WIDTH_OFFSETS, TRANSPORT_HEIGHT_OFFSETS,
-    KARM_SIZE_OFFSETS, KARM_SIDESTOLPE_WIDTH, KARM_BLADE_FLUSH
+    KARM_SIZE_OFFSETS, KARM_SIDESTOLPE_WIDTH, KARM_BLADE_FLUSH,
+    DEFAULT_THRESHOLDS
 )
 
 
@@ -104,10 +105,14 @@ class DoorParams:
         if hinge_types:
             self.hinge_type = hinge_types[0]
 
-        # Sett standard terskeltype basert på karmtype
+        # Sett standard terskeltype basert på karmtype og dørtype-default
         allowed_thresholds = KARM_THRESHOLD_TYPES.get(self.karm_type, ['ingen'])
         if allowed_thresholds:
-            self.threshold_type = allowed_thresholds[0]
+            default_t = DEFAULT_THRESHOLDS.get(self.door_type)
+            if default_t and default_t in allowed_thresholds:
+                self.threshold_type = default_t
+            else:
+                self.threshold_type = allowed_thresholds[0]
         self.luftspalte = THRESHOLD_LUFTSPALTE.get(self.threshold_type, 22)
 
     def effective_luftspalte(self) -> int:

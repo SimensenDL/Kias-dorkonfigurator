@@ -705,6 +705,13 @@ class DoorForm(QWidget):
         # Oppdater terskeltyper for denne dørtypen
         self._update_threshold_for_karm()
 
+        # Sett default terskeltype for denne dørtypen
+        default_threshold = door_def.get('default_threshold')
+        if default_threshold:
+            idx = self.threshold_combo.findData(default_threshold)
+            if idx >= 0:
+                self.threshold_combo.setCurrentIndex(idx)
+
         # Oppdater utforing-opsjoner
         self._update_utforing_options()
 

@@ -241,11 +241,11 @@ def dorblad_hoyde(karm_type: str, karm_h: int, floyer: int = 1,
     if not floyer_data:
         return None
 
-    # Trekk fra luftspalte hvis karmtypen krever det
+    # Trekk fra luftspalte hvis karmtypen krever det (SD3/ID, FD1/FD2/FD3)
     if karm_type in DORBLAD_HOYDE_INKL_LUFTSPALTE:
         return karm_h - hoyde_offset - luftspalte
-    else:
-        return karm_h - hoyde_offset
+
+    return karm_h - hoyde_offset
 
 
 def terskel_lengde(karm_type: str, karm_b: int, floyer: int = 1) -> Optional[int]:

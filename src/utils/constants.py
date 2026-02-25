@@ -117,6 +117,13 @@ DORBLAD_HOYDE_INKL_LUFTSPALTE = set()
 for d in DOOR_REGISTRY.values():
     DORBLAD_HOYDE_INKL_LUFTSPALTE.update(d.get('dorblad_hoyde_inkl_luftspalte', set()))
 
+# Default terskeltype per dørtype
+DEFAULT_THRESHOLDS = {}
+for d in DOOR_REGISTRY.values():
+    dt = d.get('default_threshold')
+    if dt:
+        DEFAULT_THRESHOLDS[d['key']] = dt
+
 TERSKEL_OFFSETS = {}
 for d in DOOR_REGISTRY.values():
     TERSKEL_OFFSETS.update(d.get('terskel_offsets', {}))
