@@ -75,3 +75,6 @@ class PD2Profile(KarmProfile):
     def threshold_y(self, wall_t, blade_t, karm_depth, threshold_depth):
         # Terskel starter rett bak listen (wall_t/2), går innover
         return wall_t / 2 - threshold_depth
+
+    def luftspalte(self, door):
+        return door.effective_luftspalte()

@@ -89,13 +89,14 @@ PDPC_DOR = {
     'karm_blade_flush': set(),  # Pendeldør: ikke flush (svinger begge veier)
 
     # Produksjons-offsets: dørblad (karm → dørblad)
+    # hoyde er base-offset UTEN luftspalte (186-22=164)
     'dorblad_offsets': {
-        'PD1': {1: {'bredde': 300, 'hoyde': 186}, 2: {'bredde': 454, 'hoyde': 186}},
-        'PD2': {1: {'bredde': 300, 'hoyde': 186}, 2: {'bredde': 454, 'hoyde': 186}},
+        'PD1': {1: {'bredde': 300, 'hoyde': 164}, 2: {'bredde': 454, 'hoyde': 164}},
+        'PD2': {1: {'bredde': 300, 'hoyde': 164}, 2: {'bredde': 454, 'hoyde': 164}},
     },
 
     # Karmtyper der luftspalte trekkes fra i dørblad-høyde
-    'dorblad_hoyde_inkl_luftspalte': set(),
+    'dorblad_hoyde_inkl_luftspalte': {'PD1', 'PD2'},
 
     # Terskel-offsets (karm bredde → terskel lengde)
     'terskel_offsets': {},  # Pendeldør: ingen terskel

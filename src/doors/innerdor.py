@@ -100,9 +100,11 @@ INNERDOR = {
     # Produksjons-offsets: dørblad (karm → dørblad)
     # Struktur: {karmtype: {floyer: {'bredde': offset, 'hoyde': offset}}}
     # For SD3/ID: {karmtype: {hengseltype: {floyer: {'bredde': offset, 'hoyde_base': offset}}}}
+    # hoyde er base-offset UTEN luftspalte (85-22=63, SD3/ID allerede base)
+    # Luftspalte trekkes fra separat via dorblad_hoyde_inkl_luftspalte
     'dorblad_offsets': {
-        'SD1': {1: {'bredde': 128, 'hoyde': 85}, 2: {'bredde': 132, 'hoyde': 85}},
-        'SD2': {1: {'bredde': 128, 'hoyde': 85}, 2: {'bredde': 132, 'hoyde': 85}},
+        'SD1': {1: {'bredde': 128, 'hoyde': 63}, 2: {'bredde': 132, 'hoyde': 63}},
+        'SD2': {1: {'bredde': 128, 'hoyde': 63}, 2: {'bredde': 132, 'hoyde': 63}},
         'SD3/ID': {
             'ROCA_SF':         {1: {'bredde': 63, 'hoyde_base': 32}},
             'ARGENTA_100_86A': {1: {'bredde': 62, 'hoyde_base': 32}},
@@ -110,7 +112,7 @@ INNERDOR = {
     },
 
     # Karmtyper der luftspalte trekkes fra i dørblad-høyde
-    'dorblad_hoyde_inkl_luftspalte': {'SD3/ID'},
+    'dorblad_hoyde_inkl_luftspalte': {'SD1', 'SD2', 'SD3/ID'},
 
     # Terskel-offsets (karm bredde → terskel lengde)
     # Struktur: {karmtype: {floyer: offset}}
