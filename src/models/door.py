@@ -54,7 +54,7 @@ class DoorParams:
 
     # Tilleggsutstyr
     threshold_type: str = "ingen"
-    luftspalte: int = 0   # Luftspalte i mm, kun redigerbar for terskeltype 'ingen'
+    luftspalte: int = 22  # Luftspalte i mm, kun redigerbar for terskeltype 'ingen'
     adjufix: bool = False  # Adjufix karmhylser (Ja/Nei)
     lock_type: str = ""    # Fritekst, bakoverkompatibilitet (erstattes av lock_case)
     swing_direction: str = "left"
