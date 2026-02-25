@@ -405,12 +405,22 @@ class DoorPreview3D(QWidget):
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type, door_type=door.door_type)
             db_h = dorblad_hoyde(door.karm_type, kh, 1, door.hinge_type, luftspalte_mm, door_type=door.door_type)
             if db_b and db_h:
-                offset_x = self._klemsikring_blade_offset(door)
-                blade_x = -db_b / 2 + offset_x
                 # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
                 hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
+                # Ryggforsterkning: skyv blad til karmkant på ikke-hengselsiden
+                door_def_b = DOOR_REGISTRY.get(door.door_type, {})
+                if 'ryggforsterkning_hoyde_offset' in door_def_b:
+                    anslag_inner = 80
+                    if hinge_3d == 'left':
+                        blade_x = kb / 2 - anslag_inner - db_b
+                    else:
+                        blade_x = -kb / 2 + anslag_inner
+                else:
+                    offset_x = self._klemsikring_blade_offset(door)
+                    blade_x = -db_b / 2 + offset_x
                 eff_x, eff_w, eff_y, eff_d = self._effective_pivot_params(
-                    door, blade_x, db_b, blade_y, blade_t_mm
+                    door, blade_x, db_b, blade_y, blade_t_mm,
+                    kb=kb, hinge_side=hinge_3d
                 )
                 pivot = self._get_open_pivot(eff_x, eff_w, eff_y, eff_d, hinge_3d, s)
                 self._render_single_blade(
@@ -533,14 +543,22 @@ class DoorPreview3D(QWidget):
                     parts.append((blade_x, frame_y, luftspalte_mm + b_h,
                                   outer_x - blade_x, RYGGFORST_DEPTH, h_offset))
             else:
-                # 1-fløyet: sidestolper på begge sider + full overdel
-                overdel_w = b_w + o_offset
-                parts.append((blade_x - side_w, frame_y, luftspalte_mm,
-                              side_w + lap, RYGGFORST_DEPTH, side_h))
-                parts.append((blade_x + b_w - lap, frame_y, luftspalte_mm,
-                              side_w + lap, RYGGFORST_DEPTH, side_h))
-                parts.append((blade_x - side_w, frame_y, luftspalte_mm + b_h,
-                              overdel_w, RYGGFORST_DEPTH, h_offset))
+                # 1-fløyet: sidestolpe fra klemsikring + overdel, kun hengslesiden
+                klem_offset = 120  # anslag(80) + klemsikring(35) + margin(5)
+                if hinge_side == 'left':
+                    outer_x = -kb / 2 + klem_offset
+                    post_w = blade_x + lap - outer_x
+                    parts.append((outer_x, frame_y, luftspalte_mm,
+                                  post_w, RYGGFORST_DEPTH, side_h))
+                    parts.append((outer_x, frame_y, luftspalte_mm + b_h,
+                                  blade_x + b_w - outer_x, RYGGFORST_DEPTH, h_offset))
+                else:
+                    outer_x = kb / 2 - klem_offset
+                    post_w = outer_x - (blade_x + b_w - lap)
+                    parts.append((blade_x + b_w - lap, frame_y, luftspalte_mm,
+                                  post_w, RYGGFORST_DEPTH, side_h))
+                    parts.append((blade_x, frame_y, luftspalte_mm + b_h,
+                                  outer_x - blade_x, RYGGFORST_DEPTH, h_offset))
 
             for (bx, by, bz, dx, dy, dz) in parts:
                 verts, faces = self._make_box(
@@ -633,20 +651,13 @@ class DoorPreview3D(QWidget):
 
         for (bcx, b_w, b_h, count, hinge_side) in blades:
             blade_x = bcx - b_w / 2
-            if has_rygg and is_double and kb is not None:
-                # 2-fløyet: hengsler etter klemsikring (35mm) + 5mm margin
+            if has_rygg and kb is not None:
+                # Hengsler etter klemsikring (35mm) + 5mm margin
                 klem_offset = 120  # anslag(80) + klemsikring(35) + margin(5)
                 if hinge_side == 'left':
                     px = -kb / 2 + klem_offset
                 else:
                     px = kb / 2 - klem_offset - pw
-            elif has_rygg:
-                # 1-fløyet: hengsler ved rammens sidekant
-                side_w = door_def.get('ryggforsterkning_overdel_offset', 0) / 2
-                if hinge_side == 'left':
-                    px = blade_x - side_w
-                else:
-                    px = blade_x + b_w + side_w - pw
             else:
                 overhang = 5  # mm utenfor bladkanten
                 if hinge_side == 'left':
@@ -741,7 +752,16 @@ class DoorPreview3D(QWidget):
             # 3D-koord er speilvendt: inverter slagretning for korrekt visuell plassering
             hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
             per_blade = max(1, total_hinges)
-            offset_x = self._klemsikring_blade_offset(door)
+            # Ryggforsterkning 1-fløyet: skyv blad til karmkant på ikke-hengselsiden
+            door_def = DOOR_REGISTRY.get(door.door_type, {})
+            if 'ryggforsterkning_hoyde_offset' in door_def:
+                anslag_inner = 80  # list(60) + anslag(20)
+                if hinge_3d == 'left':
+                    offset_x = kb / 2 - anslag_inner - db_b / 2
+                else:
+                    offset_x = -kb / 2 + anslag_inner + db_b / 2
+            else:
+                offset_x = self._klemsikring_blade_offset(door)
             return [(offset_x, db_b, db_h, per_blade, hinge_3d)]
         else:
             db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type, door_type=door.door_type) or (kb - 132)
@@ -877,15 +897,11 @@ class DoorPreview3D(QWidget):
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
         sp_t = SPARKEPLATE_THICKNESS
 
-        # Sparkeplater monteres på rammens overflate når ryggforsterkning finnes
+        # Sparkeplater monteres alltid på dørbladets overflate (5mm for PDPC/PDPO)
         door_def = DOOR_REGISTRY.get(door.door_type, {})
         has_rygg = 'ryggforsterkning_hoyde_offset' in door_def
-        if has_rygg:
-            sp_surface_y = blade_y + blade_t_mm / 2 - RYGGFORST_DEPTH / 2
-            sp_surface_depth = RYGGFORST_DEPTH
-        else:
-            sp_surface_y = blade_y
-            sp_surface_depth = blade_t_mm
+        sp_surface_y = blade_y
+        sp_surface_depth = blade_t_mm
 
         if door.floyer == 1:
             db_b = dorblad_bredde(door.karm_type, kb, 1, door.hinge_type, door_type=door.door_type)
@@ -894,12 +910,20 @@ class DoorPreview3D(QWidget):
                 sp_b = sparkeplate_bredde(door.door_type, db_b)
                 if sp_b:
                     sp_h = min(door.sparkeplate_hoyde, db_h)
-                    offset_x = self._klemsikring_blade_offset(door)
-                    blade_x = -db_b / 2 + offset_x
-                    sp_x = blade_x + (db_b - sp_b) / 2
                     hinge_3d = 'right' if door.swing_direction == 'left' else 'left'
+                    if has_rygg:
+                        anslag_inner = 80
+                        if hinge_3d == 'left':
+                            blade_x = kb / 2 - anslag_inner - db_b
+                        else:
+                            blade_x = -kb / 2 + anslag_inner
+                    else:
+                        offset_x = self._klemsikring_blade_offset(door)
+                        blade_x = -db_b / 2 + offset_x
+                    sp_x = blade_x + (db_b - sp_b) / 2
                     eff_x, eff_w, eff_y, eff_d = self._effective_pivot_params(
-                        door, blade_x, db_b, blade_y, blade_t_mm
+                        door, blade_x, db_b, blade_y, blade_t_mm,
+                        kb=kb, hinge_side=hinge_3d
                     )
                     pivot = self._get_open_pivot(eff_x, eff_w, eff_y, eff_d, hinge_3d, s)
                     # Framside
@@ -1041,8 +1065,8 @@ class DoorPreview3D(QWidget):
         door_def = DOOR_REGISTRY.get(door.door_type, {})
         if 'ryggforsterkning_hoyde_offset' in door_def:
             frame_y = blade_y + blade_t / 2 - RYGGFORST_DEPTH / 2
-            if door.floyer == 2 and kb is not None and hinge_side is not None:
-                # 2-fløyet: ramme fra etter klemsikring (35mm) + 5mm margin
+            if kb is not None and hinge_side is not None:
+                # Ramme fra etter klemsikring (35mm) + 5mm margin
                 klem_offset = 120  # anslag(80) + klemsikring(35) + margin(5)
                 lap = RYGGFORST_OVERLAP
                 if hinge_side == 'left':
@@ -1054,7 +1078,7 @@ class DoorPreview3D(QWidget):
                     return (blade_x - lap, outer_x - blade_x + lap,
                             frame_y, RYGGFORST_DEPTH)
             else:
-                # 1-fløyet: symmetrisk ramme
+                # Fallback uten kb/hinge_side
                 side_w = door_def['ryggforsterkning_overdel_offset'] / 2  # 49mm
                 return (blade_x - side_w, blade_w + 2 * side_w,
                         frame_y, RYGGFORST_DEPTH)
