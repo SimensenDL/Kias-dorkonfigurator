@@ -90,7 +90,7 @@ KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID', 'KD1_KD2', 'PD1_PD2', 'FD1_FD2', 'FD3'
 
 KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
 DIVERSE_KOMPONENT_ORDER = [
-    'Terskel', 'Dekklist',
+    'Dekklist',
     'Sparkeplate', 'Avviserbøyler',
     'Ryggforst. side', 'Ryggforst. overdel',
 ]
@@ -742,7 +742,7 @@ class ProductionList:
         if not items:
             return []
 
-        diverse_komps = {'Terskel', 'Dekklist', 'Sparkeplate', 'Avviserbøyler',
+        diverse_komps = {'Dekklist', 'Sparkeplate', 'Avviserbøyler',
                          'Ryggforst. side', 'Ryggforst. overdel'}
         diverse_items = [i for i in items if i.komponent in diverse_komps]
         if not diverse_items:
