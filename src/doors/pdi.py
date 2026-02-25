@@ -58,6 +58,9 @@ PDI_DOR = {
         'PD2': ['ingen', 'slepelist'],
     },
 
+    # Standard terskeltype for PDI
+    'default_threshold': 'slepelist',
+
     # Utforing: PD1 (skifter til PD2 ved vegg > 300mm)
     'karm_has_utforing': {'PD1'},
 
