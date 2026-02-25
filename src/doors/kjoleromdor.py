@@ -89,14 +89,14 @@ KJOLEROMDOR = {
     'karm_blade_flush': {'KD1', 'KD2'},
 
     # Produksjons-offsets: dørblad (karm → dørblad)
-    # Struktur: {karmtype: {floyer: {'bredde': offset, 'hoyde': offset}}}
+    # hoyde er base-offset UTEN luftspalte (105-22=83)
     'dorblad_offsets': {
-        'KD1': {1: {'bredde': 168, 'hoyde': 105}, 2: {'bredde': 172, 'hoyde': 105}},
-        'KD2': {1: {'bredde': 168, 'hoyde': 105}, 2: {'bredde': 172, 'hoyde': 105}},
+        'KD1': {1: {'bredde': 168, 'hoyde': 83}, 2: {'bredde': 172, 'hoyde': 83}},
+        'KD2': {1: {'bredde': 168, 'hoyde': 83}, 2: {'bredde': 172, 'hoyde': 83}},
     },
 
     # Karmtyper der luftspalte trekkes fra i dørblad-høyde
-    'dorblad_hoyde_inkl_luftspalte': set(),
+    'dorblad_hoyde_inkl_luftspalte': {'KD1', 'KD2'},
 
     # Terskel-offsets (karm bredde → terskel lengde)
     # Struktur: {karmtype: {floyer: offset}}

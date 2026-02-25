@@ -68,3 +68,6 @@ class KD1Profile(KarmProfile):
 
     def threshold_y(self, wall_t, blade_t, karm_depth, threshold_depth):
         return wall_t / 2 - threshold_depth - blade_t
+
+    def luftspalte(self, door):
+        return door.effective_luftspalte()
