@@ -401,21 +401,39 @@ class DoorForm(QWidget):
             combo.addItem(icon, display_text, code)
 
     def _update_threshold_for_karm(self):
-        """Oppdaterer terskel-dropdown med tillatte typer for valgt karmtype."""
+        """Oppdaterer terskel-dropdown med tillatte typer og setter dørtype-default."""
         karm_type = self.karm_combo.currentData()
+        door_type = self.door_type_combo.currentData()
+        door_def = DOOR_REGISTRY.get(door_type, {})
         allowed = KARM_THRESHOLD_TYPES.get(karm_type, list(THRESHOLD_TYPES.keys()))
 
-        old_threshold = self.threshold_combo.currentData()
         self.threshold_combo.blockSignals(True)
         self.threshold_combo.clear()
         for key in allowed:
             name = THRESHOLD_TYPES.get(key, key)
             self.threshold_combo.addItem(name, key)
-        # Forsøk å beholde forrige valg
-        idx = self.threshold_combo.findData(old_threshold)
+
+        # Sett dørtype-default terskel (eller første tillatte)
+        default_threshold = door_def.get('default_threshold')
+        idx = -1
+        if default_threshold:
+            idx = self.threshold_combo.findData(default_threshold)
         if idx >= 0:
             self.threshold_combo.setCurrentIndex(idx)
         self.threshold_combo.blockSignals(False)
+
+        # Oppdater luftspalte til default for dørtypen
+        threshold_key = self.threshold_combo.currentData()
+        default_ls = door_def.get('default_luftspalte')
+        if default_ls is not None and threshold_key == 'ingen':
+            self.luftspalte_spin.blockSignals(True)
+            self.luftspalte_spin.setValue(default_ls)
+            self.luftspalte_spin.blockSignals(False)
+        else:
+            luftspalte_value = THRESHOLD_LUFTSPALTE.get(threshold_key, 22)
+            self.luftspalte_spin.blockSignals(True)
+            self.luftspalte_spin.setValue(luftspalte_value)
+            self.luftspalte_spin.blockSignals(False)
 
     def _update_transport_labels(self):
         """Oppdaterer karm- og transportmål-etikettene."""
@@ -702,22 +720,8 @@ class DoorForm(QWidget):
             if idx >= 0:
                 self.hinge_count_combo.setCurrentIndex(idx)
 
-        # Oppdater terskeltyper for denne dørtypen
+        # Oppdater terskeltyper med dørtype-default
         self._update_threshold_for_karm()
-
-        # Sett default terskeltype for denne dørtypen
-        default_threshold = door_def.get('default_threshold')
-        if default_threshold:
-            idx = self.threshold_combo.findData(default_threshold)
-            if idx >= 0:
-                self.threshold_combo.setCurrentIndex(idx)
-
-        # Sett default luftspalte for denne dørtypen (overstyrer standard 22mm)
-        default_ls = door_def.get('default_luftspalte')
-        if default_ls is not None and self.threshold_combo.currentData() == 'ingen':
-            self._block_signals = True
-            self.luftspalte_spin.setValue(default_ls)
-            self._block_signals = False
 
         # Oppdater utforing-opsjoner
         self._update_utforing_options()
