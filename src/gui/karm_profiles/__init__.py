@@ -11,6 +11,9 @@ from .kd.kd1 import KD1Profile
 from .kd.kd2 import KD2Profile
 from .pd.pd1 import PD1Profile
 from .pd.pd2 import PD2Profile
+from .fd.fd1 import FD1Profile
+from .fd.fd2 import FD2Profile
+from .fd.fd3 import FD3Profile
 
 KARM_PROFILES = {
     'SD1': SD1Profile(),
@@ -21,4 +24,7 @@ KARM_PROFILES = {
     'PD1': PD1Profile(),
     'PD2': PD2Profile(),
     'BD1': SD1Profile(),
+    'FD1': FD1Profile(),
+    'FD2': FD2Profile(),
+    'FD3': FD3Profile(),
 }

@@ -11,6 +11,7 @@ from .pdpc import PDPC_DOR
 from .pdpo import PDPO_DOR
 from .pdi import PDI_DOR
 from .branndor import BRANNDOR
+from .fjosdor import FJOSDOR
 
 # Liste over alle registrerte dørtyper
 _DOOR_TYPE_MODULES = [
@@ -20,6 +21,7 @@ _DOOR_TYPE_MODULES = [
     PDPO_DOR,
     PDI_DOR,
     BRANNDOR,
+    FJOSDOR,
 ]
 
 # Hovedregister: {key: door_def}

@@ -106,6 +106,9 @@ PDPO_DOR = {
     # Dekklist for 2-fløyet
     'dekklist_2floyet_offset': 0,
 
+    # Standard antall hengsler per fløy (andre dørtyper bruker DoorParams-default = 2)
+    'default_hinge_count': 2,
+
     # Hengsler
     'hengsler': {
         'KIAS_92_STOP': {'navn': 'Hengsler KIAS 92 stop'},

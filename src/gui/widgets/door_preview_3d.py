@@ -27,7 +27,8 @@ except ImportError:
 WALL_COLOR = (0.55, 0.55, 0.52, 1)
 WALL_MARGIN = 800                        # mm synlig vegg rundt åpning
 KARM_DEPTHS = {'SD1': 77, 'SD2': 84, 'SD3/ID': 92, 'KD1': 97, 'KD2': 104,
-               'PD1': 77, 'PD2': 84, 'BD1': 77}
+               'PD1': 77, 'PD2': 84, 'BD1': 77,
+               'FD1': 97, 'FD2': 104, 'FD3': 112}
 BLADE_GAP = 4                            # mm gap mellom 2 dørblad
 SPARKEPLATE_THICKNESS = 1                # mm tykkelse
 SPARKEPLATE_COLOR = (0.0, 0.0, 0.0, 1.0)  # Svart

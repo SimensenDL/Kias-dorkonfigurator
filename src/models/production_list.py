@@ -72,6 +72,9 @@ KARM_FAMILY_GROUPS = {
     'PD1': 'PD1_PD2',
     'PD2': 'PD1_PD2',
     'BD1': 'SD1_SD2',
+    'FD1': 'FD1_FD2',
+    'FD2': 'FD1_FD2',
+    'FD3': 'FD3',
 }
 
 KARM_FAMILY_TITLES = {
@@ -79,9 +82,11 @@ KARM_FAMILY_TITLES = {
     'SD3_ID': 'Slagdørkarm Justerbar (SD3/ID)',
     'KD1_KD2': 'Kjøleromskarm (KD1 og KD2)',
     'PD1_PD2': 'Pendeldørkarm (PD1 og PD2)',
+    'FD1_FD2': 'Fjøsdørkarm (FD1 og FD2)',
+    'FD3': 'Fjøsdørkarm (FD3)',
 }
 
-KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID', 'KD1_KD2', 'PD1_PD2']
+KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID', 'KD1_KD2', 'PD1_PD2', 'FD1_FD2', 'FD3']
 
 KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
 DIVERSE_KOMPONENT_ORDER = [
