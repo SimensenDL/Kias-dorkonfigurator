@@ -124,6 +124,13 @@ for d in DOOR_REGISTRY.values():
     if dt:
         DEFAULT_THRESHOLDS[d['key']] = dt
 
+# Default luftspalte per dørtype (overstyrer THRESHOLD_LUFTSPALTE ved 'ingen')
+DEFAULT_LUFTSPALTE = {}
+for d in DOOR_REGISTRY.values():
+    dl = d.get('default_luftspalte')
+    if dl is not None:
+        DEFAULT_LUFTSPALTE[d['key']] = dl
+
 TERSKEL_OFFSETS = {}
 for d in DOOR_REGISTRY.values():
     TERSKEL_OFFSETS.update(d.get('terskel_offsets', {}))

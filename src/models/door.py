@@ -14,7 +14,7 @@ from ..utils.constants import (
     DIMENSION_DIFFERENTIALS, KARM_THRESHOLD_TYPES,
     TRANSPORT_WIDTH_OFFSETS, TRANSPORT_HEIGHT_OFFSETS,
     KARM_SIZE_OFFSETS, KARM_SIDESTOLPE_WIDTH, KARM_BLADE_FLUSH,
-    DEFAULT_THRESHOLDS
+    DEFAULT_THRESHOLDS, DEFAULT_LUFTSPALTE
 )
 
 
@@ -113,7 +113,11 @@ class DoorParams:
                 self.threshold_type = default_t
             else:
                 self.threshold_type = allowed_thresholds[0]
-        self.luftspalte = THRESHOLD_LUFTSPALTE.get(self.threshold_type, 22)
+        default_ls = DEFAULT_LUFTSPALTE.get(self.door_type)
+        if default_ls is not None and self.threshold_type == 'ingen':
+            self.luftspalte = default_ls
+        else:
+            self.luftspalte = THRESHOLD_LUFTSPALTE.get(self.threshold_type, 22)
 
     def effective_luftspalte(self) -> int:
         """Returnerer effektiv luftspalte basert på terskeltype.

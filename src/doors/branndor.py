@@ -83,12 +83,16 @@ BRANNDOR = {
     'karm_blade_flush': {'BD1'},
 
     # Produksjons-offsets: dørblad (karm → dørblad)
+    # hoyde er base-offset UTEN luftspalte (81-18=63)
     'dorblad_offsets': {
-        'BD1': {1: {'bredde': 128, 'hoyde': 81}},
+        'BD1': {1: {'bredde': 128, 'hoyde': 63}},
     },
 
     # Karmtyper der luftspalte trekkes fra i dørblad-høyde
-    'dorblad_hoyde_inkl_luftspalte': set(),
+    'dorblad_hoyde_inkl_luftspalte': {'BD1'},
+
+    # Standard luftspalte for branndør (18mm, brukes når terskel='ingen')
+    'default_luftspalte': 18,
 
     # Terskel-offsets (karm bredde → terskel lengde)
     'terskel_offsets': {

@@ -712,6 +712,13 @@ class DoorForm(QWidget):
             if idx >= 0:
                 self.threshold_combo.setCurrentIndex(idx)
 
+        # Sett default luftspalte for denne dørtypen (overstyrer standard 22mm)
+        default_ls = door_def.get('default_luftspalte')
+        if default_ls is not None and self.threshold_combo.currentData() == 'ingen':
+            self._block_signals = True
+            self.luftspalte_spin.setValue(default_ls)
+            self._block_signals = False
+
         # Oppdater utforing-opsjoner
         self._update_utforing_options()
 
