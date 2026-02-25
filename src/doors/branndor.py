@@ -108,6 +108,9 @@ BRANNDOR = {
     # Dekklist for 2-fløyet (lengde = karmhøyde - offset)
     'dekklist_2floyet_offset': 102,
 
+    # Standard antall hengsler per fløy (andre dørtyper bruker DoorParams-default = 2)
+    'default_hinge_count': 3,
+
     # Hengsler (nøkkel = hengseltype, antall styres av brukeren)
     'hengsler': {
         'ROCA_SF': {'navn': 'Hengsler Roca i SF stål'},

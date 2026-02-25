@@ -694,6 +694,14 @@ class DoorForm(QWidget):
         self._update_blade_thickness_for_karm()
         self._update_hinge_for_karm()
 
+        # Sett default antall hengsler for dørtypen (f.eks. 3 for branndør)
+        door_def = DOOR_REGISTRY.get(door_type, {})
+        default_hc = door_def.get('default_hinge_count')
+        if default_hc:
+            idx = self.hinge_count_combo.findData(default_hc)
+            if idx >= 0:
+                self.hinge_count_combo.setCurrentIndex(idx)
+
         # Oppdater terskeltyper for denne dørtypen
         self._update_threshold_for_karm()
 
