@@ -18,7 +18,8 @@ from ...utils.constants import (
     DOOR_BLADE_TYPES, KARM_BLADE_TYPES, KARM_FLOYER, DOOR_TYPE_BLADE_OVERRIDE,
     HINGE_TYPES, KARM_HINGE_TYPES,
     MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT, MIN_THICKNESS, MAX_THICKNESS,
-    UTFORING_RANGES, KARM_HAS_UTFORING, UTFORING_MAX_THICKNESS
+    UTFORING_RANGES, KARM_HAS_UTFORING, UTFORING_MAX_THICKNESS,
+    KARM_DISPLAY_NAMES
 )
 from ...doors import DOOR_REGISTRY
 from ...models.door import DoorParams
@@ -357,7 +358,7 @@ class DoorForm(QWidget):
         # Fyll karmtype, fløyer, dørblad og hengsler for standard dørtype
         initial_type = self.door_type_combo.currentData()
         for karm in DOOR_KARM_TYPES.get(initial_type, []):
-            self.karm_combo.addItem(karm, karm)
+            self.karm_combo.addItem(KARM_DISPLAY_NAMES.get(karm, karm), karm)
         self._update_floyer_for_karm()
         self._update_blade_thickness_for_karm()
         self._update_hinge_for_karm()
@@ -571,7 +572,7 @@ class DoorForm(QWidget):
             # Skjul karmer med utforing hvis tykkelse > 300mm
             if karm in KARM_HAS_UTFORING and thickness > UTFORING_MAX_THICKNESS:
                 continue
-            self.karm_combo.addItem(karm, karm)
+            self.karm_combo.addItem(KARM_DISPLAY_NAMES.get(karm, karm), karm)
 
         # Forsøk å beholde forrige valg
         idx = self.karm_combo.findData(old_karm)
@@ -682,7 +683,7 @@ class DoorForm(QWidget):
         self.karm_combo.clear()
         karm_types = DOOR_KARM_TYPES.get(door_type, [])
         for karm in karm_types:
-            self.karm_combo.addItem(karm, karm)
+            self.karm_combo.addItem(KARM_DISPLAY_NAMES.get(karm, karm), karm)
 
         self._block_signals = False
 
@@ -825,7 +826,7 @@ class DoorForm(QWidget):
         door_type = door.door_type
         self.karm_combo.clear()
         for karm in DOOR_KARM_TYPES.get(door_type, []):
-            self.karm_combo.addItem(karm, karm)
+            self.karm_combo.addItem(KARM_DISPLAY_NAMES.get(karm, karm), karm)
         idx = self.karm_combo.findData(door.karm_type)
         if idx >= 0:
             self.karm_combo.setCurrentIndex(idx)

@@ -17,7 +17,7 @@ from ..utils.calculations import (
     terskel_lengde, dekklist_lengde,
     laminat_mal, laminat_2_mal,
 )
-from ..utils.constants import DOOR_TYPES
+from ..utils.constants import DOOR_TYPES, KARM_DISPLAY_NAMES
 
 
 @dataclass
@@ -58,7 +58,8 @@ class ProductionDoor:
         door_type_name = DOOR_TYPES.get(p.door_type, p.door_type)
         dm_w = round(p.width / 100)
         dm_h = round(p.height / 100)
-        return f"{door_type_name} - {p.karm_type} {dm_w}x{dm_h}"
+        karm_display = KARM_DISPLAY_NAMES.get(p.karm_type, p.karm_type)
+        return f"{door_type_name} - {karm_display} {dm_w}x{dm_h}"
 
 
 # Karmtype-familier for kappeliste-gruppering
@@ -70,6 +71,7 @@ KARM_FAMILY_GROUPS = {
     'KD2': 'KD1_KD2',
     'PD1': 'PD1_PD2',
     'PD2': 'PD1_PD2',
+    'BD1': 'SD1_SD2',
 }
 
 KARM_FAMILY_TITLES = {

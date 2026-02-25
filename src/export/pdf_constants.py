@@ -100,6 +100,15 @@ KARM_SECTION_PROFILES = {
         'no_listverk': False,
         'kobling_depth_fixed': 97,
     },
+    'BD1': {
+        'listverk_w': 60, 'listverk_t': 7,
+        'kobling_t': 5,
+        'anslag_w': 20, 'anslag_d': 32,  # 77+7-52=32
+        'blade_t': 52,
+        'both_sides': True,
+        'no_listverk': False,
+        'kobling_depth_fixed': None,
+    },
 }
 
 # Sidedimensjoner (A3 liggende for dør-tegninger)

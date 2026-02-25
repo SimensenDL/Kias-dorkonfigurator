@@ -43,8 +43,8 @@ class SD1Profile(KarmProfile):
         parts.append((-kb / 2 + list_w, kobling_y, kh - list_w,
                        kb - 2 * list_w, kobling_d, kobling_t))
 
-        # Anslag — bak dørbladet (44mm djup)
-        anslag_d = 44
+        # Anslag — bak dørbladet (beregnet: karm_depth + list_t - blade_t)
+        anslag_d = karm_depth + list_t - blade_t
         anslag_front_y = wall_t / 2 + list_t - blade_t
         anslag_back_y = anslag_front_y - anslag_d
 

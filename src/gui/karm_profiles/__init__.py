@@ -20,4 +20,5 @@ KARM_PROFILES = {
     'KD2': KD2Profile(),
     'PD1': PD1Profile(),
     'PD2': PD2Profile(),
+    'BD1': SD1Profile(),
 }

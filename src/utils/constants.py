@@ -36,6 +36,11 @@ DEFAULT_DIMENSIONS = {
 # Karmtyper per dørtype
 DOOR_KARM_TYPES = {d['key']: d['karm_types'] for d in DOOR_REGISTRY.values()}
 
+# Visningsnavn for karmtyper (intern nøkkel → GUI-tekst, f.eks. BD1 → SD1)
+KARM_DISPLAY_NAMES = {}
+for d in DOOR_REGISTRY.values():
+    KARM_DISPLAY_NAMES.update(d.get('karm_display_names', {}))
+
 # Antall fløyer per dørtype
 DOOR_FLOYER = {d['key']: d['floyer'] for d in DOOR_REGISTRY.values()}
 
