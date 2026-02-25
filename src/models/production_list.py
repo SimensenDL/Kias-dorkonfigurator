@@ -91,7 +91,9 @@ KARM_FAMILY_ORDER = ['SD1_SD2', 'SD3_ID', 'KD1_KD2', 'PD1_PD2', 'FD1_FD2', 'FD3'
 KARM_KOMPONENT_ORDER = ['Overligger', 'Hengselside', 'Sluttstykkeside']
 DIVERSE_KOMPONENT_ORDER = [
     'Dekklist',
-    'Sparkeplate', 'Avviserbøyler',
+    'Avviserbøyler',
+    'PC dørblad klar', 'PC dørblad sotet', 'PC dørblad opal',
+    'Sparkeplate i sort PC',
     'Ryggforst. side', 'Ryggforst. overdel',
 ]
 
@@ -336,6 +338,25 @@ class ProductionList:
                             ordre_ref=p.customer,
                         ))
 
+        # --- PC dørblad (polykarbonat-dører uten dørramme) ---
+        is_pc_door = not har_dorramme and bool(door_def.get('blade_colors'))
+        if is_pc_door:
+            _pc_farge_kort = {
+                'Klar polykarbonat': 'klar',
+                'Sotet polykarbonat': 'sotet',
+                'Opalhvit polykarbonat': 'opal',
+            }
+            kort_farge = _pc_farge_kort.get(p.color, '')
+            pc_navn = f'PC dørblad {kort_farge}' if kort_farge else 'PC dørblad'
+            for bw in blade_widths:
+                if db_h:
+                    items.append(ProductionItem(
+                        komponent=pc_navn, antall=1,
+                        bredde=bw, hoyde=db_h,
+                        dor_id=door.id, karm_type=karm_type,
+                        ordre_ref=p.customer,
+                    ))
+
         # --- Pendeldør-spesifikke komponenter ---
         # Sparkeplate (bredde + høyde fra DoorParams)
         if 'sparkeplate_offset' in door_def:
@@ -343,7 +364,7 @@ class ProductionList:
             for bw in blade_widths:
                 sp_b = bw + sp_offset
                 items.append(ProductionItem(
-                    komponent='Sparkeplate', antall=2,
+                    komponent='Sparkeplate i sort PC', antall=2,
                     bredde=sp_b, hoyde=p.sparkeplate_hoyde,
                     dor_id=door.id, karm_type=karm_type,
                     ordre_ref=p.customer,
@@ -360,11 +381,11 @@ class ProductionList:
                     ordre_ref=p.customer,
                 ))
 
-        # Ryggforsterkning side (x2 — én per side av dørbladet)
+        # Ryggforsterkning side (én per dørblad)
         if 'ryggforsterkning_hoyde_offset' in door_def and db_h:
             rf_h = db_h + door_def['ryggforsterkning_hoyde_offset']
             items.append(ProductionItem(
-                komponent='Ryggforst. side', antall=2, hoyde=rf_h,
+                komponent='Ryggforst. side', antall=floyer, hoyde=rf_h,
                 dor_id=door.id, karm_type=karm_type,
                 ordre_ref=p.customer,
             ))
@@ -563,7 +584,7 @@ class ProductionList:
         if 'sparkeplate' in mal:
             sp = mal['sparkeplate']
             items.append(ProductionItem(
-                komponent='Sparkeplate',
+                komponent='Sparkeplate i sort PC',
                 antall=sp.get('antall', 1),
                 bredde=sp.get('bredde'),
                 dor_id=dor_id,
@@ -742,7 +763,9 @@ class ProductionList:
         if not items:
             return []
 
-        diverse_komps = {'Dekklist', 'Sparkeplate', 'Avviserbøyler',
+        diverse_komps = {'Dekklist', 'Avviserbøyler',
+                         'PC dørblad klar', 'PC dørblad sotet', 'PC dørblad opal',
+                         'Sparkeplate i sort PC',
                          'Ryggforst. side', 'Ryggforst. overdel'}
         diverse_items = [i for i in items if i.komponent in diverse_komps]
         if not diverse_items:
@@ -759,6 +782,9 @@ class ProductionList:
 
         def sort_key(entry):
             (komponent, bredde, hoyde, lengde, farge) = entry[0]
+            # Alle PC dørblad-varianter sorteres samlet (order 2)
+            if komponent.startswith('PC dørblad'):
+                return (2, bredde or 0, hoyde or 0, komponent)
             order = (DIVERSE_KOMPONENT_ORDER.index(komponent)
                      if komponent in DIVERSE_KOMPONENT_ORDER else 99)
             return (order, bredde or 0, hoyde or 0, lengde or 0)
