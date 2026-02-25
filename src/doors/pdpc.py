@@ -119,6 +119,9 @@ PDPC_DOR = {
     'klemsikring': True,
     'klemsikring_bredde': 35,  # mm
 
+    # Dørblad-farger (polykarbonat, ikke RAL)
+    'blade_colors': ['Klar polykarbonat', 'Sotet polykarbonat'],
+
     # Pendeldør-spesifikke egenskaper
     'pendeldor': True,        # Skjuler slagretning, låser 50/50 split
     'har_dorramme': False,    # Ingen DR-ramme for 5mm polykarbonat

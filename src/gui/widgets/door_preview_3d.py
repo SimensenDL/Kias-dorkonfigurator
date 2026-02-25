@@ -10,7 +10,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QMouseEvent, QSurfaceFormat, QMatrix4x4
 
 from ...models.door import DoorParams
-from ...utils.constants import RAL_COLORS, KARM_SIDESTOLPE_WIDTH
+from ...utils.constants import RAL_COLORS, POLYKARBONAT_COLORS, KARM_SIDESTOLPE_WIDTH
 from ...utils.calculations import karm_bredde, karm_hoyde, dorblad_bredde, dorblad_hoyde, sparkeplate_bredde
 from ...doors import DOOR_REGISTRY
 from ..karm_profiles import KARM_PROFILES
@@ -1303,8 +1303,11 @@ class DoorPreview3D(QWidget):
 
     @staticmethod
     def _ral_to_rgba(ral_code: str, alpha: float = 1.0) -> tuple:
-        """Konverterer RAL-kode til (r, g, b, a) tuple for OpenGL."""
+        """Konverterer RAL-kode eller polykarbonat-farge til (r, g, b, a) tuple for OpenGL."""
         if ral_code in RAL_COLORS:
             r, g, b = RAL_COLORS[ral_code]['rgb']
+            return (r, g, b, alpha)
+        if ral_code in POLYKARBONAT_COLORS:
+            r, g, b = POLYKARBONAT_COLORS[ral_code]['rgb']
             return (r, g, b, alpha)
         return (0.5, 0.5, 0.5, alpha)

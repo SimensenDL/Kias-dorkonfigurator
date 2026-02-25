@@ -6,14 +6,17 @@ from reportlab.lib.colors import Color, black
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
-from ..utils.constants import RAL_COLORS
+from ..utils.constants import RAL_COLORS, POLYKARBONAT_COLORS
 from .pdf_constants import COLOR_DIMENSION, COLOR_WALL_HATCH
 
 
 def ral_to_color(ral_code: str) -> Color:
-    """Konverterer RAL-kode til reportlab Color."""
+    """Konverterer RAL-kode eller polykarbonat-farge til reportlab Color."""
     if ral_code in RAL_COLORS:
         r, g, b = RAL_COLORS[ral_code]['rgb']
+        return Color(r, g, b)
+    if ral_code in POLYKARBONAT_COLORS:
+        r, g, b = POLYKARBONAT_COLORS[ral_code]['rgb']
         return Color(r, g, b)
     # Fallback til grå
     return Color(0.5, 0.5, 0.5)

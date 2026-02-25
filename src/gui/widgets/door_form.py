@@ -11,7 +11,7 @@ from PyQt6.QtCore import pyqtSignal, Qt, QRect, QObject, QEvent
 from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
 
 from ...utils.constants import (
-    DOOR_TYPES, DEFAULT_DIMENSIONS, RAL_COLORS,
+    DOOR_TYPES, DEFAULT_DIMENSIONS, RAL_COLORS, POLYKARBONAT_COLORS,
     SWING_DIRECTIONS, FIRE_RATINGS, SOUND_RATINGS,
     THRESHOLD_TYPES, THRESHOLD_LUFTSPALTE,
     DOOR_KARM_TYPES, DOOR_FLOYER, KARM_THRESHOLD_TYPES,
@@ -386,9 +386,12 @@ class DoorForm(QWidget):
         """Fyller en farge-combobox med RAL-farger og fargeruter."""
         delegate = ColorSwatchDelegate(combo)
         combo.setItemDelegate(delegate)
+        self._fill_combo_with_ral(combo)
 
+    def _fill_combo_with_ral(self, combo: QComboBox):
+        """Fyller combo med RAL-farger."""
+        combo.clear()
         for code, info in RAL_COLORS.items():
-            # Lag fargeikon for visning i lukket combobox
             pixmap = QPixmap(14, 14)
             pixmap.fill(QColor(info['hex']))
             p = QPainter(pixmap)
@@ -396,9 +399,43 @@ class DoorForm(QWidget):
             p.drawRect(0, 0, 13, 13)
             p.end()
             icon = QIcon(pixmap)
-
             display_text = f"      {code} - {info['name']}"
             combo.addItem(icon, display_text, code)
+
+    def _fill_combo_with_polykarbonat(self, combo: QComboBox, color_keys: list):
+        """Fyller combo med polykarbonat-farger."""
+        combo.clear()
+        for key in color_keys:
+            info = POLYKARBONAT_COLORS.get(key)
+            if not info:
+                continue
+            pixmap = QPixmap(14, 14)
+            pixmap.fill(QColor(info['hex']))
+            p = QPainter(pixmap)
+            p.setPen(QPen(QColor(80, 80, 80), 1))
+            p.drawRect(0, 0, 13, 13)
+            p.end()
+            icon = QIcon(pixmap)
+            display_text = f"      {info['name']}"
+            combo.addItem(icon, display_text, key)
+
+    def _update_blade_color_combo(self):
+        """Oppdaterer dørblad farge-combo basert på dørtype (RAL vs polykarbonat)."""
+        door_type = self.door_type_combo.currentData()
+        door_def = DOOR_REGISTRY.get(door_type, {})
+        blade_colors = door_def.get('blade_colors')
+
+        old_value = self.color_combo.currentData()
+        self.color_combo.blockSignals(True)
+        if blade_colors:
+            self._fill_combo_with_polykarbonat(self.color_combo, blade_colors)
+        else:
+            self._fill_combo_with_ral(self.color_combo)
+        # Forsøk å beholde forrige valg
+        idx = self.color_combo.findData(old_value)
+        if idx >= 0:
+            self.color_combo.setCurrentIndex(idx)
+        self.color_combo.blockSignals(False)
 
     def _update_threshold_for_karm(self):
         """Oppdaterer terskel-dropdown med tillatte typer og setter dørtype-default."""
@@ -468,10 +505,12 @@ class DoorForm(QWidget):
             self.values_changed.emit()
 
     def _on_blade_color_changed(self):
-        """Synkroniserer karmfarge med dørblad farge ved endring."""
+        """Synkroniserer karmfarge med dørblad farge ved endring (kun for RAL-farger)."""
         if not self._block_signals:
-            idx = self.color_combo.currentIndex()
-            self.karm_color_combo.setCurrentIndex(idx)
+            # Pendeldør polykarbonat har egne bladfarger — ikke synk med karm
+            if not self._is_pendeldor():
+                idx = self.color_combo.currentIndex()
+                self.karm_color_combo.setCurrentIndex(idx)
             self._on_changed()
 
     def _on_dimension_changed(self):
@@ -723,6 +762,9 @@ class DoorForm(QWidget):
         # Oppdater terskeltyper med dørtype-default
         self._update_threshold_for_karm()
 
+        # Oppdater dørblad farge-combo (RAL vs polykarbonat)
+        self._update_blade_color_combo()
+
         # Oppdater utforing-opsjoner
         self._update_utforing_options()
 
@@ -905,7 +947,8 @@ class DoorForm(QWidget):
         if idx >= 0:
             self.adjufix_combo.setCurrentIndex(idx)
 
-        # Farge
+        # Dørblad farge (oppdater combo-innhold først for riktig dørtype)
+        self._update_blade_color_combo()
         idx = self.color_combo.findData(door.color)
         if idx >= 0:
             self.color_combo.setCurrentIndex(idx)

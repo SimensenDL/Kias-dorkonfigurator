@@ -3,7 +3,7 @@ Genererer ordretekst (ordrelinjetekst) fra DoorParams og DOOR_REGISTRY.
 """
 
 from ..doors import DOOR_REGISTRY
-from .constants import RAL_COLORS, SWING_DIRECTIONS, THRESHOLD_LUFTSPALTE
+from .constants import RAL_COLORS, POLYKARBONAT_COLORS, SWING_DIRECTIONS, THRESHOLD_LUFTSPALTE
 
 
 # Globale terskel-tekster (felles for alle dørtyper)
@@ -18,12 +18,15 @@ TERSKEL_TEKST = {
 }
 
 
-def _farge_tekst(ral_kode: str) -> str:
-    """Formaterer RAL-kode til lesbar tekst, f.eks. 'Renhvit (RAL 9010)'."""
-    info = RAL_COLORS.get(ral_kode)
+def _farge_tekst(farge_kode: str) -> str:
+    """Formaterer fargekode til lesbar tekst, f.eks. 'Renhvit (RAL 9010)' eller 'Klar polykarbonat'."""
+    info = RAL_COLORS.get(farge_kode)
     if info:
-        return f"{info['name']} ({ral_kode})"
-    return ral_kode or "—"
+        return f"{info['name']} ({farge_kode})"
+    info = POLYKARBONAT_COLORS.get(farge_kode)
+    if info:
+        return info['name']
+    return farge_kode or "—"
 
 
 def generer_ordretekst(door) -> list[str]:
