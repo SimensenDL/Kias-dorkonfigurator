@@ -25,6 +25,9 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
+        # Versjonsfil
+        ('VERSION', '.'),
+
         # Applikasjonens egne ressurser
         ('assets', 'assets'),
 

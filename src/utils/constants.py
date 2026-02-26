@@ -5,11 +5,27 @@ Alle dimensjoner i millimeter (mm).
 Dørtype-spesifikke data bygges dynamisk fra src/doors/-modulene.
 """
 
+import sys
+from pathlib import Path
+
 from ..doors import DOOR_REGISTRY
+
+
+def _read_version() -> str:
+    """Les versjon fra VERSION-filen (eneste sannhetskilde)."""
+    if getattr(sys, 'frozen', False):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).parent.parent.parent
+    try:
+        return (base / "VERSION").read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return "0.0.0"
+
 
 # Applikasjonsinfo
 APP_NAME = "KIAS Dørkonfigurator"
-APP_VERSION = "0.3.0"
+APP_VERSION = _read_version()
 PROJECT_EXTENSION = ".kdf"
 PROJECT_FILTER = f"KIAS Dørfil (*{PROJECT_EXTENSION})"
 
