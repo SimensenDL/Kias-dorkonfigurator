@@ -559,9 +559,18 @@ class DoorForm(QWidget):
             self._on_changed()
 
     def _on_floyer_changed(self):
-        """Håndterer endring av antall fløyer."""
+        """Håndterer endring av antall fløyer — setter standard bredde for 2-fløyet."""
         if self._block_signals:
             return
+        floyer = self.floyer_combo.currentData() or 1
+        door_type = self.door_type_combo.currentData()
+        door_def = DOOR_REGISTRY.get(door_type, {})
+        default_w = door_def.get('default_width', 1010)
+        default_w2 = door_def.get('default_width_2')
+        if floyer == 2 and default_w2 and self.width_spin.value() == default_w:
+            self.width_spin.setValue(default_w2)
+        elif floyer == 1 and default_w2 and self.width_spin.value() == default_w2:
+            self.width_spin.setValue(default_w)
         self._update_split_visibility()
         self._update_transport_labels()
         self._on_changed()
@@ -771,7 +780,13 @@ class DoorForm(QWidget):
 
         self._block_signals = True
         if defaults:
-            self.width_spin.setValue(defaults['width'])
+            door_def = DOOR_REGISTRY.get(door_type, {})
+            floyer = self.floyer_combo.currentData() or 1
+            default_w2 = door_def.get('default_width_2')
+            if floyer == 2 and default_w2:
+                self.width_spin.setValue(default_w2)
+            else:
+                self.width_spin.setValue(defaults['width'])
             self.height_spin.setValue(defaults['height'])
             self.thickness_spin.setValue(defaults['thickness'])
 

@@ -11,6 +11,7 @@ FJOSDOR = {
 
     # Standardmål (utsparing)
     'default_width': 1010,
+    'default_width_2': 2010,
     'default_height': 2110,
     'default_thickness': 100,
 
