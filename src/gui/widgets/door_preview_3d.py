@@ -7,7 +7,7 @@ from typing import Optional
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QMouseEvent, QSurfaceFormat, QMatrix4x4
+from PyQt6.QtGui import QMouseEvent, QSurfaceFormat, QMatrix4x4, QColor
 
 from ...models.door import DoorParams
 from ...utils.constants import RAL_COLORS, POLYKARBONAT_COLORS, KARM_SIDESTOLPE_WIDTH
@@ -286,7 +286,7 @@ class DoorPreview3D(QWidget):
         sidestolpe_w = KARM_SIDESTOLPE_WIDTH.get(door.karm_type, 80)
 
         # 1. Vegg (alltid bygd, synlighet styrt av toggle)
-        self._add_wall(bm, hm, wall_t, s)
+        self._add_wall(bm, hm, wall_t, s, door.wall_color)
 
         # 2. Karm — bygd fra profil
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
@@ -329,10 +329,11 @@ class DoorPreview3D(QWidget):
     # VEGG
     # =========================================================================
 
-    def _add_wall(self, bm, hm, wall_t, s):
+    def _add_wall(self, bm, hm, wall_t, s, wall_color_hex="#8C8C84"):
         """Vegg med rektangulær utsparing (BM x HM). Semi-transparent."""
         M = WALL_MARGIN
-        color = np.array(WALL_COLOR)
+        qc = QColor(wall_color_hex)
+        color = np.array((qc.redF(), qc.greenF(), qc.blueF(), WALL_COLOR[3]))
         wy = -wall_t / 2
         wd = wall_t
 

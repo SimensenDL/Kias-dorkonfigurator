@@ -5,7 +5,7 @@ Viser input-felt for dørtype, mål, farge, beslag og tilleggsutstyr.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QComboBox, QSpinBox, QCheckBox, QLineEdit, QLabel,
-    QStyledItemDelegate, QStyle
+    QStyledItemDelegate, QStyle, QPushButton, QColorDialog
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QRect, QObject, QEvent
 from PyQt6.QtGui import QColor, QPen, QIcon, QPixmap, QPainter
@@ -283,6 +283,15 @@ class DoorForm(QWidget):
         look_group = QGroupBox("Produktdetaljer")
         look_layout = QFormLayout(look_group)
 
+        # Veggfarge (color picker)
+        self._wall_color = "#8C8C84"
+        self.wall_color_btn = QPushButton()
+        self.wall_color_btn.setFixedHeight(28)
+        self.wall_color_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._update_wall_color_btn()
+        self.wall_color_btn.clicked.connect(self._pick_wall_color)
+        look_layout.addRow("Veggfarge:", self.wall_color_btn)
+
         self.color_combo = QComboBox()
         self._populate_color_combo(self.color_combo)
         self.color_combo.currentIndexChanged.connect(self._on_blade_color_changed)
@@ -504,6 +513,23 @@ class DoorForm(QWidget):
         if not self._block_signals:
             self._update_type_dependent_fields()
             self.values_changed.emit()
+
+    def _update_wall_color_btn(self):
+        """Oppdaterer veggfarge-knappens utseende."""
+        self.wall_color_btn.setStyleSheet(
+            f"background-color: {self._wall_color}; border: 1px solid #555; border-radius: 3px;"
+        )
+        self.wall_color_btn.setText(self._wall_color.upper())
+
+    def _pick_wall_color(self):
+        """Åpner fargevelger for veggfarge."""
+        color = QColorDialog.getColor(
+            QColor(self._wall_color), self, "Velg veggfarge"
+        )
+        if color.isValid():
+            self._wall_color = color.name()
+            self._update_wall_color_btn()
+            self._on_changed()
 
     def _on_blade_color_changed(self):
         """Synkroniserer karmfarge med dørblad farge ved endring (kun for RAL-farger)."""
@@ -844,6 +870,7 @@ class DoorForm(QWidget):
         door.utforing = self.utforing_combo.currentData() or ""
         door.color = self.color_combo.currentData() or ""
         door.karm_color = self.karm_color_combo.currentData() or ""
+        door.wall_color = self._wall_color
         door.swing_direction = self.hinge_combo.currentData() or "left"
         door.lock_case = self.laaskasse_combo.currentText()
         door.handle_type = self.beslag_combo.currentText()
@@ -958,6 +985,10 @@ class DoorForm(QWidget):
         idx = self.karm_color_combo.findData(door.karm_color)
         if idx >= 0:
             self.karm_color_combo.setCurrentIndex(idx)
+
+        # Veggfarge
+        self._wall_color = door.wall_color
+        self._update_wall_color_btn()
 
         # Slagretning
         idx = self.hinge_combo.findData(door.swing_direction)

@@ -43,6 +43,7 @@ class DoorParams:
     # Overflate/utseende
     color: str = DEFAULT_COLOR           # Dørblad farge
     karm_color: str = DEFAULT_COLOR      # Karmfarge
+    wall_color: str = "#8C8C84"          # Veggfarge (hex)
     surface_type: str = "glatt"
 
     # Beslag og lås
@@ -233,6 +234,7 @@ class DoorParams:
             'utforing': self.utforing,
             'color': self.color,
             'karm_color': self.karm_color,
+            'wall_color': self.wall_color,
             'surface_type': self.surface_type,
             'hinge_type': self.hinge_type,
             'hinge_count': self.hinge_count,
