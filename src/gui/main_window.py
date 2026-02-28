@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
     def _init_ui(self):
         """Initialiserer brukergrensesnittet."""
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(1000, 700)
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -166,15 +166,13 @@ class MainWindow(QMainWindow):
 
         right_layout.addWidget(self.tab_widget)
 
-        # Splitter (sammenklappbart venstre panel for små skjermer)
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter.addWidget(left_panel)
-        self.splitter.addWidget(right_panel)
-        self.splitter.setCollapsible(0, True)
-        self.splitter.setCollapsible(1, False)
-        self.splitter.setSizes([420, 580])
+        # Splitter
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(left_panel)
+        splitter.addWidget(right_panel)
+        splitter.setSizes([420, 580])
 
-        main_layout.addWidget(self.splitter)
+        main_layout.addWidget(splitter)
 
     def _create_menus(self):
         """Oppretter menylinje."""
@@ -268,37 +266,12 @@ class MainWindow(QMainWindow):
         toolbar.addAction("Lagre", self._save_project)
         toolbar.addSeparator()
         toolbar.addAction("Eksporter PDF", self._export_pdf)
-        toolbar.addSeparator()
-
-        self._toggle_panel_action = QAction("Skjul parametere", self)
-        self._toggle_panel_action.setShortcut(QKeySequence("F9"))
-        self._toggle_panel_action.setToolTip("Vis/skjul parameterpanel (F9)")
-        self._toggle_panel_action.triggered.connect(self._toggle_left_panel)
-        toolbar.addAction(self._toggle_panel_action)
-        self._left_panel_sizes = None
 
     def _create_statusbar(self):
         """Oppretter statuslinje."""
         self.statusbar = QStatusBar()
         self.setStatusBar(self.statusbar)
         self.statusbar.showMessage("Klar")
-
-    def _toggle_left_panel(self):
-        """Vis/skjul parameterpanelet (venstre side)."""
-        sizes = self.splitter.sizes()
-        if sizes[0] > 0:
-            # Kollaps: lagre nåværende størrelse og sett til 0
-            self._left_panel_sizes = sizes
-            self.splitter.setSizes([0, sum(sizes)])
-            self._toggle_panel_action.setText("Vis parametere")
-        else:
-            # Ekspander: gjenopprett lagret størrelse
-            if self._left_panel_sizes:
-                self.splitter.setSizes(self._left_panel_sizes)
-            else:
-                total = sum(sizes)
-                self.splitter.setSizes([420, total - 420])
-            self._toggle_panel_action.setText("Skjul parametere")
 
     def _on_params_changed(self):
         """Håndterer endringer i dørparametere."""
@@ -684,18 +657,11 @@ class MainWindow(QMainWindow):
         geometry = settings.value("geometry")
         if geometry:
             self.restoreGeometry(geometry)
-        splitter_state = settings.value("splitter_state")
-        if splitter_state:
-            self.splitter.restoreState(splitter_state)
-            # Oppdater knappetekst basert på lagret tilstand
-            if self.splitter.sizes()[0] == 0:
-                self._toggle_panel_action.setText("Vis parametere")
 
     def _save_settings(self):
         """Lagrer applikasjonsinnstillinger."""
         settings = QSettings("KIASDorkonfigurator", APP_NAME)
         settings.setValue("geometry", self.saveGeometry())
-        settings.setValue("splitter_state", self.splitter.saveState())
 
     def closeEvent(self, event):
         """Håndterer vinduslukking."""
