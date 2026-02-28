@@ -40,7 +40,7 @@ def karm_bredde(karm_type: str, utsparing_bredde: int, adjufix: bool = False) ->
     """
     offset = KARM_SIZE_OFFSETS.get(karm_type, {}).get('width', 0)
     base = utsparing_bredde + offset
-    if adjufix:
+    if adjufix and '3' in karm_type:
         base -= 10
     return base
 

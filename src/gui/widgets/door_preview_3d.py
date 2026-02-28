@@ -837,7 +837,29 @@ class DoorPreview3D(QWidget):
         self._blade_items.append(mesh)
         mesh.setVisible(self._show_blades)
 
-        # Grep (bue fra skilt + rett spak)
+        # --- Bakside skilt (speilet i Y-retning) ---
+        back_plate_y = blade_y
+        back_plate_cy = back_plate_y - self.PLATE_DEPTH / 2
+
+        verts, faces = self._make_rounded_rect(
+            plate_cx * s, back_plate_cy * s, plate_cz * s,
+            self.PLATE_WIDTH * s, self.PLATE_HEIGHT * s, self.PLATE_DEPTH * s,
+            self.PLATE_CORNER_RADIUS * s,
+            segments=gfx.PLATE_CORNER_SEGMENTS
+        )
+        face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
+        mesh = gl.GLMeshItem(
+            vertexes=verts, faces=faces, faceColors=face_colors,
+            smooth=gfx.SMOOTH_CURVED_PARTS, drawEdges=False
+        )
+        if tr is not None:
+            mesh.setTransform(tr)
+        self._gl_widget.addItem(mesh)
+        self._mesh_items.append(mesh)
+        self._blade_items.append(mesh)
+        mesh.setVisible(self._show_blades)
+
+        # Grep (bue fra skilt + rett spak) — framside
         bend_r = self.LEVER_BEND_RADIUS
         lever_cz = plate_cz + self.LEVER_Z_OFFSET
         lever_y_start = plate_y + self.PLATE_DEPTH
@@ -874,6 +896,48 @@ class DoorPreview3D(QWidget):
 
         verts, faces = self._make_swept_tube(
             path, self.LEVER_RADIUS * s, segments=gfx.LEVER_TUBE_SEGMENTS
+        )
+        face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
+        mesh = gl.GLMeshItem(
+            vertexes=verts, faces=faces, faceColors=face_colors,
+            smooth=gfx.SMOOTH_CURVED_PARTS, drawEdges=False
+        )
+        if tr is not None:
+            mesh.setTransform(tr)
+        self._gl_widget.addItem(mesh)
+        self._mesh_items.append(mesh)
+        self._blade_items.append(mesh)
+        mesh.setVisible(self._show_blades)
+
+        # --- Bakside grep (speilet i Y-retning) ---
+        back_lever_y_start = back_plate_y - self.PLATE_DEPTH
+
+        back_path = []
+        if hinge_side == 'left':
+            arc_cx = plate_cx - bend_r
+            arc_cy = back_lever_y_start
+            for i in range(bend_segs + 1):
+                angle = i * (np.pi / 2) / bend_segs
+                px = arc_cx + bend_r * np.cos(angle)
+                py = arc_cy - bend_r * np.sin(angle)
+                back_path.append((px * s, py * s, lever_cz * s))
+            end_x = plate_cx - bend_r - self.LEVER_STRAIGHT
+            horiz_y = back_lever_y_start - bend_r
+            back_path.append((end_x * s, horiz_y * s, lever_cz * s))
+        else:
+            arc_cx = plate_cx + bend_r
+            arc_cy = back_lever_y_start
+            for i in range(bend_segs + 1):
+                angle = np.pi - i * (np.pi / 2) / bend_segs
+                px = arc_cx + bend_r * np.cos(angle)
+                py = arc_cy - bend_r * np.sin(angle)
+                back_path.append((px * s, py * s, lever_cz * s))
+            end_x = plate_cx + bend_r + self.LEVER_STRAIGHT
+            horiz_y = back_lever_y_start - bend_r
+            back_path.append((end_x * s, horiz_y * s, lever_cz * s))
+
+        verts, faces = self._make_swept_tube(
+            back_path, self.LEVER_RADIUS * s, segments=gfx.LEVER_TUBE_SEGMENTS
         )
         face_colors = self._normal_lit_face_colors(verts, faces, handle_color)
         mesh = gl.GLMeshItem(

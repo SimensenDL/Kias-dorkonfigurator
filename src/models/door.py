@@ -187,7 +187,7 @@ class DoorParams:
         """Karmbredde = Utsparing + offset (- 10mm ved Adjufix)."""
         offsets = KARM_SIZE_OFFSETS.get(self.karm_type, {'width': 0})
         base = self.width + offsets['width']
-        if self.adjufix:
+        if self.adjufix and '3' in self.karm_type:
             base -= 10
         return base
 

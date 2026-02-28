@@ -168,7 +168,7 @@ class DoorForm(QWidget):
         width_layout.addWidget(self.transport_width_180_label)
 
         width_layout.addStretch()
-        door_layout.addRow("Bredde (BM):", width_widget)
+        door_layout.addRow("Utsparing (BM):", width_widget)
 
         # Høyde-rad: HM (input) + Karm + H transport
         height_widget = QWidget()
@@ -195,7 +195,7 @@ class DoorForm(QWidget):
         height_layout.addWidget(self.transport_height_label)
 
         height_layout.addStretch()
-        door_layout.addRow("Høyde (HM):", height_widget)
+        door_layout.addRow("Utsparing (HM):", height_widget)
 
         # Veggtykkelse + utforing på samme rad
         thickness_widget = QWidget()
@@ -219,7 +219,7 @@ class DoorForm(QWidget):
         self.utforing_combo.currentIndexChanged.connect(self._on_changed)
         thickness_layout.addWidget(self.utforing_combo, stretch=1)
 
-        door_layout.addRow("Veggtykkelse:", thickness_widget)
+        door_layout.addRow("Veggtjukkelse:", thickness_widget)
 
         # Dørblad (kun tykkelse-spin, type settes automatisk)
         self.blade_thickness_spin = QSpinBox()
@@ -483,9 +483,10 @@ class DoorForm(QWidget):
             adjufix=self.adjufix_combo.currentData() or False,
         )
 
-        # Karmmål
-        self.karm_width_label.setText(f"Karm: {temp_door.karm_width()} mm")
-        self.karm_height_label.setText(f"Karm: {temp_door.karm_height()} mm")
+        # Karmmål — serie-3 karmer har ikke gerikt
+        karm_prefix = "Utv. karm" if '3' in temp_door.karm_type else "Utv. karm (inc. gerikt)"
+        self.karm_width_label.setText(f"{karm_prefix}: {temp_door.karm_width()} mm")
+        self.karm_height_label.setText(f"{karm_prefix}: {temp_door.karm_height()} mm")
 
         # Transportbredde 90° og 180°
         bt_90 = temp_door.transport_width_90()
