@@ -505,7 +505,8 @@ class DoorPreview3D(QWidget):
         o_offset = door_def.get('ryggforsterkning_overdel_offset', 98)  # 98mm
         side_w = o_offset / 2  # 49mm
 
-        frame_color = np.array(self._ral_to_rgba(door.karm_color))
+        # Natureloksert aluminium (sølvgrå med svak varm tone)
+        frame_color = np.array([0.75, 0.73, 0.70, 1.0])
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
         # Rammen er 40mm dyp, sentrert rundt 5mm bladet
         frame_y = blade_y + blade_t_mm / 2 - RYGGFORST_DEPTH / 2
