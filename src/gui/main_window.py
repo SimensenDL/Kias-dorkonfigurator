@@ -71,6 +71,7 @@ class MainWindow(QMainWindow):
 
         # Venstre panel: Dørparametere (scrollbart)
         left_panel = QWidget()
+        left_panel.setMinimumWidth(420)
         left_layout = QVBoxLayout(left_panel)
 
         scroll = QScrollArea()
@@ -169,7 +170,7 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(left_panel)
         splitter.addWidget(right_panel)
-        splitter.setSizes([380, 620])
+        splitter.setSizes([420, 580])
 
         main_layout.addWidget(splitter)
 

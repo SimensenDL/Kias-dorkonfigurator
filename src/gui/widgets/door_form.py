@@ -82,10 +82,12 @@ class DoorForm(QWidget):
         """Bygger opp skjemaet."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        self.setMinimumWidth(400)
 
         # --- Prosjektinfo ---
         project_group = QGroupBox("Prosjektinfo")
         project_layout = QFormLayout(project_group)
+        project_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.DontWrapRows)
 
         self.project_id_edit = QLineEdit()
         self.project_id_edit.setPlaceholderText("F.eks. 2025-001")
@@ -107,6 +109,7 @@ class DoorForm(QWidget):
         # --- Dørtype og mål ---
         door_group = QGroupBox("Dørtype og mål")
         door_layout = QFormLayout(door_group)
+        door_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.DontWrapRows)
 
         self.door_type_combo = QComboBox()
         for key, name in DOOR_TYPES.items():
@@ -290,6 +293,7 @@ class DoorForm(QWidget):
         # --- Produktdetaljer ---
         look_group = QGroupBox("Produktdetaljer")
         look_layout = QFormLayout(look_group)
+        look_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.DontWrapRows)
 
         # Veggfarge (color picker)
         self._wall_color = "#8C8C84"
