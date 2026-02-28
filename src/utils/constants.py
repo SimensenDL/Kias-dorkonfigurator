@@ -257,9 +257,9 @@ DEFAULT_COLOR = 'RAL 9010'
 
 # Polykarbonat-farger for pendeldørblad
 POLYKARBONAT_COLORS = {
-    'Klar polykarbonat': {'name': 'Klar polykarbonat', 'hex': '#E8F0F4', 'rgb': (0.91, 0.94, 0.96)},
-    'Sotet polykarbonat': {'name': 'Sotet polykarbonat', 'hex': '#7A7A7A', 'rgb': (0.48, 0.48, 0.48)},
-    'Opalhvit polykarbonat': {'name': 'Opalhvit polykarbonat', 'hex': '#F5F0E8', 'rgb': (0.96, 0.94, 0.91)},
+    'Klar polykarbonat': {'name': 'Klar polykarbonat', 'hex': '#FFFFFF', 'rgb': (1.0, 1.0, 1.0), 'alpha': 0.2},
+    'Sotet polykarbonat': {'name': 'Sotet polykarbonat', 'hex': '#000000', 'rgb': (0.0, 0.0, 0.0), 'alpha': 0.6},
+    'Opalhvit polykarbonat': {'name': 'Opalhvit polykarbonat', 'hex': '#F5F0E8', 'rgb': (0.96, 0.94, 0.91), 'alpha': 0.65},
 }
 
 # PDF eksportinnstillinger

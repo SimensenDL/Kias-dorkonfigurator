@@ -400,10 +400,6 @@ class DoorPreview3D(QWidget):
     def _add_door_blades(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
         """Dørblad med produksjonsmål fra calculations.py."""
         blade_color = np.array(self._ral_to_rgba(door.color))
-        # Semi-transparent dørblad for polykarbonat-dører (PDPC/PDPO)
-        door_def_alpha = DOOR_REGISTRY.get(door.door_type, {})
-        dorblad_alpha = door_def_alpha.get('dorblad_alpha', 1.0)
-        blade_color[3] = dorblad_alpha
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
         if door.floyer == 1:
@@ -1404,6 +1400,7 @@ class DoorPreview3D(QWidget):
             r, g, b = RAL_COLORS[ral_code]['rgb']
             return (r, g, b, alpha)
         if ral_code in POLYKARBONAT_COLORS:
-            r, g, b = POLYKARBONAT_COLORS[ral_code]['rgb']
-            return (r, g, b, alpha)
+            entry = POLYKARBONAT_COLORS[ral_code]
+            r, g, b = entry['rgb']
+            return (r, g, b, entry.get('alpha', alpha))
         return (0.5, 0.5, 0.5, alpha)

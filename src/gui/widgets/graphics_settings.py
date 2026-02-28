@@ -60,7 +60,7 @@ BOX_FACE_LIGHT = (0.52, 1.12, 0.98, 0.58, 0.68, 0.85)
 LIGHT_ADDITIVE = 0.07
 
 # Bakgrunn
-BACKGROUND_COLOR = (50, 50, 55, 255)
+BACKGROUND_COLOR = (58, 63, 72, 255)
 
 # Aktivt preset-navn
 current_preset = DEFAULT_PRESET

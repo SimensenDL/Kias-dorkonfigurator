@@ -121,7 +121,7 @@ PDPC_DOR = {
 
     # Dørblad-farger (polykarbonat, ikke RAL)
     'blade_colors': ['Klar polykarbonat', 'Sotet polykarbonat'],
-    'dorblad_alpha': 0.4,  # Semi-transparent (polykarbonat = glassliknende)
+
 
     # Pendeldør-spesifikke egenskaper
     'pendeldor': True,        # Skjuler slagretning, låser 50/50 split
