@@ -38,6 +38,10 @@ PIVOT_HOLE_COLOR = (0.08, 0.08, 0.08, 1.0)   # Mørke skruehull
 RYGGFORST_DEPTH = 40    # mm — dybde ryggforsterkning (lik PDI-bladtykkelse)
 RYGGFORST_OVERLAP = 10  # mm — sidestolpe overlapper bladkant innover
 
+# Rom-visning
+ROOM_DEPTH = 3000                              # mm — rommet strekker seg 3m fra veggen
+ROOM_SHELL_T = 15                              # mm — tykkelse gulv/tak/sidevegg-skall
+
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
     """Lager en kopi av musehendelsen med midtre knapp i stedet for høyre."""
@@ -99,14 +103,17 @@ class DoorPreview3D(QWidget):
         self._door: Optional[DoorParams] = None
         self._mesh_items: list = []
         self._wall_items: list = []
+        self._room_items: list = []
         self._frame_items: list = []
         self._blade_items: list = []
         self._show_wall = False
+        self._show_room = False
         self._show_frame = True
         self._show_blades = True
         self._door_open = False
         self._show_axes = False
         self._axes_items: list = []
+        self._grid_item = None
         self._gl_widget = None
         self._init_ui()
 
@@ -133,6 +140,7 @@ class DoorPreview3D(QWidget):
 
             for name, checked, handler in [
                 ("Vegg", False, self._on_wall_toggled),
+                ("Rom", False, self._on_room_toggled),
                 ("Karm", True, self._on_frame_toggled),
                 ("Dørblad", True, self._on_blade_toggled),
             ]:
@@ -178,6 +186,7 @@ class DoorPreview3D(QWidget):
             grid.setSpacing(1, 1)
             grid.setColor((80, 80, 80, 100))
             self._gl_widget.addItem(grid)
+            self._grid_item = grid
 
             # Akser ved origo: X=rød, Y=grønn, Z=blå
             axis_len = 5.0
@@ -208,10 +217,25 @@ class DoorPreview3D(QWidget):
             layout.addWidget(label)
 
     def _on_wall_toggled(self, checked: bool):
-        """Vis/skjul vegg."""
+        """Vis/skjul vegg. Skjuler rom automatisk når vegg skjules."""
         self._show_wall = checked
         for item in self._wall_items:
             item.setVisible(checked)
+        # Skjul rom når vegg skjules
+        if not checked and self._show_room:
+            self._rom_btn.setChecked(False)
+
+    def _on_room_toggled(self, checked: bool):
+        """Vis/skjul rom (gulv, tak, sidevegger). Tvinger vegg på."""
+        self._show_room = checked
+        for item in self._room_items:
+            item.setVisible(checked)
+        # Tving vegg på når rom aktiveres
+        if checked and not self._show_wall:
+            self._vegg_btn.setChecked(True)
+        # Skjul grid når rom er aktivt
+        if self._grid_item is not None:
+            self._grid_item.setVisible(not checked)
 
     def _on_frame_toggled(self, checked: bool):
         """Vis/skjul karm."""
@@ -258,6 +282,7 @@ class DoorPreview3D(QWidget):
             self._gl_widget.removeItem(item)
         self._mesh_items.clear()
         self._wall_items.clear()
+        self._room_items.clear()
         self._frame_items.clear()
         self._blade_items.clear()
 
@@ -287,6 +312,9 @@ class DoorPreview3D(QWidget):
 
         # 1. Vegg (alltid bygd, synlighet styrt av toggle)
         self._add_wall(bm, hm, wall_t, s, door.wall_color)
+
+        # 1b. Rom (gulv, tak, sidevegger)
+        self._add_room(bm, hm, wall_t, s, door.wall_color)
 
         # 2. Karm — bygd fra profil
         karm_color = np.array(self._ral_to_rgba(door.karm_color))
@@ -353,6 +381,42 @@ class DoorPreview3D(QWidget):
                 gl_options='translucent', is_wall=True
             )
             mesh.setVisible(self._show_wall)
+
+    # =========================================================================
+    # ROM (GULV, TAK, SIDEVEGGER)
+    # =========================================================================
+
+    def _add_room(self, bm, hm, wall_t, s, wall_color_hex="#8C8C84"):
+        """Bygger romvisning: gulv, tak og to sidevegger på begge sider av veggen."""
+        M = WALL_MARGIN
+        wall_w = bm + 2 * M          # Total veggbredde
+        wall_h = hm + M              # Total vegghøyde
+        front_depth = ROOM_DEPTH / 3          # 1000mm framside
+        back_depth = front_depth * 2           # 2000mm bakside
+        t = ROOM_SHELL_T
+
+        qc = QColor(wall_color_hex)
+        color = np.array((qc.redF(), qc.greenF(), qc.blueF(), WALL_COLOR[3]))
+
+        x_left = -wall_w / 2
+        y_back = -(wall_t / 2 + back_depth)   # Bakside av rommet
+        total_depth = wall_t + front_depth + back_depth
+
+        for (bx, by, bz, dx, dy, dz) in [
+            # Gulv
+            (x_left, y_back, -t, wall_w, total_depth, t),
+            # Tak
+            (x_left, y_back, wall_h, wall_w, total_depth, t),
+            # Venstre sidevegg
+            (x_left - t, y_back, -t, t, total_depth, wall_h + 2 * t),
+            # Høyre sidevegg
+            (x_left + wall_w, y_back, -t, t, total_depth, wall_h + 2 * t),
+        ]:
+            mesh = self._add_mesh(
+                bx * s, by * s, bz * s, dx * s, dy * s, dz * s,
+                color, gl_options='translucent', is_room=True
+            )
+            mesh.setVisible(self._show_room)
 
     # =========================================================================
     # SLEPELIST (TERSKEL)
@@ -1196,7 +1260,8 @@ class DoorPreview3D(QWidget):
         return np.array(colors)
 
     def _add_mesh(self, x, y, z, dx, dy, dz, color,
-                  gl_options=None, is_wall=False, is_frame=False, is_blade=False):
+                  gl_options=None, is_wall=False, is_frame=False, is_blade=False,
+                  is_room=False):
         """Lag GLMeshItem-boks med simulert retningslys."""
         verts, faces = self._make_box(x, y, z, dx, dy, dz)
         face_colors = self._lit_face_colors(color)
@@ -1215,6 +1280,8 @@ class DoorPreview3D(QWidget):
             self._frame_items.append(mesh)
         if is_blade:
             self._blade_items.append(mesh)
+        if is_room:
+            self._room_items.append(mesh)
         return mesh
 
     @staticmethod
