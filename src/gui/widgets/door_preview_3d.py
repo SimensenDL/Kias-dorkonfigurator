@@ -37,6 +37,8 @@ PIVOT_PLATE_COLOR = (0.75, 0.75, 0.73, 1.0)  # Sølv/aluminium hengsleplate
 PIVOT_HOLE_COLOR = (0.08, 0.08, 0.08, 1.0)   # Mørke skruehull
 RYGGFORST_DEPTH = 40    # mm — dybde ryggforsterkning (lik PDI-bladtykkelse)
 RYGGFORST_OVERLAP = 10  # mm — sidestolpe overlapper bladkant innover
+SLAGLIST_WIDTH = 16      # mm total bredde over gapet
+SLAGLIST_OVERLAP = 4     # mm overlapp inn på passiv fløy
 
 
 def _remap_right_to_middle(event: QMouseEvent) -> QMouseEvent:
@@ -77,7 +79,7 @@ class DoorPreview3D(QWidget):
 
     # Håndtak-dimensjoner (mm)
     HANDLE_CENTER_HEIGHT = 1020          # mm fra gulv (senter håndtak, uten sparkeplate)
-    HANDLE_X_MARGIN = 80
+    HANDLE_X_MARGIN = 50
     # Skilt (bakplate) — avrundede hjørner
     PLATE_WIDTH = 40
     PLATE_HEIGHT = 170
@@ -310,6 +312,10 @@ class DoorPreview3D(QWidget):
         if door_def.get('ryggforsterkning_hoyde_offset'):
             self._add_ryggforsterkning(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
+        # 4c. Slaglister (2-fløyede, ikke pendeldør)
+        if door.floyer == 2 and not door_def.get('pendeldor', False):
+            self._add_slaglister(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
+
         # 5. Slepelist (terskel under dørblad)
         if door.threshold_type == 'slepelist':
             self._add_slepelist(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
@@ -482,6 +488,77 @@ class DoorPreview3D(QWidget):
         if color[3] < 1.0:
             kwargs['glOptions'] = 'translucent'
         mesh = gl.GLMeshItem(**kwargs)
+        tr = self._build_open_transform(pivot)
+        if tr is not None:
+            mesh.setTransform(tr)
+        self._gl_widget.addItem(mesh)
+        self._mesh_items.append(mesh)
+        self._blade_items.append(mesh)
+        mesh.setVisible(self._show_blades)
+
+    # =========================================================================
+    # SLAGLISTER (2-fløyede dører)
+    # =========================================================================
+
+    def _add_slaglister(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
+        """Slaglist (møtelist) montert på passiv fløy.
+
+        En vertikal stolpe med full bladdybde som sitter i gapet mellom
+        de to dørbladene — danner en H-form sett fra siden.
+        Festet på den passive fløyen, følger med ved åpning.
+        """
+        blade_color = np.array(self._ral_to_rgba(door.color))
+        blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
+        sl_w = SLAGLIST_WIDTH
+        sl_overlap = SLAGLIST_OVERLAP
+
+        db_b_total = dorblad_bredde(door.karm_type, kb, 2, door.hinge_type, door_type=door.door_type)
+        db_h = dorblad_hoyde(door.karm_type, kh, 2, door.hinge_type, luftspalte_mm, door_type=door.door_type)
+        if not db_b_total or not db_h:
+            return
+
+        db1_b = round(db_b_total * door.floyer_split / 100)
+        db2_b = db_b_total - db1_b
+
+        if door.swing_direction == 'left':
+            left_w, right_w = db1_b, db2_b
+        else:
+            left_w, right_w = db2_b, db1_b
+
+        total_w = left_w + BLADE_GAP + right_w
+        start_x = -total_w / 2
+        right_x = start_x
+        left_x = start_x + right_w + BLADE_GAP
+
+        # Bestem passiv fløy og pivot
+        # swing_direction == 'left' → visuelt venstre er aktiv, høyre er passiv
+        # swing_direction == 'right' → visuelt høyre er aktiv, venstre er passiv
+        if door.swing_direction == 'left':
+            # Passiv = visuelt høyre (right_x), møtekant = right_x + right_w
+            sl_x = (right_x + right_w) - sl_overlap
+            passive_x, passive_w, passive_hinge = right_x, right_w, 'left'
+        else:
+            # Passiv = visuelt venstre (left_x), møtekant = left_x
+            sl_x = left_x - (sl_w - sl_overlap)
+            passive_x, passive_w, passive_hinge = left_x, left_w, 'right'
+
+        # Pivot fra passiv fløy
+        eff_x, eff_w, eff_y, eff_d = self._effective_pivot_params(
+            door, passive_x, passive_w, blade_y, blade_t_mm,
+            kb=kb, hinge_side=passive_hinge
+        )
+        pivot = self._get_open_pivot(eff_x, eff_w, eff_y, eff_d, passive_hinge, s)
+
+        # Slaglist — full bladdybde (H-stolpe i gapet)
+        verts, faces = self._make_box(
+            sl_x * s, blade_y * s, luftspalte_mm * s,
+            sl_w * s, blade_t_mm * s, db_h * s
+        )
+        face_colors = self._lit_face_colors(blade_color)
+        mesh = gl.GLMeshItem(
+            vertexes=verts, faces=faces, faceColors=face_colors,
+            smooth=False, drawEdges=False
+        )
         tr = self._build_open_transform(pivot)
         if tr is not None:
             mesh.setTransform(tr)
