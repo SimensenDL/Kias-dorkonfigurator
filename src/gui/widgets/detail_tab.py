@@ -334,7 +334,7 @@ class DetailTab(QWidget):
 
         # --- Pendeldør-komponenter ---
         door_def = DOOR_REGISTRY.get(door.door_type, {})
-        has_sparkeplate = 'sparkeplate_offset' in door_def
+        has_sparkeplate = door.sparkeplate  # Boolean fra DoorParams
         has_avviserboyler = 'avviserboyler_offset' in door_def
         has_ryggforst_h = 'ryggforsterkning_hoyde_offset' in door_def
         has_ryggforst_overdel = 'ryggforsterkning_overdel_offset' in door_def

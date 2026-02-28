@@ -357,10 +357,9 @@ class ProductionList:
                         ordre_ref=p.customer,
                     ))
 
-        # --- Pendeldør-spesifikke komponenter ---
-        # Sparkeplate (bredde + høyde fra DoorParams)
-        if 'sparkeplate_offset' in door_def:
-            sp_offset = door_def['sparkeplate_offset']
+        # --- Sparkeplate (tilgjengelig for alle dørtyper via boolean) ---
+        if p.sparkeplate:
+            sp_offset = door_def.get('sparkeplate_offset', -9)
             for bw in blade_widths:
                 sp_b = bw + sp_offset
                 items.append(ProductionItem(

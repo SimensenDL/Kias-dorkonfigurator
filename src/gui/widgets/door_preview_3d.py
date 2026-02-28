@@ -76,7 +76,7 @@ class DoorPreview3D(QWidget):
     SCALE = 1.0 / 100.0
 
     # Håndtak-dimensjoner (mm)
-    HANDLE_CENTER_HEIGHT = 1020          # mm fra gulv (senter håndtak)
+    HANDLE_CENTER_HEIGHT = 1020          # mm fra gulv (senter håndtak, uten sparkeplate)
     HANDLE_X_MARGIN = 80
     # Skilt (bakplate) — avrundede hjørner
     PLATE_WIDTH = 40
@@ -321,8 +321,8 @@ class DoorPreview3D(QWidget):
         if not door_def.get('pendeldor', False):
             self._add_handle(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
-        # 7. Sparkeplater (kun for pendeldører)
-        if door_def.get('pendeldor', False):
+        # 7. Sparkeplater (for alle dørtyper med sparkeplate aktivert)
+        if door.sparkeplate:
             self._add_sparkeplater(door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s)
 
     # =========================================================================
@@ -400,6 +400,10 @@ class DoorPreview3D(QWidget):
     def _add_door_blades(self, door, profile, kb, kh, wall_t, blade_t_mm, karm_depth, luftspalte_mm, s):
         """Dørblad med produksjonsmål fra calculations.py."""
         blade_color = np.array(self._ral_to_rgba(door.color))
+        # Semi-transparent dørblad for polykarbonat-dører (PDPC/PDPO)
+        door_def_alpha = DOOR_REGISTRY.get(door.door_type, {})
+        dorblad_alpha = door_def_alpha.get('dorblad_alpha', 1.0)
+        blade_color[3] = dorblad_alpha
         blade_y = profile.blade_y(wall_t, blade_t_mm, karm_depth)
 
         if door.floyer == 1:
@@ -475,10 +479,13 @@ class DoorPreview3D(QWidget):
         verts, faces = self._make_box(x * s, y * s, z * s, w * s, d * s, h * s)
         face_colors = self._lit_face_colors(color)
 
-        mesh = gl.GLMeshItem(
+        kwargs = dict(
             vertexes=verts, faces=faces, faceColors=face_colors,
             smooth=False, drawEdges=False
         )
+        if color[3] < 1.0:
+            kwargs['glOptions'] = 'translucent'
+        mesh = gl.GLMeshItem(**kwargs)
         tr = self._build_open_transform(pivot)
         if tr is not None:
             mesh.setTransform(tr)
@@ -817,7 +824,7 @@ class DoorPreview3D(QWidget):
         plate_y = profile.handle_y(wall_t, blade_t_mm, karm_depth)
 
         plate_cy = plate_y + self.PLATE_DEPTH / 2
-        plate_cz = self.HANDLE_CENTER_HEIGHT
+        plate_cz = door.sparkeplate_hoyde + 100 + door.effective_luftspalte()
 
         # Skilt (avrundede hjørner, høyere oppløsning)
         verts, faces = self._make_rounded_rect(

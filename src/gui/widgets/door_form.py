@@ -277,6 +277,14 @@ class DoorForm(QWidget):
 
         door_layout.addRow("Terskel:", threshold_widget)
 
+        # Sparkeplate Ja/Nei (tilgjengelig for alle dørtyper)
+        self.sparkeplate_combo = QComboBox()
+        self.sparkeplate_combo.addItem("Nei", False)
+        self.sparkeplate_combo.addItem("Ja", True)
+        self.sparkeplate_combo.currentIndexChanged.connect(self._on_changed)
+        self.sparkeplate_label = QLabel("Sparkeplate:")
+        door_layout.addRow(self.sparkeplate_label, self.sparkeplate_combo)
+
         layout.addWidget(door_group)
 
         # --- Produktdetaljer ---
@@ -789,6 +797,13 @@ class DoorForm(QWidget):
         # Oppdater terskeltyper med dørtype-default
         self._update_threshold_for_karm()
 
+        # Sparkeplate default: "Ja" for pendeldører, "Nei" for andre
+        is_pendel = door_def.get('pendeldor', False)
+        sp_default = True if is_pendel else False
+        sp_idx = self.sparkeplate_combo.findData(sp_default)
+        if sp_idx >= 0:
+            self.sparkeplate_combo.setCurrentIndex(sp_idx)
+
         # Oppdater dørblad farge-combo (RAL vs polykarbonat)
         self._update_blade_color_combo()
 
@@ -874,6 +889,11 @@ class DoorForm(QWidget):
         door.swing_direction = self.hinge_combo.currentData() or "left"
         door.lock_case = self.laaskasse_combo.currentText()
         door.handle_type = self.beslag_combo.currentText()
+
+        # Sparkeplate
+        door.sparkeplate = self.sparkeplate_combo.currentData()
+        if door.sparkeplate is None:
+            door.sparkeplate = False
 
         # Pendeldør-felter
         door.sparkeplate_hoyde = 1000  # Hardkodet
@@ -1002,6 +1022,11 @@ class DoorForm(QWidget):
         idx = self.sound_rating_combo.findData(door.sound_rating)
         if idx >= 0:
             self.sound_rating_combo.setCurrentIndex(idx)
+
+        # Sparkeplate
+        idx = self.sparkeplate_combo.findData(door.sparkeplate)
+        if idx >= 0:
+            self.sparkeplate_combo.setCurrentIndex(idx)
 
         # Pendeldør-felter
         idx = self.avviserboyler_combo.findData(door.avviserboyler)

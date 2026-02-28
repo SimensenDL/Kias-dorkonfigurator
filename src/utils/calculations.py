@@ -345,20 +345,21 @@ def laminat_2_mal(karm_type: str, laminat_1_b: int, laminat_1_h: int) -> tuple[O
 # AREAL
 # =============================================================================
 
-def sparkeplate_bredde(door_type: str, dorblad_b: int) -> Optional[int]:
+def sparkeplate_bredde(door_type: str, dorblad_b: int) -> int:
     """Beregn sparkeplatebredde fra dørbladbredde.
 
+    Bruker dørtype-spesifikk offset fra DOOR_REGISTRY, med fallback til -9
+    for dørtyper uten definert sparkeplate_offset.
+
     Args:
-        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDI')
+        door_type: Dørtype-nøkkel (f.eks. 'PDPC', 'PDI', 'SDI')
         dorblad_b: Dørbladbredde i mm
 
     Returns:
-        Sparkeplatebredde i mm, eller None hvis dørtypen ikke har sparkeplate
+        Sparkeplatebredde i mm
     """
     door_def = DOOR_REGISTRY.get(door_type, {})
-    offset = door_def.get('sparkeplate_offset')
-    if offset is None:
-        return None
+    offset = door_def.get('sparkeplate_offset', -9)
     return dorblad_b + offset
 
 
