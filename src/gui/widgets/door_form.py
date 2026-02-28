@@ -753,7 +753,7 @@ class DoorForm(QWidget):
         self.floyer_combo.blockSignals(True)
         self.floyer_combo.clear()
         for f in allowed:
-            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+            self.floyer_combo.addItem(f"{f}-fløyet", f)
         # Forsøk å beholde forrige valg
         idx = self.floyer_combo.findData(old_floyer)
         if idx >= 0:
@@ -956,7 +956,7 @@ class DoorForm(QWidget):
         allowed_floyer = KARM_FLOYER.get(karm, DOOR_FLOYER.get(door_type, [1]))
         self.floyer_combo.clear()
         for f in allowed_floyer:
-            self.floyer_combo.addItem(f"{f} fløy{'er' if f > 1 else ''}", f)
+            self.floyer_combo.addItem(f"{f}-fløyet", f)
         idx = self.floyer_combo.findData(door.floyer)
         if idx >= 0:
             self.floyer_combo.setCurrentIndex(idx)
