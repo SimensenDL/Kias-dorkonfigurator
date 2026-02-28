@@ -505,7 +505,7 @@ class DoorForm(QWidget):
         )
 
         # Karmmål — serie-3 karmer har ikke gerikt
-        karm_prefix = "Utv. karm" if '3' in temp_door.karm_type else "Utv. karm (inc. gerikt)"
+        karm_prefix = "Utv. karm" if '3' in temp_door.karm_type else "Utv. karm (m/ gerikt)"
         self.karm_width_label.setText(f"{karm_prefix}: {temp_door.karm_width()} mm")
         self.karm_height_label.setText(f"{karm_prefix}: {temp_door.karm_height()} mm")
 
